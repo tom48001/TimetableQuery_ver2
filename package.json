@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "prettier": "^3.5.2",
+    "prettier-eslint": "^16.3.0",
+    "vue-eslint-parser": "^8.3.0"
+  }
+}
