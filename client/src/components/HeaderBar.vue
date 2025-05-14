@@ -3,8 +3,9 @@
     <h1>聖公會聖馬利亞堂莫慶堯中學 行政管理系統</h1>
     <hr />
     用戶資料
-    <hr />
     <button @click="handleLogout" class="logout-btn">Logout</button>
+    <hr />
+
     <div class="menu">
       <!-- 選單1 (Hover) -->
       <span class="main-menu" @mouseover="switchMenu('SubMenu1', $event)" @mouseout="hideMenu($event)">
@@ -35,7 +36,8 @@
       </span>
 
       <!-- 只有管理員 (manager) 才能看到這個 -->
-      <span v-if="userRole ==='manager'" class="main-menu" @mouseover="switchMenu('SubMenu3', $event)" @mouseout="hideMenu($event)">
+      <span v-if="userRole === 'manager'" class="main-menu" @mouseover="switchMenu('SubMenu3', $event)"
+        @mouseout="hideMenu($event)">
         管理老師帳戶
         <span style="font-size: 9px;">&#9660;</span>
         <ul id="SubMenu3" class="sub-menu" style="display: none;">
@@ -127,14 +129,14 @@ h1 {
 
 .menu {
   display: flex;
-  justify-content: center;
-  background-color: #666;
+  justify-content: space-evenly;
+  background-color: #fff;
 }
 
 /* 主選單樣式 */
 .main-menu {
-  color: #fff;
-  background-color: #666;
+  color: #666;
+  background-color: #fff;
   padding: 5px;
   margin: 0;
   cursor: pointer;
@@ -142,18 +144,23 @@ h1 {
 }
 
 .main-menu:hover {
-  background-color: #333;
+  color: #0069c2;
+  background-color: #cfe8fd;
+  border-radius: 8px;
 }
 
 /* 下拉清單樣式 */
 .sub-menu {
-  color: #00f;
-  background-color: #ccc;
+  color: #666;
+  background-color: #fff;
   margin: 5px -5px;
   padding: 0;
   list-style-type: none;
   position: absolute;
   display: none;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   /* 預設隱藏 */
 }
 
@@ -164,19 +171,19 @@ h1 {
 
 .sub-menu li:hover {
   color: #fff;
-  background-color: #00f;
+  background-color: #f9f9f9;
 }
 
 .sub-menu a {
   text-align: left;
   display: block;
   text-decoration: none;
-  color: #00f;
+  color: #666;
 }
 
 .sub-menu a:hover {
-  color: #fff;
-  background-color: #00f;
+  color: #696969;
+  background-color: #f9f9fb;
   text-decoration: none;
 }
 
