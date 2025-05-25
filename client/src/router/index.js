@@ -6,6 +6,7 @@ import Home from '@/pages/Home.vue'
 import GoogleRedirect from '@/pages/GoogleRedirect.vue'
 
 import TeacherTimetable from '@/pages/SubMenu1/TeacherTimetable.vue'
+import TeacherTimetableResult from '../pages/SubMenu1/TeacherTimetableResult.vue'
 import ClassObservation from '@/pages/SubMenu1/ClassObservation.vue'
 import ClassTimetable from '@/pages/SubMenu1/ClassTimetable.vue'
 import Electives from '@/pages/SubMenu1/Electives.vue'
@@ -48,6 +49,12 @@ const router = new Router({
       path: '/TeacherTimetable',
       name: 'TeacherTimetable',
       component: TeacherTimetable,
+      meta: { show: true }
+    },
+    {
+      path: '/TeacherTimetableResult',
+      name: 'TeacherTimetableResult',
+      component: TeacherTimetableResult,
       meta: { show: true }
     },
     {

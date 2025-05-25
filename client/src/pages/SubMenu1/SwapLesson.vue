@@ -2,17 +2,9 @@
   <div>
     <h1>需要調課老師 (只選一人)</h1>
     <div class="teacher-grid">
-      <label
-        v-for="teacher in teachers"
-        :key="teacher.teacher_id"
-        :class="['teacher-option', selectedTeacherId === teacher.teacher_id ? 'selected' : '']"
-      >
-        <input
-          type="radio"
-          name="teacher"
-          :value="teacher.teacher_id"
-          v-model="selectedTeacherId"
-        />
+      <label v-for="teacher in teachers" :key="teacher.teacher_id"
+        :class="['teacher-option', selectedTeacherId === teacher.teacher_id ? 'selected' : '']">
+        <input type="radio" name="teacher" :value="teacher.teacher_id" v-model="selectedTeacherId" />
         {{ teacher.teacher_name }}
       </label>
     </div>

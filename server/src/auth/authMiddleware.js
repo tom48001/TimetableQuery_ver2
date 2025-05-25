@@ -27,6 +27,7 @@ export function ensureAuthenticated(req, res, next) {
   
   export function checkRole(role) {
     return (req, res, next) => {
+      console.log('使用者身分:', req.user?.role);
       if (req.user && req.user.role === role) {
         next();
       } else {
