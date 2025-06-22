@@ -22,6 +22,7 @@ import ConductAward from '@/pages/SubMenu2/ConductAward.vue'
 import ConductAwardResult from '@/pages/SubMenu2/ConductAwardResult.vue'
 
 import editTeacher from '@/pages/SubMenu3/editTeacher.vue';
+import ClassObservationResult from '../pages/SubMenu1/ClassObservationResult.vue'
 
 Vue.use(Router);
 
@@ -61,6 +62,12 @@ const router = new Router({
       path: '/ClassObservation',
       name: 'ClassObservation',
       component: ClassObservation,
+      meta: { show: true }
+    },
+    {
+      path: '/ClassObservationResult',
+      name: 'ClassObservationResult',
+      component: ClassObservationResult,
       meta: { show: true }
     },
     {

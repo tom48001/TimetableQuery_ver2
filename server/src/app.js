@@ -11,6 +11,7 @@ import timetableRoutes from './routes/timetableRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import classRoutes from './routes/classRoutes.js';
 import roomRoutes from './routes/roomRoutes.js';
+import observationRoutes from './routes/observationRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/timetable', timetableRoutes);     // 課表查詢
 app.use('/api/students', studentRoutes);      // 學生查詢
 app.use('/api/classes', classRoutes);         // 班級查詢
 app.use('/api/rooms', roomRoutes);        // 教室查詢
+app.use('/api/observation', observationRoutes); // 課堂觀察
 
 // Server
 app.listen(3000, () => console.log('Server running on port 3000'));
