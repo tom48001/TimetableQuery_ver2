@@ -65,7 +65,8 @@ INSERT INTO student_subject (student_id, subject_id) VALUES
 (2, 7),  -- Cheung Siu Lai takes Music with Emily Chen
 (3, 8),  -- Lee Chi Keung takes Art with Sarah Lee
 (4, 6),  -- Wong Mei Ling takes Computer Science with John Smith
-(5, 7);  -- Wong Ka Fai takes Music with Emily Chen
+(5, 7),  -- Wong Ka Fai takes Music with Emily Chen
+(10, 6); -- Lau Tak Wah takes Computer Science with John Smith
 
 INSERT INTO teacher_subject (teacher_id, subject_id) VALUES
 -- John Smith (数学老师)可以教数学和计算机科学

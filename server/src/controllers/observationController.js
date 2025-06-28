@@ -6,7 +6,6 @@ export const getObservationSchedule = async (req, res) => {
 
   if (!Array.isArray(observerIds) || !targetId) {
     return res.status(400).json({ error: '請提供觀課老師與被觀課老師 ID' });
-    console.log('observation if');
   }
 
   try {

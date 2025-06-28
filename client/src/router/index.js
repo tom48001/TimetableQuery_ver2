@@ -10,6 +10,7 @@ import TeacherTimetableResult from '../pages/SubMenu1/TeacherTimetableResult.vue
 import ClassObservation from '@/pages/SubMenu1/ClassObservation.vue'
 import ClassTimetable from '@/pages/SubMenu1/ClassTimetable.vue'
 import Electives from '@/pages/SubMenu1/Electives.vue'
+import ElectivesResult from '@/pages/SubMenu1/ElectivesResult.vue'
 import FreeTeacher from '@/pages/SubMenu1/FreeTeacher.vue'
 import RoomTimetable from '@/pages/SubMenu1/RoomTimetable.vue'
 import StdTimetable from '@/pages/SubMenu1/StdTimetable.vue'
@@ -80,6 +81,12 @@ const router = new Router({
       path: '/Electives',
       name: 'Electives',
       component: Electives,
+      meta: { show: true }
+    },
+    {
+      path: '/ElectivesResult',
+      name: 'ElectivesResult',
+      component: ElectivesResult,
       meta: { show: true }
     },
     {

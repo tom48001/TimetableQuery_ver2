@@ -61,8 +61,8 @@ export default {
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        console.log('回傳資料:', res.data);
-        console.log('schedule 資料:', res.data.schedule); // 如果你的資料在某個屬性內
+        // console.log('回傳資料:', res.data);
+        // console.log('schedule 資料:', res.data.schedule); // 如果你的資料在某個屬性內
 
         this.schedule = Array.isArray(res.data.targetSchedule) ? res.data.targetSchedule : [];
       } catch (err) {
