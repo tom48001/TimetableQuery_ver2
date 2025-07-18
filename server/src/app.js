@@ -41,6 +41,7 @@ app.use('/api/timetable', timetableRoutes);     // 課表查詢
 app.use('/api/students', studentRoutes);      // 學生查詢
 app.use('/api/classes', classRoutes);         // 班級查詢
 app.use('/api/rooms', roomRoutes);        // 教室查詢
+app.use('/api/rooms/schedule/:roomId', roomRoutes); 
 app.use('/api/observation', observationRoutes); // 課堂觀察
 app.use('/api/subjects', subjectRoutes);
 

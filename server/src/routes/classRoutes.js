@@ -25,19 +25,22 @@ router.get('/schedule/:classId', async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT 
-        t.teacher_name,
-        s.subject_name AS subject,
-        c.class_name,
-        r.room_name AS room,
-        tt.day_of_week,
-        tt.period
-      FROM timetable tt
-      JOIN teacher t ON tt.teacher_id = t.teacher_id
-      JOIN subject s ON tt.subject_id = s.subject_id
-      JOIN class c ON tt.class_id = c.class_id
-      JOIN room r ON tt.room_id = r.room_id
-      WHERE tt.class_id = ?
-      ORDER BY tt.day_of_week, tt.period`, [classId]);
+    t.teacher_name,
+    s.subject_name,
+    c.class_name,
+    r.room_name,
+    tt.day_of_week,
+    p.period_name
+  FROM timetable tt
+  JOIN teacher t ON tt.teacher_id = t.teacher_id
+  JOIN subject s ON tt.subject_id = s.subject_id
+  JOIN class c ON tt.class_id = c.class_id
+  JOIN room r ON tt.room_id = r.room_id
+  JOIN period p ON tt.period_id = p.period_id
+  WHERE tt.class_id = ?
+  ORDER BY 
+    FIELD(tt.day_of_week, 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'),
+    p.start_time`, [classId]);
     res.json(rows);
   } catch (err) {
     console.error('查詢課表失敗:', err);

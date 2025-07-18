@@ -8,12 +8,16 @@ import GoogleRedirect from '@/pages/GoogleRedirect.vue'
 import TeacherTimetable from '@/pages/SubMenu1/TeacherTimetable.vue'
 import TeacherTimetableResult from '../pages/SubMenu1/TeacherTimetableResult.vue'
 import ClassObservation from '@/pages/SubMenu1/ClassObservation.vue'
+import ClassObservationResult from '../pages/SubMenu1/ClassObservationResult.vue'
 import ClassTimetable from '@/pages/SubMenu1/ClassTimetable.vue'
+import ClassTimetableResult from '@/pages/SubMenu1/ClassTimetableResult.vue'
 import Electives from '@/pages/SubMenu1/Electives.vue'
 import ElectivesResult from '@/pages/SubMenu1/ElectivesResult.vue'
 import FreeTeacher from '@/pages/SubMenu1/FreeTeacher.vue'
 import RoomTimetable from '@/pages/SubMenu1/RoomTimetable.vue'
+import RoomTimetableResult from '@/pages/SubMenu1/RoomTimetableResult.vue'
 import StdTimetable from '@/pages/SubMenu1/StdTimetable.vue'
+import StdTimetableResult from '@/pages/SubMenu1/StdTimetableResult.vue'
 import SwapLesson from '@/pages/SubMenu1/SwapLesson.vue'
 import StudentSelector from '@/pages/SubMenu1/StudentSelector.vue'
 
@@ -23,7 +27,6 @@ import ConductAward from '@/pages/SubMenu2/ConductAward.vue'
 import ConductAwardResult from '@/pages/SubMenu2/ConductAwardResult.vue'
 
 import editTeacher from '@/pages/SubMenu3/editTeacher.vue';
-import ClassObservationResult from '../pages/SubMenu1/ClassObservationResult.vue'
 
 Vue.use(Router);
 
@@ -78,6 +81,12 @@ const router = new Router({
       meta: { show: true }
     },
     {
+      path: '/ClassTimetableResult',
+      name: 'ClassTimetableResult',
+      component: ClassTimetableResult,
+      meta: { show: true }
+    },
+    {
       path: '/Electives',
       name: 'Electives',
       component: Electives,
@@ -102,9 +111,21 @@ const router = new Router({
       meta: { show: true }
     },
     {
+      path: '/RoomTimetableResult',
+      name: 'RoomTimetableResult',
+      component: RoomTimetableResult,
+      meta: { show: true }
+    },
+    {
       path: '/StdTimetable',
       name: 'StdTimetable',
       component: StdTimetable,
+      meta: { show: true }
+    },
+    {
+      path: '/StdTimetableResult',
+      name: 'StdTimetableResult',
+      component: StdTimetableResult,
       meta: { show: true }
     },
     {
