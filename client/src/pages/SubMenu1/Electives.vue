@@ -2,7 +2,7 @@
   <div>
     <h1>高中選修名單</h1>
     <h3>選擇年級：</h3>
-    <div class="class-grid">
+    <div class="form-grid">
       <label v-for="formLevel in ['F1', 'F2', 'F3', 'F4', 'F5', 'F6']" :key="formLevel" class="form-option">
         <input type="radio" :value="formLevel" v-model="form" />
         {{ formLevel }}
@@ -87,7 +87,7 @@ h3 {
   margin: 20px 0;
 }
 
-.class-grid {
+.form-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;

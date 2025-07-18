@@ -5,7 +5,9 @@ import {
   getStudents,
   getStudentsBySubject,
   getStudentTimetable,
-  getStudentsByClassId
+  getStudentsByClassId,
+  ListStudentsByClassId,
+  getStudentSchedule
 } from '../controllers/studentController.js';
 
 const router = express.Router();
@@ -16,6 +18,8 @@ router.use(ensureJWT);
 // 根據班級 ID 查學生
 router.get('/by-class/:classId', ensureJWT, getStudentsByClassId);
 
+router.get('/list-by-class/:classId', ensureJWT, ListStudentsByClassId);
+
 // 取得所有學生資料
 router.get('/', getStudents);
 
@@ -24,6 +28,8 @@ router.post('/by-subject', getStudentsBySubject);
 
 // 根據學生 ID 查學生課表
 router.get('/:studentId/timetable', getStudentTimetable);
+
+router.get('/:studentId/Schedule', getStudentSchedule);
 
 // 根據班級 ID 查學生的選修科目
 router.get('/elective-subjects', async (req, res) => {

@@ -14,6 +14,7 @@ import ElectivesResult from '@/pages/SubMenu1/ElectivesResult.vue'
 import FreeTeacher from '@/pages/SubMenu1/FreeTeacher.vue'
 import RoomTimetable from '@/pages/SubMenu1/RoomTimetable.vue'
 import StdTimetable from '@/pages/SubMenu1/StdTimetable.vue'
+import StudentTimetableResult from '@/pages/SubMenu1/StudentTimetableResult.vue'
 import SwapLesson from '@/pages/SubMenu1/SwapLesson.vue'
 import StudentSelector from '@/pages/SubMenu1/StudentSelector.vue'
 
@@ -105,6 +106,12 @@ const router = new Router({
       path: '/StdTimetable',
       name: 'StdTimetable',
       component: StdTimetable,
+      meta: { show: true }
+    },
+    {
+      path: '/StudentTimetableResult',
+      name: 'StudentTimetableResult',
+      component: StudentTimetableResult,
       meta: { show: true }
     },
     {
