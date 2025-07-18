@@ -5,10 +5,19 @@ export const getStudentsByClassId = async (req, res) => {
   const { classId } = req.params;
   try {
     const [students] = await pool.query(
-      `SELECT DISTINCT student_id, student_name, english_name, sex, class_id, class_name
-      FROM timetable
-      WHERE class_id = ?
-      ORDER BY student_name`, [classId]);
+      `SELECT 
+        s.student_id, 
+        s.student_ch_name AS student_name,
+        s.student_eng_name AS english_name,
+        s.sex, 
+        s.class_id,
+        c.class_name
+      FROM student s
+      JOIN class c ON s.class_id = c.class_id
+      WHERE s.class_id = ?
+      ORDER BY s.student_ch_name`, 
+      [classId]
+    );
     res.json(students);
   } catch (error) {
     console.error('查詢班級學生失敗:', error);
@@ -41,11 +50,24 @@ export const getStudentTimetable = async (req, res) => {
   const { studentId } = req.params;
   try {
     const [rows] = await pool.query(`
-      SELECT teacher_name, subject, class_name, room_name, day, period
-      FROM timetable
-      WHERE student_id = ?
-      ORDER BY day, period
+      SELECT 
+        t.teacher_name,
+        sb.subject_name AS subject,
+        c.class_name,
+        r.room_name,
+        tt.day_of_week AS day,
+        p.period_name AS period
+      FROM student s
+      JOIN class c ON s.class_id = c.class_id
+      JOIN timetable tt ON c.class_id = tt.class_id
+      JOIN teacher t ON tt.teacher_id = t.teacher_id
+      JOIN subject sb ON tt.subject_id = sb.subject_id
+      JOIN room r ON tt.room_id = r.room_id
+      JOIN period p ON tt.period_id = p.period_id
+      WHERE s.student_id = ?
+      ORDER BY tt.day_of_week, tt.period_id
     `, [studentId]);
+
     res.json(rows);
   } catch (error) {
     console.error('查詢學生課表失敗:', error);
@@ -57,9 +79,16 @@ export const getStudentTimetable = async (req, res) => {
 export const getStudents = async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT DISTINCT student_id, student_name, english_name, sex, class_id, class_name
-      FROM timetable
-      ORDER BY class_name, student_name
+      SELECT 
+        s.student_id, 
+        s.student_ch_name AS student_name,
+        s.student_eng_name AS english_name,
+        s.sex, 
+        s.class_id,
+        c.class_name
+      FROM student s
+      JOIN class c ON s.class_id = c.class_id
+      ORDER BY c.class_name, s.student_ch_name
     `);
     res.json(rows);
   } catch (error) {

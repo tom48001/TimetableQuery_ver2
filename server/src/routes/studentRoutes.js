@@ -25,6 +25,9 @@ router.post('/by-subject', getStudentsBySubject);
 // 根據學生 ID 查學生課表
 router.get('/:studentId/timetable', getStudentTimetable);
 
+//getStudentsByClassId
+router.get('/:studentId/timetable', getStudentsByClassId);
+
 // 根據班級 ID 查學生的選修科目
 router.get('/elective-subjects', async (req, res) => {
   const [rows] = await db.query('SELECT DISTINCT subject_name FROM elective_subjects');
