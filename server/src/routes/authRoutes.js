@@ -36,7 +36,7 @@ router.post('/login', async (req, res) => {
     
     // 驗證成功，生成 JWT token
     const role = user.role ? user.role.trim().toLowerCase() : 'teacher';
-    const token = jwt.sign({ id: user.user_id, role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ id: user.user_id, role }, process.env.JWT_SECRET, { expiresIn: '2h' });
     
     // 將 token 儲存到 cookie 中
     res.json({ message: '登入成功', user, token });

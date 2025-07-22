@@ -37,7 +37,7 @@ export default {
         return;
       }
       // 跳轉到下一頁或 fetch class 列表
-      this.$router.push({ name: 'SelectClassToSwap', query: { teacherId: this.selectedTeacherId } });
+      this.$router.push({ name: 'SwapLessonResult', query: { teacherId: this.selectedTeacherId } });
     }
   },
   mounted() {
