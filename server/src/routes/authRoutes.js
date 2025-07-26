@@ -3,6 +3,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import db from '../db.js';
 import dotenv from 'dotenv';
+import bcrypt from 'bcrypt';
 
 dotenv.config();
 const router = express.Router();
@@ -27,10 +28,10 @@ router.post('/login', async (req, res) => {
     }
     
     const user = users[0];
-    const storedPassword = user.password;
 
-    // const hashedPassword = user.hashed_password;
-    if (!storedPassword || password !== storedPassword) {
+    // 用 bcrypt 比對密碼
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
       return res.status(401).json({ error: "密碼錯誤" });
     }
     

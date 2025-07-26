@@ -1,6 +1,8 @@
 <template>
   <header class="header">
-    <h1>聖公會聖馬利亞堂莫慶堯中學 行政管理系統</h1>
+    <h1>
+      <router-link to="/home" class="navbar navbar-expand-md navbar-dark bg-dark mb-4">聖公會聖馬利亞堂莫慶堯中學 行政管理系統</router-link>
+    </h1>
     <hr />
     用戶資料
     <button @click="handleLogout" class="logout-btn">Logout</button>

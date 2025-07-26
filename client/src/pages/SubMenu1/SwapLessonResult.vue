@@ -37,24 +37,25 @@ export default {
     };
   },
   async mounted() {
-    const { teacherId, classId, day, period, subject } = this.$route.query;
+    const { day, period, subjectId } = this.$route.query;
     const token = localStorage.getItem('token');
-
+    console.log('送出參數:', { day, period, subjectId });
     try {
-      const res = await axios.get('http://localhost:3000/api/Teacher/available-teachers', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: {
-          original_teacher_id: teacherId,
-          classId,
+      const res = await axios.post('http://localhost:3000/api/swap/substitute-candidates',
+        {
           day,
           period,
-          subject
+          subjectId: parseInt(subjectId)
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
         }
-      });
+      );
 
       this.availableTeachers = res.data;
     } catch (err) {
       console.error('載入可調課老師失敗', err);
+      alert('無法載入可調課老師，請稍後再試');
     } finally {
       this.loading = false;
     }

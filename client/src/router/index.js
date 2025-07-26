@@ -19,6 +19,7 @@ import RoomTimetableResult from '@/pages/SubMenu1/RoomTimetableResult.vue'
 import StdTimetable from '@/pages/SubMenu1/StdTimetable.vue'
 import StdTimetableResult from '@/pages/SubMenu1/StdTimetableResult.vue'
 import SwapLesson from '@/pages/SubMenu1/SwapLesson.vue'
+import SwapLessonPick from '@/pages/SubMenu1/SwapLessonPick.vue'
 import SwapLessonResult from '@/pages/SubMenu1/SwapLessonResult.vue'
 import StudentSelector from '@/pages/SubMenu1/StudentSelector.vue'
 
@@ -133,6 +134,12 @@ const router = new Router({
       path: '/SwapLesson',
       name: 'SwapLesson',
       component: SwapLesson,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/SwapLessonPick',
+      name: 'SwapLessonPick',
+      component: SwapLessonPick,
       meta: { show: true, requiresAuth: true }
     },
     {

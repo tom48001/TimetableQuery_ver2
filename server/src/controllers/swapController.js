@@ -6,11 +6,12 @@ export const getTeacherLessons = async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT 
-        tt.timetable_id,
-        c.class_name,
-        s.subject_name AS subject,
-        tt.day_of_week AS day,
-        tt.period
+      tt.timetable_id,
+      c.class_name,
+      s.subject_name AS subject,
+      s.subject_id,
+      tt.day_of_week AS day,
+      tt.period
       FROM timetable tt
       JOIN class c ON tt.class_id = c.class_id
       JOIN subject s ON tt.subject_id = s.subject_id
@@ -35,18 +36,16 @@ export const getSubstituteCandidates = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT t.teacher_id, t.teacher_name
       FROM teacher t
-      WHERE t.teacher_id NOT IN (
-        SELECT tt.teacher_id
-        FROM timetable tt
-        WHERE tt.day_of_week = ? AND tt.period = ?
-      )
-      AND t.teacher_id IN (
-        SELECT teacher_id
-        FROM timetable
-        WHERE subject_id = ?
-      )
+      JOIN teacher_subject ts ON t.teacher_id = ts.teacher_id
+      WHERE ts.subject_id = ?
+        AND NOT EXISTS (
+          SELECT 1 FROM timetable tt
+          WHERE tt.teacher_id = t.teacher_id
+            AND tt.day_of_week = ?
+            AND tt.period_id = ?
+        )
       ORDER BY t.teacher_name
-    `, [day, period, subjectId]);
+    `, [subjectId, day, period]);
 
     res.json(rows);
   } catch (err) {

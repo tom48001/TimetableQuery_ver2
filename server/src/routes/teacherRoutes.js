@@ -59,29 +59,19 @@ router.post('/free-teachers', async (req, res) => {
   }
 });
 
-// routes/swapRoutes.js
-router.get('/available-teachers', ensureJWT, async (req, res) => {
-  const { original_teacher_id, day, period, subject } = req.query;
-
+// routes/teacherRoutes.js
+router.get('/by-user/:userId', ensureJWT, async (req, res) => {
+  const { userId } = req.params;
   try {
-    const [rows] = await db.query(`
-      SELECT DISTINCT t.teacher_id, t.teacher_name, s.subject_name
-      FROM teacher t
-      JOIN teacher_subjects s ON t.teacher_id = s.teacher_id
-      WHERE s.subject_name = ?
-        AND t.teacher_id != ?
-        AND NOT EXISTS (
-          SELECT 1 FROM timetable tt
-          WHERE tt.teacher_id = t.teacher_id
-            AND tt.day = ?
-            AND tt.period = ?
-        )
-    `, [subject, original_teacher_id, day, period]);
-
-    res.json(rows);
-  } catch (err) {
-    console.error('查找可供調課老師失敗:', err);
-    res.status(500).json({ error: '無法查找老師' });
+    const [rows] = await db.query(
+      'SELECT teacher_id FROM teacher WHERE user_id = ?',
+      [userId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: '找不到老師' });
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('查詢 teacher_id 失敗:', error);
+    res.status(500).json({ error: '伺服器錯誤' });
   }
 });
 
