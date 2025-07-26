@@ -43,20 +43,36 @@ router.get('/list', async (req, res) => {
 // 根據老師 ID 查詢課表
 router.post('/free-teachers', async (req, res) => {
   const { weekday, period } = req.body;
+
+  // 檢查 period 是否為非空陣列
+  if (!Array.isArray(period) || period.length === 0) {
+    return res.status(400).json({ error: 'period 必須是非空陣列' });
+  }
+
   try {
+    // 動態生成 SQL 佔位符 (?, ?, ...)
+    const placeholders = period.map(() => '?').join(', ');
+
     const [rows] = await db.query(
-      `SELECT t.teacher_id, t.teacher_name
-       FROM teacher t
-       WHERE t.teacher_id NOT IN (
-         SELECT tt.teacher_id
-         FROM timetable tt
-         WHERE tt.day_of_week = ? AND tt.period_id = ?)
-       ORDER BY t.teacher_name`, [weekday, period]);
+      `
+      SELECT t.teacher_id, t.teacher_name
+      FROM teacher t
+      WHERE t.teacher_id NOT IN (
+        SELECT tt.teacher_id
+        FROM timetable tt
+        WHERE tt.day_of_week = ? AND tt.period_id IN (${placeholders})
+      )
+      ORDER BY t.teacher_name
+      `,
+      [weekday, ...period]  // 展開陣列進入佔位符
+    );
+
     res.json(rows);
   } catch (error) {
     console.error('查詢空堂失敗:', error);
     res.status(500).json({ error: '資料庫錯誤' });
   }
 });
+
 
 export default router;
