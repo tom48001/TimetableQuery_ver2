@@ -4,6 +4,7 @@ import db from '../db.js';
 import { checkRole } from '../auth/authMiddleware.js';
 import {getAllTeachers, createTeacher, updateTeacher, deleteTeacher} from '../controllers/manageTeacherRoutes.js';
 import { getTeachersSchedule } from '../controllers/teacherScheduleController.js';
+import pool from '../db.js';
 
 const router = express.Router();
 
@@ -74,5 +75,21 @@ router.post('/free-teachers', async (req, res) => {
   }
 });
 
+router.get('/from-user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const [rows] = await pool.query(
+      'SELECT teacher_id FROM teacher WHERE user_id = ?',
+      [userId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: '找不到對應的 teacher' });
+    }
+    res.json({ teacher_id: rows[0].teacher_id });
+  } catch (err) {
+    console.error('查詢 teacher_id 失敗:', err);
+    res.status(500).json({ error: '資料庫錯誤' });
+  }
+});
 
 export default router;
