@@ -5,18 +5,18 @@ export const getTeacherLessons = async (req, res) => {
   const { teacherId } = req.params;
   try {
     const [rows] = await pool.query(
-      `SELECT 
-      tt.timetable_id,
-      c.class_name,
-      s.subject_name AS subject,
-      s.subject_id,
-      tt.day_of_week AS day,
-      tt.period
-      FROM timetable tt
-      JOIN class c ON tt.class_id = c.class_id
-      JOIN subject s ON tt.subject_id = s.subject_id
-      WHERE tt.teacher_id = ?
-      ORDER BY tt.day_of_week, tt.period`, [teacherId]);
+  `SELECT 
+    tt.timetable_id,
+    c.class_name,
+    s.subject_name AS subject,
+    s.subject_id,
+    tt.day_of_week AS day,
+    tt.period_id AS period
+  FROM timetable tt
+  JOIN class c ON tt.class_id = c.class_id
+  JOIN subject s ON tt.subject_id = s.subject_id
+  WHERE tt.teacher_id = ?
+  ORDER BY tt.day_of_week, tt.period_id`, [teacherId]);
     res.json(rows);
   } catch (err) {
     console.error('查詢老師課堂失敗:', err);

@@ -92,7 +92,7 @@ INSERT INTO teacher_subject (teacher_id, subject_id) VALUES
 (3, 1),  -- Mr. Chan teaches Mathematics
 (3, 6),  -- Mr. Chan teaches Computer Science
 (4, 5),  -- Ms. Mok teaches History
-(5, 3);  -- Ms. Lee teaches Chinese
+(5, 3),  -- Ms. Lee teaches Chinese
 
 -- 老師課表 (teacher_id, subject_id, class_id, room_id, day, period_id)
 INSERT INTO timetable (teacher_id, subject_id, class_id, room_id, day_of_week, period_id) VALUES
@@ -102,4 +102,6 @@ INSERT INTO timetable (teacher_id, subject_id, class_id, room_id, day_of_week, p
 (4, 5, 2, 4, 'Wed', 3),  -- History by Ms. Mok
 (5, 3, 2, 5, 'Thu', 4),  -- Chinese by Ms. Lee
 (1, 6, 1, 6, 'Fri', 2),  -- Computer Science by Tom
-(2, 7, 2, 7, 'Tue', 3);  -- Music by qwe
+(2, 7, 2, 7, 'Tue', 3),  -- Music by qwe
+(2, 4, 5, 8, 'Mon', 5),
+(3, 4, 6, 8, 'Fri', 5);

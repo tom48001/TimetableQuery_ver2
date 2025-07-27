@@ -10,7 +10,7 @@ const router = express.Router();
 router.use(ensureJWT);
 
 // 取得老師的所有課堂（調課用）
-router.post('/teacher-lessons/:teacherId', getTeacherLessons);
+router.get('/teacher-lessons/:teacherId', getTeacherLessons);
 
 // 查找可代課老師
 router.post('/substitute-candidates', getSubstituteCandidates);

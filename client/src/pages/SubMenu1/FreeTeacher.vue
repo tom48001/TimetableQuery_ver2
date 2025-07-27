@@ -10,14 +10,28 @@
           <option v-for="day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']" :key="day" :value="day">{{ day }}</option>
         </select>
       </label>
-
-      <label>節次：
+    </div>
+    <!-- <label>節次：
         <select v-model="period">
           <option disabled value="">請選擇</option>
           <option v-for="n in 10" :key="n" :value="n">第 {{ n }} 節</option>
         </select>
-      </label>
+      </label> -->
 
+    <!-- <h3>節次：</h3>
+      <div class="class-grid">
+        <label v-for="periodLevel in 10" :key="periodLevel" class="period-option">
+          <input type="checkbox" :value="periodLevel" v-model="period" />
+          {{ periodLevel }}
+        </label>
+      </div> -->
+    <div class="period-grid">
+      <label v-for="periodLevel in 10" :key="periodLevel" class="period-option" :class="{ selected: periodLevel }">
+        <input type="checkbox" :value="periodLevel" v-model="period" />
+        {{ periodLevel }}
+      </label>
+    </div>
+    <div>
       <button @click="fetchFreeTeachers">查詢</button>
     </div>
 
@@ -40,7 +54,7 @@ export default {
   data() {
     return {
       weekday: '',
-      period: '',
+      period: [],
       teachers: [],
       searched: false
     };
@@ -78,7 +92,7 @@ export default {
   padding: 20px;
   background-color: #fdfdfd;
   border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 h1 {
@@ -102,13 +116,13 @@ h1 {
   color: #333;
 }
 
-select {
+/* select {
   margin-top: 6px;
   padding: 8px;
   font-size: 16px;
   border-radius: 6px;
   border: 1px solid #ccc;
-}
+} */
 
 button {
   margin-top: 10px;
@@ -147,4 +161,41 @@ p {
   font-style: italic;
 }
 
+.period-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.period-option {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 2px solid #dcdcdc;
+  background-color: #f9f9f9;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  min-width: 180px;
+  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.05);
+}
+
+.period-option:hover {
+  background-color: #eaf3ff;
+  border-color: #7ab8f5;
+}
+
+.period-option.selected {
+  background-color: #007bff;
+  color: white;
+  border-color: #0056b3;
+}
+
+.period-option input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #007bff;
+}
 </style>
