@@ -13,6 +13,7 @@ import classRoutes from './routes/classRoutes.js';
 import roomRoutes from './routes/roomRoutes.js';
 import observationRoutes from './routes/observationRoutes.js';
 import subjectRoutes from './routes/subjectRoutes.js';
+import swapRoutes from './routes/swapRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/rooms', roomRoutes);        // 教室查詢
 app.use('/api/rooms/schedule/:roomId', roomRoutes); 
 app.use('/api/observation', observationRoutes); // 課堂觀察
 app.use('/api/subjects', subjectRoutes);
+app.use('/api/swap', swapRoutes);
 
 // Server
 app.listen(3000, () => console.log('Server running on port 3000'));

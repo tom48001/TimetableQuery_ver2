@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 // 確保 JWT 令牌存在且有效的中間件
 export default function ensureJWT(req, res, next) {
   const authHeader = req.headers.authorization;
-
   if (!authHeader) return res.sendStatus(401);
 
   const token = authHeader.split(' ')[1];
@@ -31,7 +30,7 @@ export function ensureAuthenticated(req, res, next) {
       if (req.user && req.user.role === role) {
         next();
       } else {
-        res.status(403).json({ error: '權限不足' });
+        res.status(403).json({ error: '權限不足TEST' });
       }
     };
   }  

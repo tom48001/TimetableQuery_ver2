@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 
 // 取得老師列表
 export const getAllTeachers = async (req, res) => {
+  console.log('==== BOB =====');
   const [teachers] = await db.query('SELECT user_id, user_name, email FROM user WHERE role = "teacher"');
   res.json(teachers);
 };

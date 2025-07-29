@@ -6,29 +6,36 @@ import {getAllTeachers, createTeacher, updateTeacher, deleteTeacher} from '../co
 import { getTeachersSchedule } from '../controllers/teacherScheduleController.js';
 import pool from '../db.js';
 
+const Roles = {
+  MANAGER:'manager',
+  TEACHER:'teacher',
+
+};
+
 const router = express.Router();
 
 // 所有路由都需登入 + 身份為 manager
 router.use(ensureJWT);
-//router.use(checkRole('manager'));
+//router.use(checkRole(Roles.MANAGER));
 
 // 只對管理功能要求 manager
-router.use(['/','/:id'], checkRole('manager'));
+// 取得所有老師資料 
 
-// 取得所有老師資料
-router.get('/', getAllTeachers);
+router.use('/getAll', checkRole(Roles.MANAGER));
+// 取得所有老師資料 
+router.get('/getAllTeachers', getAllTeachers);
 
 // 新增老師
-router.post('/', createTeacher, checkRole('manager'));
+router.post('/', createTeacher, checkRole(Roles.MANAGER));
 
 // 查詢多位老師課表
 router.post('/schedule', getTeachersSchedule);
 
 // 更新老師
-router.put('/:id', updateTeacher, checkRole('manager'));
+router.put('/:id', updateTeacher, checkRole(Roles.MANAGER));
 
 // 刪除老師
-router.delete('/:id', deleteTeacher, checkRole('manager'));
+router.delete('/:id', deleteTeacher, checkRole(Roles.MANAGER));
 
 // 取得 teacher 表中老師名單
 router.get('/list', async (req, res) => {

@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <h1>Home Page</h1>
+  <div class="schedule-container">
+    <h1>老師課表</h1>
     <table class="timetable">
       <thead>
         <tr>

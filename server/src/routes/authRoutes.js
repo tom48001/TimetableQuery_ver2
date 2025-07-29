@@ -3,6 +3,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import db from '../db.js';
 import dotenv from 'dotenv';
+import bcrypt from 'bcrypt';
 
 
 dotenv.config();
@@ -28,16 +29,16 @@ router.post('/login', async (req, res) => {
     }
     
     const user = users[0];
-    const storedPassword = user.password;
 
-    // const hashedPassword = user.hashed_password;
-    if (!storedPassword || password !== storedPassword) {
+    // 用 bcrypt 比對密碼
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
       return res.status(401).json({ error: "密碼錯誤" });
     }
     
     // 驗證成功，生成 JWT token
     const role = user.role ? user.role.trim().toLowerCase() : 'teacher';
-    const token = jwt.sign({ id: user.user_id, role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ id: user.user_id, role }, process.env.JWT_SECRET, { expiresIn: '2h' });
     
     // 將 token 儲存到 cookie 中
     res.json({ message: '登入成功', user, token });

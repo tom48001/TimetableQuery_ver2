@@ -55,7 +55,7 @@ export default {
     async fetchTeachers() {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:3000/api/teachers', {
+        const res = await axios.get('http://localhost:3000/api/teachers/getAllTeachers', {
           headers: { Authorization: `Bearer ${token}` }
         });
         // 加 newPassword 欄位作為輸入欄位，不會送到後端
