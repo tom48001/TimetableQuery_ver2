@@ -201,4 +201,13 @@ h1 {
 .logout-btn:hover {
   background-color: #d32f2f;
 }
+
+.router-link-active {
+  text-decoration: none;
+  color: black;
+}
+a{
+  text-decoration: none;
+  color: black;
+}
 </style>

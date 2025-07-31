@@ -11,20 +11,6 @@
         </select>
       </label>
     </div>
-    <!-- <label>節次：
-        <select v-model="period">
-          <option disabled value="">請選擇</option>
-          <option v-for="n in 10" :key="n" :value="n">第 {{ n }} 節</option>
-        </select>
-      </label> -->
-
-    <!-- <h3>節次：</h3>
-      <div class="class-grid">
-        <label v-for="periodLevel in 10" :key="periodLevel" class="period-option">
-          <input type="checkbox" :value="periodLevel" v-model="period" />
-          {{ periodLevel }}
-        </label>
-      </div> -->
     <div class="period-grid">
       <label v-for="periodLevel in 10" :key="periodLevel" class="period-option" :class="{ selected: periodLevel }">
         <input type="checkbox" :value="periodLevel" v-model="period" />
@@ -90,9 +76,6 @@ export default {
   max-width: 600px;
   margin: 40px auto;
   padding: 20px;
-  background-color: #fdfdfd;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 h1 {
@@ -116,13 +99,13 @@ h1 {
   color: #333;
 }
 
-/* select {
+select {
   margin-top: 6px;
   padding: 8px;
   font-size: 16px;
   border-radius: 6px;
   border: 1px solid #ccc;
-} */
+}
 
 button {
   margin-top: 10px;
@@ -188,7 +171,7 @@ p {
   border-color: #7ab8f5;
 }
 
-.period-option.selected {
+.period-option::selection {
   background-color: #007bff;
   color: white;
   border-color: #0056b3;
