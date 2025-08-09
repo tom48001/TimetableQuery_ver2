@@ -4,7 +4,7 @@
 
     <div class="subject-grid">
       <select v-model="selectedSubject">
-        <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">
+        <option v-for="subject in subjects" :key="subject.subject_id" :value="subject">
           {{ subject.subject_name }}
         </option>
       </select>
@@ -13,13 +13,16 @@
     <div class="class-grid">
       <label
         v-for="cls in classList"
-        :key="cls"
+        :key="cls.class_id"
         class="class-option"
         :class="{ selected: selectedClass.includes(cls) }"
       >
-        <input type="checkbox" :value="cls" v-model="selectedClass" />
+        <input type="checkbox" :value="cls.class_id" v-model="selectedClass" />
         {{ cls.class_name }}
       </label>
+    </div>
+    <div class="button-container">
+      <button @click="goNext">下一步</button>
     </div>
   </div>
 </template>
@@ -51,11 +54,23 @@ export default {
       this.classList = res.data;
     },
     goNext() {
-      if (this.selectedTeacherId.length === 0) {
-        alert('請選擇');
+      if (!this.selectedSubject) {
+        alert('請選擇科目');
         return;
       }
-      this.$router.push({ name: 'TeacherTimetableResult', query: { teacherId: this.selectedTeacherId } });
+      if (this.selectedClass.length === 0) {
+        alert('請選擇年級');
+        return;
+      }
+      this.selectedClass.sort((a, b) => a - b);
+      // 跳轉到下一頁或 fetch class 列表
+      this.$router.push({
+        name: 'BLAvote',
+        query: {
+          selectedSubject: this.selectedSubject,
+          selectedClass: JSON.stringify(this.selectedClass)
+        }
+      });
     }
   },
   mounted() {

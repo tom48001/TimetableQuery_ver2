@@ -118,6 +118,16 @@ CREATE TABLE nomination (
     FOREIGN KEY (timetable_id) REFERENCES timetable(timetable_id) ON DELETE CASCADE
 );
 
+CREATE TABLE BLA (
+    BLA_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+	  subject_id BIGINT NOT NULL,
+    FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subject(subject_id) ON DELETE CASCADE
+);
+
 -- 匯入時間表
 CREATE TABLE import_schedule (
     import_id BIGINT AUTO_INCREMENT PRIMARY KEY,

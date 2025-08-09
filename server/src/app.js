@@ -14,6 +14,7 @@ import roomRoutes from './routes/roomRoutes.js';
 import observationRoutes from './routes/observationRoutes.js';
 import subjectRoutes from './routes/subjectRoutes.js';
 import swapRoutes from './routes/swapRoutes.js';
+import blaRoutes from './routes/blaRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -32,6 +33,7 @@ app.use(session({
 
 // Middleware
 app.use(cors({ origin: 'http://localhost:8080', credentials: true }));
+// app.use(cors({ origin: 'http://localhost:8157', credentials: true }));
 app.use(bodyParser.json());
 
 // Routes
@@ -46,6 +48,7 @@ app.use('/api/rooms/schedule/:roomId', roomRoutes);
 app.use('/api/observation', observationRoutes); // 課堂觀察
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/swap', swapRoutes);
+app.use('/api/bla', blaRoutes);
 
 // Server
 app.listen(3000, () => console.log('Server running on port 3000'));

@@ -24,6 +24,7 @@ import SwapLessonResult from '@/pages/SubMenu1/SwapLessonResult.vue'
 import StudentSelector from '@/pages/SubMenu1/StudentSelector.vue'
 
 import BLA from '@/pages/SubMenu2/BLA.vue'
+import BLAvote from '@/pages/SubMenu2/BLAvote.vue'
 import BLAResult from '@/pages/SubMenu2/BLAResult.vue'
 import ConductAward from '@/pages/SubMenu2/ConductAward.vue'
 import ConductAwardResult from '@/pages/SubMenu2/ConductAwardResult.vue'
@@ -164,6 +165,12 @@ const router = new Router({
       path: '/BLA',
       name: 'BLA',
       component: BLA,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/BLAvote',
+      name: 'BLAvote',
+      component: BLAvote,
       meta: { show: true, requiresAuth: true }
     },
     {

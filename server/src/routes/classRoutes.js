@@ -7,10 +7,22 @@ const router = express.Router();
 // 所有班級相關操作都需要登入
 router.use(ensureJWT);
 
+router.post('/:classId', async (req, res) => {
+  const { classId } = req.params;
+
+  try {
+    const [rows] = await db.query('SELECT class_name FROM class where class_id = ?', [classId]);
+    res.json(rows);
+  } catch (err) {
+    console.error('取得班級失敗:', err);
+    res.status(500).json({ error: '無法取得班級資料' });
+  }
+});
+
 // 取得所有班級列表
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT class_id, class_name FROM class ORDER BY class_name');
+    const [rows] = await db.query('SELECT class_id, class_name FROM class ORDER BY class_id');
     res.json(rows);
   } catch (err) {
     console.error('取得班級失敗:', err);
