@@ -1,13 +1,15 @@
 <template>
   <div>
     <h1>最佳學習態度學生提名結果</h1>
-    <h3>選擇科目：</h3>
-    <div class="subject-grid">
-      <select v-model="selectedSubject">
-        <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">
-          {{ subject.subject_name }}
-        </option>
-      </select>
+    <div class="subject-container">
+      <h3>選擇科目：</h3>
+      <div class="subject-grid">
+        <select v-model="selectedSubject">
+          <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">
+            {{ subject.subject_name }}
+          </option>
+        </select>
+      </div>
     </div>
     <div class="text-center">
       <button @click="fetchBLA">查詢選修科目</button>
@@ -15,13 +17,22 @@
     <!-- 顯示結果 -->
     <div v-if="BLAResults.length">
       <h3>提名結果：</h3>
-      <ul>
-        <li v-for="b in BLAResults" :key="b.BLA_id">
-          學生：{{ b.student_ch_name || b.student_id }}
-          學生ID: {{ b.student_id }}
-          提名老師ID: {{ b.teacher_name }}
-        </li>
-      </ul>
+      <div class="electives-container">
+        <table class=electives-Result>
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>提名老師</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="b in BLAResults" :key="b.BLA_id">
+              <td>{{ b.student_ch_name || b.student_id }}</td>
+              <td>{{ b.teacher_name }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
     <p v-else-if="searched">查無提名結果</p>
   </div>
@@ -76,16 +87,74 @@ export default {
 };
 </script>
 
-<style>
-h1 {
+<style scoped>
+h1{
   text-align: center;
   margin-top: 50px;
 }
+
+h3{
+  text-align: center;
+}
+
 .text-center {
   text-align: center;
   margin: 15px 0;
 }
+
+.subject-container {
+  padding: 20px;
+  max-width: 1200px;
+  text-align: center;
+  margin: auto;
+}
+
+select {
+  margin: 10px;
+  padding: 6px;
+}
+
 .subject-grid {
   margin: 10px 0;
+}
+
+.electives-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: auto;
+}
+
+.electives-Result {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.electives-Result th,
+.electives-Result td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  vertical-align: top;
+  text-align: center;
+}
+
+.electives-Result th {
+  background-color: #f0f0f0;
+}
+
+button {
+  display: block;
+  margin: 30px auto;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  font-size: 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #0056b3;
 }
 </style>
