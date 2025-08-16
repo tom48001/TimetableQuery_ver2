@@ -71,12 +71,16 @@ export const getBLAResults = async (req, res) => {
     }
     const [rows] = await pool.query(
       `
-      SELECT b.BLA_id, b.teacher_id, b.student_id, s.student_ch_name, t.teacher_name
+      SELECT 
+        b.student_id,
+        s.student_ch_name,
+        GROUP_CONCAT(t.teacher_name ORDER BY t.teacher_name SEPARATOR ', ') AS teacher_names
       FROM BLA b
       JOIN student s ON b.student_id = s.student_id
       JOIN teacher t ON b.teacher_id = t.teacher_id
       WHERE b.subject_id = ?
-      ORDER BY b.student_id
+      GROUP BY b.student_id, s.student_ch_name
+      ORDER BY s.student_id
       `,
       [subject_id]
     );

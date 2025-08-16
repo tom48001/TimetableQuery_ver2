@@ -28,7 +28,7 @@
           <tbody>
             <tr v-for="b in BLAResults" :key="b.BLA_id">
               <td>{{ b.student_ch_name || b.student_id }}</td>
-              <td>{{ b.teacher_name }}</td>
+              <td>{{ b.teacher_names }}</td>
             </tr>
           </tbody>
         </table>
