@@ -15,6 +15,7 @@ import observationRoutes from './routes/observationRoutes.js';
 import subjectRoutes from './routes/subjectRoutes.js';
 import swapRoutes from './routes/swapRoutes.js';
 import blaRoutes from './routes/blaRoutes.js';
+import conductRoutes from './routes/conductRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -32,8 +33,8 @@ app.use(session({
   app.use(passport.session());
 
 // Middleware
-app.use(cors({ origin: 'http://localhost:8080', credentials: true }));
-// app.use(cors({ origin: 'http://localhost:8211', credentials: true }));
+// app.use(cors({ origin: 'http://localhost:8080', credentials: true }));
+app.use(cors({ origin: 'http://localhost:8449', credentials: true }));
 app.use(bodyParser.json());
 
 // Routes
@@ -49,6 +50,7 @@ app.use('/api/observation', observationRoutes); // 課堂觀察
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/swap', swapRoutes);
 app.use('/api/bla', blaRoutes);
+app.use('/api/conduct', conductRoutes);
 
 // Server
 app.listen(3000, () => console.log('Server running on port 3000'));

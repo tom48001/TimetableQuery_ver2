@@ -27,6 +27,7 @@ import BLA from '@/pages/SubMenu2/BLA.vue'
 import BLAvote from '@/pages/SubMenu2/BLAvote.vue'
 import BLAResult from '@/pages/SubMenu2/BLAResult.vue'
 import ConductAward from '@/pages/SubMenu2/ConductAward.vue'
+import ConductAwardVote from '@/pages/SubMenu2/ConductAwardVote.vue'
 import ConductAwardResult from '@/pages/SubMenu2/ConductAwardResult.vue'
 
 import editTeacher from '@/pages/SubMenu3/editTeacher.vue';
@@ -156,6 +157,18 @@ const router = new Router({
       meta: { show: true, requiresAuth: true }
     },
     {
+      path: '/ConductAward',
+      name: 'ConductAward',
+      component: ConductAward,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/ConductAwardVote',
+      name: 'ConductAwardVote',
+      component: ConductAwardVote,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
       path: '/ConductAwardResult',
       name: 'ConductAwardResult',
       component: ConductAwardResult,
@@ -177,12 +190,6 @@ const router = new Router({
       path: '/BLAResult',
       name: 'BLAResult',
       component: BLAResult,
-      meta: { show: true, requiresAuth: true }
-    },
-    {
-      path: '/ConductAward',
-      name: 'ConductAward',
-      component: ConductAward,
       meta: { show: true, requiresAuth: true }
     },
     {

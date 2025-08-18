@@ -11,5 +11,4 @@ router.delete('/delete', deleteBLA);
 router.get("/results", getBLAResults);
 router.get("/students", getSelectBLA);
 
-
 export default router;

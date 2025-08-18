@@ -1,7 +1,5 @@
-<template>
+<template lang="">
   <div class="nomination-page">
-    <h2>提名學生 - 科目：{{ selectedSubject.subject_name }}</h2>
-
     <div v-for="classItem in selectedClass" :key="classItem" class="class-section">
       <h3>{{ classTable[classItem - 1] }} 班</h3>
 
@@ -26,7 +24,6 @@
     <button @click="submitNomination">送出提名</button>
   </div>
 </template>
-
 <script>
 import axios from 'axios'
 import { jwtDecode } from 'jwt-decode';
@@ -35,7 +32,6 @@ export default {
   data() {
     return {
       classTable: ['1M', '1A', '1R', '1Y', '2M', '2A', '2R', '2Y', '3M', '3A', '3R', '3Y', '4M', '4A', '4R', '4Y', '5M', '5A', '5R', '5Y', '6M', '6A', '6R', '6Y'],
-      selectedSubject: this.$route.query.selectedSubject || '',
       selectedClass: JSON.parse(this.$route.query.selectedClass || '[]'),
       studentsByClass: {},
       selectedStudents: {},
@@ -43,11 +39,10 @@ export default {
     }
   },
   created() {
-    if (!this.selectedSubject || !this.selectedClass.length) {
-      this.$router.push({ name: 'BLA' })
+    if (!this.selectedClass.length) {
+      this.$router.push({ name: 'ConductAward' })
       return
     }
-    console.log('已選擇科目:', this.selectedSubject)
     console.log('已選擇班級:', this.selectedClass)
   },
   watch: {
@@ -106,12 +101,6 @@ export default {
           console.error('未登入，缺少 token');
           return;
         }
-
-        // 確保必要參數已經存在
-        if (!this.selectedSubject || !this.selectedSubject.subject_id) {
-          console.warn('selectedSubject 尚未載入，跳過請求');
-          return;
-        }
         try {
           const decoded = jwtDecode(token);
           const userId = decoded.id;
@@ -131,15 +120,13 @@ export default {
           return;
         }
 
-        const subjectId = this.selectedSubject.subject_id;
         const teacherId = this.teacher_id;
 
         // 發送請求
         const res = await axios.get(
-          `http://localhost:3000/api/bla/students`,
+          `http://localhost:3000/api/conduct/students`,
           {
             params: {
-              subject_id: subjectId,
               teacher_id: teacherId
             },
             headers: { Authorization: `Bearer ${token}` }
@@ -172,12 +159,10 @@ export default {
         return;
       }
       const teacherId = this.teacher_id
-      const subjectId = this.selectedSubject.subject_id
       const selectedStudentIds = Object.values(this.selectedStudents).flat()
 
-      axios.post('http://localhost:3000/api/bla/insert', {
+      axios.post('http://localhost:3000/api/conduct/insert', {
         teacher_id: teacherId,
-        subject_id: subjectId,
         student_ids: selectedStudentIds
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -190,9 +175,8 @@ export default {
             id => !this.selectedStudents[classId].includes(id)
           );
           if (removed.length > 0) {
-            axios.delete(`http://localhost:3000/api/bla/delete`, {
+            axios.delete(`http://localhost:3000/api/conduct/delete`, {
               data: {
-                subjectId: subjectId,
                 teacherId: teacherId,
                 removed: Array.isArray(removed) ? removed : [removed]
               },
@@ -204,10 +188,10 @@ export default {
             });
           }
         }
-        this.$router.push({ name: 'BLA' });
+        this.$router.push({ name: 'ConductAward' });
       }).catch(err => {
         console.error('投票失敗', err);
-        this.$router.push({ name: 'BLA' });
+        this.$router.push({ name: 'ConductAward' });
       });
     }
   },
@@ -217,7 +201,6 @@ export default {
   }
 }
 </script>
-
 <style scoped>
 .class-section {
   margin-bottom: 20px;
