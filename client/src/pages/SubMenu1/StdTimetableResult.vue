@@ -80,6 +80,7 @@ export default {
 .timetable {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .timetable th,

@@ -49,7 +49,8 @@ export default {
         '第7節<br><small>(13:30-14:05)</small>',
         '第8節<br><small>(14:05-14:40)</small>',
         '第9節<br><small>(14:40-15:15)</small>',
-        '第10節<br><small>(15:25-16:00)</small>'
+        '第10節<br><small>(15:25-16:00)</small>',
+        '第11節<br><small>(15:25-16:00)</small>'
       ]
     };
   },
@@ -116,6 +117,7 @@ export default {
 .timetable {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .timetable th,
