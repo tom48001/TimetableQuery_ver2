@@ -1,5 +1,5 @@
-import express, { Router } from 'express';
-import ensureJWT from '../auth/authMiddleware.js';
+import express from 'express';
+import { ensureJWT } from '../auth/auth.js';
 import db from '../db.js';
 import { getStudentElectives, getElectives } from '../controllers/subjectController.js';
 

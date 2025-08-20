@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../db.js';
-import ensureJWT from '../auth/authMiddleware.js'; // 建議加權限控制
+import { ensureJWT } from '../auth/auth.js';// 建議加權限控制
 
 const router = express.Router();
 

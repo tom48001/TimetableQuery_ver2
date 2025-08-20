@@ -4,37 +4,47 @@
 
 <script>
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 
 export default {
   async mounted() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+
+    if (!token) {
+      console.error('找不到 token');
+      this.$router.push('/login');
+      return;
+    }
+
+    // 存新 token，覆蓋舊的
+    localStorage.setItem('token', token);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+    // 解析 JWT 取得 user 資訊
     try {
-      const res = await axios.get('http://localhost:3000/auth/me', {
-        withCredentials: true
-      });
+      const decoded = jwtDecode(token);
+      console.log('JWT 解碼結果:', decoded);
 
-      const user = res.data;
-      console.log('從 /auth/me 獲取 user：', user);
-
+      // 存 user 到 localStorage，供前端其他地方使用
       const cleanedUser = {
-        ...user,
-        role: user.role ? user.role.trim().toLowerCase() : 'teacher'
+        id: decoded.id,
+        role: decoded.role ? decoded.role.trim().toLowerCase() : 'teacher'
       };
-
       localStorage.setItem('user', JSON.stringify(cleanedUser));
 
-      // 根據角色決定導向後，再reload
+      // 根據角色導向
       if (cleanedUser.role === 'manager') {
         this.$router.push('/editTeacher');
       } else {
         this.$router.push('/home');
       }
-
-      // 加延遲避免router還沒完成跳轉
+      // reload 確保 navbar 或選單刷新
       setTimeout(() => {
         window.location.reload();
-      }, 100);
+      }, 200);
     } catch (err) {
-      console.error('無法獲取使用者資料：', err);
+      console.error('JWT 解析失敗:', err);
       this.$router.push('/login');
     }
   }

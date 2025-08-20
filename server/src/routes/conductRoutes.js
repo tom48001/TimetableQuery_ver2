@@ -1,5 +1,5 @@
 import express from 'express';
-import ensureJWT from '../auth/authMiddleware.js';
+import { ensureJWT } from '../auth/auth.js';
 import { insertConduct, getVotedStudents, deleteConduct, getConductResults, getSelectConduct } from '../controllers/conductController.js';
 
 

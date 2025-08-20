@@ -1,5 +1,5 @@
 import express from 'express';
-import ensureJWT from '../auth/authMiddleware.js';
+import { ensureJWT } from '../auth/auth.js';
 import { insertBLA, getVotedStudents, deleteBLA, getBLAResults, getSelectBLA } from '../controllers/blaController.js';
 
 const router = express.Router();

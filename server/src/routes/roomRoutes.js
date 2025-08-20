@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../db.js';
-import ensureJWT from '../auth/authMiddleware.js';
+import { ensureJWT } from '../auth/auth.js';
 
 const router = express.Router();
 

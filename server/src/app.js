@@ -1,6 +1,6 @@
 import express from 'express';
 import session from 'express-session';
-import passport from './auth/GoogleAuth.js';
+import passport from './auth/auth.js';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
@@ -34,12 +34,13 @@ app.use(session({
 
 // Middleware
 // app.use(cors({ origin: 'http://localhost:8080', credentials: true }));
-app.use(cors({ origin: 'http://localhost:8449', credentials: true }));
+app.use(cors({ origin: 'http://localhost:8080', credentials: true }));
 app.use(bodyParser.json());
 
-// Routes
-app.use('/api', authRoutes);
+//Auth
 app.use('/auth', authRoutes);
+
+// Routes
 app.use('/api/teachers', teacherRoutes);        // 教師帳號管理
 app.use('/api/timetable', timetableRoutes);     // 課表查詢
 app.use('/api/students', studentRoutes);      // 學生查詢

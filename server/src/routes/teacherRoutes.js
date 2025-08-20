@@ -1,7 +1,6 @@
 import express from 'express';
-import ensureJWT from '../auth/authMiddleware.js';
 import db from '../db.js';
-import { checkRole } from '../auth/authMiddleware.js';
+import { ensureJWT, checkRole } from '../auth/auth.js';
 import {getAllTeachers, createTeacher, updateTeacher, deleteTeacher} from '../controllers/manageTeacherRoutes.js';
 import { getTeachersSchedule } from '../controllers/teacherScheduleController.js';
 import pool from '../db.js';
@@ -9,7 +8,6 @@ import pool from '../db.js';
 const Roles = {
   MANAGER:'manager',
   TEACHER:'teacher',
-
 };
 
 const router = express.Router();
@@ -20,22 +18,19 @@ router.use(ensureJWT);
 
 // 只對管理功能要求 manager
 // 取得所有老師資料 
-
-router.use('/getAll', checkRole(Roles.MANAGER));
-// 取得所有老師資料 
-router.get('/getAllTeachers', getAllTeachers);
+router.get('/getAllTeachers', checkRole(Roles.MANAGER), getAllTeachers); 
 
 // 新增老師
-router.post('/', createTeacher, checkRole(Roles.MANAGER));
+router.post('/', checkRole(Roles.MANAGER), createTeacher);
 
 // 查詢多位老師課表
 router.post('/schedule', getTeachersSchedule);
 
 // 更新老師
-router.put('/:id', updateTeacher, checkRole(Roles.MANAGER));
+router.put('/:id', checkRole(Roles.MANAGER), updateTeacher);
 
 // 刪除老師
-router.delete('/:id', deleteTeacher, checkRole(Roles.MANAGER));
+router.delete('/:id', checkRole(Roles.MANAGER), deleteTeacher);
 
 // 取得 teacher 表中老師名單
 router.get('/list', async (req, res) => {

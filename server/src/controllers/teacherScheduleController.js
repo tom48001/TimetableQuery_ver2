@@ -29,7 +29,6 @@ export const getTeachersSchedule = async (req, res) => {
 
     const [rows] = await db.query(sql, teacherIds);
     res.json(rows);
-    console.log('查詢課表成功:', rows);
   } catch (err) {
     console.error('查詢課表失敗:', err);
     res.status(500).json({ error: '查詢課表失敗' });

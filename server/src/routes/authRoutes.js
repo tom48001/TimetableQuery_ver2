@@ -55,8 +55,19 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
-    // 認證成功 → 回到前端頁面
-    res.redirect('http://localhost:8080/google-redirect');
+    if (!req.user) {
+      return res.redirect('http://localhost:8080/login?error=unauthorized');
+    }
+
+    const role = req.user.role ? req.user.role.trim().toLowerCase() : 'teacher';
+    const token = jwt.sign(
+      { id: req.user.user_id, role },
+      process.env.JWT_SECRET,
+      { expiresIn: '2h' }
+    );
+
+    // redirect 到前端，帶 token
+    res.redirect(`http://localhost:8080/google-redirect?token=${token}`);
   }
 );
 
