@@ -12,7 +12,7 @@
       </label>
     </div>
     <div class="period-grid">
-      <label v-for="periodLevel in 10" :key="periodLevel" class="period-option" :class="{ selected: periodLevel }">
+      <label v-for="periodLevel in 12" :key="periodLevel" class="period-option" :class="{ selected: periodLevel }">
         <input type="checkbox" :value="periodLevel" v-model="period" />
         {{ periodLevel }}
       </label>
@@ -73,7 +73,7 @@ export default {
 
 <style scoped>
 .container {
-  max-width: 600px;
+  max-width: 800px;
   margin: 40px auto;
   padding: 20px;
 }

@@ -20,46 +20,34 @@ passport.use(new GoogleStrategy({
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     const email = profile.emails[0].value;
-    const role = MANAGER_EMAILS.includes(email) ? 'manager' : 'teacher';
 
-    // 先用 google_id 找
-    let [existing] = await pool.query("SELECT * FROM user WHERE google_id = ?", [profile.id]);
-
-    if (existing.length === 0) {
-      // 如果 google_id 沒找到，就用 email 找
-      [existing] = await pool.query("SELECT * FROM user WHERE email = ?", [email]);
+    // 1. 檢查 domain
+    if (!email.endsWith('@gmail.com')) {
+      return done(null, false, { message: "只允許 smcc.edu.hk 帳號登入" });
     }
 
+    // 2. 查 DB user 白名單
+    let [existing] = await pool.query("SELECT * FROM user WHERE email = ?", [email]);
+
     if (existing.length === 0) {
-      // 如果完全沒有，就新增 user
-      const [result] = await pool.query(
-        "INSERT INTO user (google_id, user_name, email, password, role) VALUES (?, ?, ?, ?, ?)",
-        [profile.id, profile.displayName, email, null, role]  // Google 登入的帳號 password 設為 NULL
-      );
-
-      const userId = result.insertId;
-      await pool.query(
-        "INSERT INTO teacher (user_id, teacher_name) VALUES (?, ?)",
-        [userId, profile.displayName]
-      );
-
-      return done(null, { user_id: userId, google_id: profile.id, user_name: profile.displayName, email, role });
-    } else {
-      const existingUser = existing[0];
-
-      // 如果已有帳號但沒 google_id，就補上
-      if (!existingUser.google_id) {
-        await pool.query("UPDATE user SET google_id = ? WHERE user_id = ?", [profile.id, existingUser.user_id]);
-      }
-
-      // 如果這個 email 在白名單，但 role 不是 manager，就升級
-      if (MANAGER_EMAILS.includes(existingUser.email) && existingUser.role !== 'manager') {
-        await pool.query("UPDATE user SET role = 'manager' WHERE user_id = ?", [existingUser.user_id]);
-        existingUser.role = 'manager';
-      }
-
-      return done(null, existingUser);
+      return done(null, false, { message: "帳號未註冊，請聯絡 admin 開帳號。" });
     }
+
+    let existingUser = existing[0];
+
+    // 3. 如果已有帳號但冇 google_id → 補上
+    if (!existingUser.google_id) {
+      await pool.query("UPDATE user SET google_id = ? WHERE user_id = ?", [profile.id, existingUser.user_id]);
+    }
+
+    // 4. Manager 白名單 → 升級 role
+    if (MANAGER_EMAILS.includes(existingUser.email) && existingUser.role !== 'manager') {
+      await pool.query("UPDATE user SET role = 'manager' WHERE user_id = ?", [existingUser.user_id]);
+      existingUser.role = 'manager';
+    }
+
+    return done(null, existingUser);
+
   } catch (error) {
     return done(error, null);
   }

@@ -3,8 +3,12 @@ import pool from '../db.js';
 export const insertConduct = async (req, res) => {
   try {
     const { teacher_id, student_ids } = req.body;
-    if (!teacher_id || !Array.isArray(student_ids) || student_ids.length === 0) {
+    if (!teacher_id || !Array.isArray(student_ids)) {
       return res.status(400).json({ error: '缺少必要資料或 student_ids 不是陣列' });
+    }
+    // student_ids 為空就直接回成功，不插入
+    if (student_ids.length === 0) {
+      return res.json({ message: '沒有需要插入的資料', inserted: 0 });
     }
 
     // 避免重複插入

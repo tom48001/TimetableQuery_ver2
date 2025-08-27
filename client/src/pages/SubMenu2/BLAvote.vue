@@ -174,6 +174,7 @@ export default {
       const teacherId = this.teacher_id
       const subjectId = this.selectedSubject.subject_id
       const selectedStudentIds = Object.values(this.selectedStudents).flat()
+      console.log('送出的 student_ids:', selectedStudentIds)
 
       axios.post('http://localhost:3000/api/bla/insert', {
         teacher_id: teacherId,
@@ -186,9 +187,10 @@ export default {
 
         // 投票成功後再刪除
         for (const classId in this.previousSelectedStudents) {
-          const removed = this.previousSelectedStudents[classId].filter(
-            id => !this.selectedStudents[classId].includes(id)
-          );
+          const currentSelected = this.selectedStudents[classId] || []
+          const removed = (this.previousSelectedStudents[classId] || []).filter(
+            id => !currentSelected.includes(id)
+          )
           if (removed.length > 0) {
             axios.delete(`http://localhost:3000/api/bla/delete`, {
               data: {

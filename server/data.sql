@@ -104,4 +104,6 @@ INSERT INTO timetable (teacher_id, subject_id, class_id, room_id, day_of_week, p
 (1, 6, 1, 6, 'Fri', 2),  -- Computer Science by Tom
 (2, 7, 2, 7, 'Tue', 3),  -- Music by qwe
 (2, 4, 5, 8, 'Mon', 5),
-(3, 4, 6, 8, 'Fri', 5);
+(3, 4, 6, 8, 'Fri', 5),
+(1, 2, 1, 2, 'Mon', 11);
+(1, 2, 1, 2, 'Tue', 12);
