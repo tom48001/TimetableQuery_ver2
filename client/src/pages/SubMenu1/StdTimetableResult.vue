@@ -1,8 +1,7 @@
 <template>
   <div class="schedule-container">
     <h1>學生上課時間表</h1>
-
-    <table class="timetable" v-if="timetable.length > 0">
+    <table class="timetable">
       <thead>
         <tr>
           <th>節次 / 星期</th>
@@ -10,19 +9,20 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(label, periodIndex) in periodLabels" :key="periodIndex">
+        <tr v-for="(label, index) in periodLabels" :key="index">
           <th v-html="label"></th>
-          <td v-for="day in days" :key="day">
-            <div
-              v-for="item in getCell(day, periodIndex + 1)"
-              :key="item.teacher_name + item.subject"
-              class="cell-entry"
-            >
-              <strong>{{ item.teacher_name }}</strong><br />
-              {{ item.class_name }}｜{{ item.subject }}<br />
-              {{ item.room_name }}
-            </div>
-          </td>
+            <td v-for="day in days" :key="day">
+              <div
+                v-for="item in getCell(day, index + 1)"
+                :key="item.teacher_id + '-' + item.period"
+                class="cell-entry"
+                :class="{ 'red-entry': item.period === 'Period 11' || item.period === 'Period 12' }"
+              >
+                <strong>教師: {{ item.teacher_name }}</strong><br />
+                {{ item.class_name }}｜{{ item.subject_name }}<br />
+                {{ item.room_name }}
+              </div>
+            </td>
         </tr>
       </tbody>
     </table>
@@ -36,7 +36,7 @@ export default {
   name: 'StdTimetableResult',
   data() {
     return {
-      timetable: [],
+      schedule: [],
       days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
       periodLabels: [
         '第1節<br><small>(08:30-09:05)</small>',
@@ -53,10 +53,26 @@ export default {
     };
   },
   methods: {
-    getCell(day, period) {
-      return this.timetable.filter(
-        (item) => item.day === day && item.period === `Period ${period}`
+    getCell(day, periodIndex) {
+      const currentPeriod = `Period ${periodIndex}`;
+      let result = this.schedule.filter(
+        (item) => item.day === day && item.period === currentPeriod
       );
+
+      if (periodIndex === 9) {
+        const period11 = this.schedule.filter(
+          (item) => item.day === day && item.period === 'Period 11'
+        );
+        result = result.concat(period11);
+      }
+      if (periodIndex === 10) {
+        const period12 = this.schedule.filter(
+          (item) => item.day === day && item.period === 'Period 12'
+        );
+        result = result.concat(period12);
+      }
+
+      return result;
     }
   },
   async mounted() {
@@ -65,7 +81,7 @@ export default {
     const res = await axios.get(`http://localhost:3000/api/students/${studentId}/timetable`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    this.timetable = res.data;
+    this.schedule = res.data;
   }
 };
 </script>
@@ -100,5 +116,9 @@ export default {
   margin-bottom: 6px;
   padding: 4px;
   border-radius: 4px;
+}
+
+.red-entry {
+  background-color: #ffeaea;
 }
 </style>

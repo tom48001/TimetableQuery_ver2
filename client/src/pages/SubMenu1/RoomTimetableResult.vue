@@ -12,16 +12,18 @@
       <tbody>
         <tr v-for="(label, index) in periodLabels" :key="index">
           <th v-html="label"></th>
-          <td v-for="day in days" :key="day">
-            <div
-              v-for="item in getCell(day, index + 1)"
-              :key="item.timetable_id"
-              class="cell-entry"
-            >
-              <strong>{{ item.teacher_name }}</strong><br />
-              {{ item.class_name }}｜{{ item.subject_name }}
-            </div>
-          </td>
+            <td v-for="day in days" :key="day">
+              <div
+                v-for="item in getCell(day, index + 1)"
+                :key="item.teacher_id + '-' + item.period_name"
+                class="cell-entry"
+                :class="{ 'red-entry': item.period_name === 'Period 11' || item.period_name === 'Period 12' }"
+              >
+                <strong>教師: {{ item.teacher_name }}</strong><br />
+                {{ item.class_name }}｜{{ item.subject_name }}<br />
+                {{ item.room_name }}
+              </div>
+            </td>
         </tr>
       </tbody>
     </table>
@@ -67,8 +69,25 @@ export default {
       }
     },
     getCell(day, periodIndex) {
-      const period = `Period ${periodIndex}`;
-      return this.schedule.filter(item => item.day_of_week === day && item.period_name === period);
+      const currentPeriod = `Period ${periodIndex}`;
+      let result = this.schedule.filter(
+        (item) => item.day === day && item.period_name === currentPeriod
+      );
+
+      if (periodIndex === 9) {
+        const period11 = this.schedule.filter(
+          (item) => item.day === day && item.period_name === 'Period 11'
+        );
+        result = result.concat(period11);
+      }
+      if (periodIndex === 10) {
+        const period12 = this.schedule.filter(
+          (item) => item.day === day && item.period_name === 'Period 12'
+        );
+        result = result.concat(period12);
+      }
+
+      return result;
     }
   }
 };
@@ -97,5 +116,8 @@ export default {
   margin-bottom: 6px;
   padding: 4px;
   border-radius: 4px;
+}
+.red-entry {
+  background-color: #ffeaea;
 }
 </style>

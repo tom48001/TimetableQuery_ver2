@@ -106,3 +106,4 @@ INSERT INTO timetable (teacher_id, subject_id, class_id, room_id, day_of_week, p
 (2, 4, 5, 8, 'Mon', 5),
 (3, 4, 6, 8, 'Fri', 5),
 (1, 2, 1, 2, 'Mon', 11);
+(1, 2, 1, 2, 'Tue', 12);

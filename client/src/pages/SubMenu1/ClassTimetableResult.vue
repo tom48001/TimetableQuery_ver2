@@ -1,8 +1,7 @@
 <template>
   <div class="schedule-container">
     <h1>班級課表</h1>
-
-    <table class="timetable" v-if="timetable.length > 0">
+    <table class="timetable">
       <thead>
         <tr>
           <th>節次 / 星期</th>
@@ -15,11 +14,13 @@
           <td v-for="day in days" :key="day">
             <div
               v-for="item in getCell(day, index + 1)"
-              :key="item.timetable_id"
+              :key="item.teacher_id + '-' + item.period_name"
               class="cell-entry"
+              :class="{ 'red-entry': item.period_name === 'Period 11' || item.period_name === 'Period 12' }"
             >
-              <strong>{{ item.teacher_name }}</strong><br />
-              {{ item.subject_name }}｜{{ item.room_name }}
+              <strong>教師: {{ item.teacher_name }}</strong><br />
+              {{ item.class_name }}｜{{ item.subject_name }}<br />
+              {{ item.room_name }}
             </div>
           </td>
         </tr>
@@ -34,7 +35,7 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      timetable: [],
+      schedule: [],
       days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       periodLabels: [
         '第1節<br><small>(08:30-09:05)</small>',
@@ -50,28 +51,41 @@ export default {
       ]
     };
   },
-  mounted() {
-    this.fetchTimetable();
-  },
   methods: {
-    async fetchTimetable() {
+    async fetchSchedule() {
       try {
         const token = localStorage.getItem('token');
         const classId = this.$route.query.classId;
         const res = await axios.get(`http://localhost:3000/api/classes/schedule/${classId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        this.timetable = res.data;
+        this.schedule = res.data;
       } catch (err) {
         console.error('載入課表錯誤:', err);
       }
     },
     getCell(day, periodIndex) {
       const period = `Period ${periodIndex}`;
-      return this.timetable.filter(
+      let result = this.schedule.filter(
         (item) => item.day_of_week === day && item.period_name === period
       );
+      if (periodIndex === 9) {
+        const period11 = this.schedule.filter(
+          (item) => item.day_of_week === day && item.period_name === 'Period 11'
+        );
+        result = result.concat(period11);
+      }
+      if (periodIndex === 10) {
+        const period12 = this.schedule.filter(
+          (item) => item.day_of_week === day && item.period_name === 'Period 12'
+        );
+        result = result.concat(period12);
+      }
+      return result;
     }
+  },
+  mounted() {
+    this.fetchSchedule();
   }
 };
 </script>
@@ -102,5 +116,8 @@ export default {
   margin-bottom: 6px;
   padding: 4px;
   border-radius: 4px;
+}
+.red-entry {
+  background-color: #ffeaea;
 }
 </style>
