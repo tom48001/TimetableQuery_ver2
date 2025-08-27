@@ -34,7 +34,7 @@ app.use(session({
 
 // Middleware
 app.use(cors({ origin: 'http://localhost:8080', credentials: true }));
-// app.use(cors({ origin: 'http://localhost:8386', credentials: true }));
+// app.use(cors({ origin: 'http://localhost:8086', credentials: true }));
 app.use(bodyParser.json());
 
 // Routes

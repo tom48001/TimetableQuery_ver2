@@ -3,16 +3,21 @@ import pool from '../db.js';
 export const insertBLA = async (req, res) => {
   try {
     const { teacher_id, subject_id, student_ids } = req.body;
-    if (!teacher_id || !subject_id || !Array.isArray(student_ids) || student_ids.length === 0) {
+    if (!teacher_id || !subject_id || !Array.isArray(student_ids)) {
       return res.status(400).json({ error: '缺少必要資料或 student_ids 不是陣列' });
     }
 
+    // student_ids 為空就直接回成功，不插入
+    if (student_ids.length === 0) {
+      return res.json({ message: '沒有需要插入的資料', inserted: 0 });
+    }
     // 避免重複插入
     const values = student_ids.map(studentId => [teacher_id, studentId, subject_id]);
     await pool.query(
-      `INSERT IGNORE INTO BLA (teacher_id, student_id, subject_id) VALUES ?`,
-      [values]
+      `INSERT IGNORE INTO BLA (teacher_id, student_id, subject_id) VALUES ${values.map(() => '(?)').join(',')}`,
+      values
     );
+
 
     res.json({ message: '批量插入成功', inserted: student_ids.length });
   } catch (error) {
@@ -39,27 +44,30 @@ export const getVotedStudents = async (req, res) => {
 
 export const deleteBLA = async (req, res) => {
   const { subjectId, teacherId, removed } = req.body;
+  console.log('req.body:', req.body)
 
   if (!subjectId || !teacherId || !Array.isArray(removed)) {
     return res.status(400).json({ message: '缺少必要參數' });
   }
 
-  if (removed.length === 0) {
-    return res.json({ message: '沒有要刪除的學生' });
-  }
-
   try {
-    await pool.query(
-      `DELETE FROM bla
-       WHERE subject_id = ? AND teacher_id = ? AND student_id IN (?)`,
-      [subjectId, teacherId, removed]
-    );
+    if (removed.length > 0) {
+      const placeholders = removed.map(() => '?').join(',');
+      const sql = `
+        DELETE FROM bla
+        WHERE subject_id = ? AND teacher_id = ? 
+        AND student_id IN (${placeholders})
+      `;
+      await pool.query(sql, [subjectId, teacherId, ...removed]);
+    }
+
     res.json({ message: '刪除成功' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: '刪除失敗' });
+    console.error('刪除失敗:', err);
+    res.status(500).json({ message: '刪除失敗', detail: err.message });
   }
 };
+
 
 export const getBLAResults = async (req, res) => {
   try {
