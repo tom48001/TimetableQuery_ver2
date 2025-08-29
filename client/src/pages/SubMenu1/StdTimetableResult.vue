@@ -47,8 +47,8 @@ export default {
         '第6節<br><small>(11:55-12:30)</small>',
         '第7節<br><small>(13:30-14:05)</small>',
         '第8節<br><small>(14:05-14:40)</small>',
-        '第9節<br><small>(14:40-15:15)</small>',
-        '第10節<br><small>(15:25-16:00)</small>'
+        '第9節<br><small>(14:40-15:15)<br>紅(14:50-15:25)</small>',
+        '第10節<br><small>(15:25-16:00)<br>紅(15:25-16:00)</small>'
       ]
     };
   },
@@ -120,5 +120,15 @@ export default {
 
 .red-entry {
   background-color: #ffeaea;
+}
+
+.time-label {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 4px;
+  font-size: 11px;
+  color: #fff;
+  background-color: #007bff; /* 藍色標籤 */
+  border-radius: 4px;
 }
 </style>

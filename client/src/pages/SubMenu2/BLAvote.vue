@@ -65,7 +65,7 @@ export default {
         for (const classid of newClassList) {
           console.log(`載入班級 ${classid} 的學生`)
           this.$set(this.selectedStudents, classid, [])
-          axios.get(`http://localhost:3000/api/students/by-class/${classid}`, {
+          axios.get(`http://localhost:3000/api/students/by-class/${classid}/subject/${this.selectedSubject.subject_id}`, {
             headers: { Authorization: `Bearer ${token}` }
           })
             .then(res => {

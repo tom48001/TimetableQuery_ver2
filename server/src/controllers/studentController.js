@@ -45,6 +45,31 @@ export const getStudentsBySubject = async (req, res) => {
   }
 };
 
+export const getStudentsByClassNSubject = async (req, res) => {
+  const { classId, subjectId } = req.params;
+  try {
+    const [students] = await pool.query(
+      `SELECT 
+        s.student_id, 
+        s.student_ch_name AS student_name,
+        s.student_eng_name AS english_name,
+        s.sex, 
+        s.class_id,
+        c.class_name
+      FROM student s
+      JOIN class c ON s.class_id = c.class_id
+      JOIN student_subject ss ON s.student_id = ss.student_id
+      WHERE s.class_id = ? AND ss.subject_id = ?
+      ORDER BY s.student_ch_name`, 
+      [classId, subjectId]
+    );
+    res.json(students);
+  } catch (error) {
+    console.error('查詢班級學生失敗:', error);
+    res.status(500).json({ error: '無法查詢學生' });
+  }
+};
+
 // 查學生的時間表
 export const getStudentTimetable = async (req, res) => {
   const { studentId } = req.params;
