@@ -5,7 +5,8 @@ import {
   getStudents,
   getStudentsBySubject,
   getStudentTimetable,
-  getStudentsByClassId
+  getStudentsByClassId,
+  getStudentsByClassNSubject
 } from '../controllers/studentController.js';
 
 const router = express.Router();
@@ -49,5 +50,8 @@ router.post('/elective-students', async (req, res) => {
 
   res.json(rows);
 });
+
+// 根據班級ID與科目ID查學生
+router.get('/by-class/:classId/subject/:subjectId', getStudentsByClassNSubject);
 
 export default router;
