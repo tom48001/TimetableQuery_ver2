@@ -31,6 +31,7 @@ import ConductAwardVote from '@/pages/SubMenu2/ConductAwardVote.vue'
 import ConductAwardResult from '@/pages/SubMenu2/ConductAwardResult.vue'
 
 import editTeacher from '@/pages/SubMenu3/editTeacher.vue';
+import ImportTeacher from '@/pages/SubMenu3/ImportTeacher.vue';
 
 Vue.use(Router);
 
@@ -196,6 +197,12 @@ const router = new Router({
       path: '/editTeacher',
       name: 'editTeacher',
       component: editTeacher,
+      meta: { show: true, requiredRole: 'manager' }
+    },
+    {
+      path: '/ImportTeacher',
+      name: 'ImportTeacher',
+      component: ImportTeacher,
       meta: { show: true, requiredRole: 'manager' }
     },
     {

@@ -1,19 +1,42 @@
+USE school_management;
+
 -- 使用者帳號 (manager + 2 位老師)
 INSERT INTO user (user_name, email, password, role) VALUES
 ('manager', 'manager@school.com', 'manager123', 'manager'),
 ('tom', 'tom@school.com', 'password123', 'teacher'),
-('qwe', 'qwe@school.com', 'password456', 'teacher'),
+('qwe', 'qwe@school.com', '$2b$10$g454V1eMzRdazPDBN1b6u.Hdyfg8/CU/53YAyTZKwLjl6A1ilpZpq', 'manager'),
 ('jchan', 'jchan@school.edu', '123456', 'teacher'),
 ('amok', 'amok@school.edu', '123456', 'teacher'),
-('llee', 'llee@school.edu', '123456', 'teacher');
+('llee', 'llee@school.edu', '123456', 'teacher'),
+('philip', 'singsing894@gmail.com', '123456', 'teacher'),
+('mwong', 'mwong@school.com', '123456', 'teacher'),
+('mho', 'mho@school.com', '123456', 'teacher'),
+('mlam', 'mlam@school.com', '123456', 'teacher'),
+('mng', 'mng@school.com', '123456', 'teacher'),
+('mcheung', 'mcheung@school.com', '123456', 'teacher'),
+('mlau', 'mlau@school.com', '123456', 'teacher'),
+('myip', 'myip@school.com', '123456', 'teacher'),
+('mcheng', 'mcheng@school.com', '123456', 'teacher'),
+('mtang', 'mtang@school.com', '123456', 'teacher'),
+('mfong', 'mfong@school.com', '123456', 'teacher');
 
 -- 老師基本資料（user_id 要正確對應）
-INSERT INTO teacher (teacher_id, user_id, teacher_name, title) VALUES
-(1, 2, 'Tom', 'English'),
-(2, 3, 'qwe', 'Science'),
-(3, 4, 'Mr. Chan', 'Mathematics'),
-(4, 5, 'Ms. Mok', 'History'),
-(5, 6, 'Ms. Lee', 'Chinese');
+INSERT INTO teacher (user_id, teacher_name) VALUES
+(2, 'Tom'),
+(3, 'qwe'),
+(4, 'Mr. Chan'),
+(5, 'Ms. Mok'),
+(6, 'Ms. Lee'),
+(7, 'Mr. Wong'),
+(8, 'Ms. Ho'),
+(9, 'Mr. Lam'),
+(10, 'Ms. Ng'),
+(11, 'Mr. Cheung'),
+(12, 'Ms. Lau'),
+(13, 'Mr. Yip'),
+(14, 'Ms. Cheng'),
+(15, 'Mr. Tang'),
+(16, 'Ms. Fong');
 
 -- 班級資料 (會 auto-increment id，class_id 1~24)
 INSERT INTO class (class_name, grade_level) VALUES
@@ -24,16 +47,34 @@ INSERT INTO class (class_name, grade_level) VALUES
 ('5M', 'F5'), ('5A', 'F5'), ('5R', 'F5'), ('5Y', 'F5'),
 ('6M', 'F6'), ('6A', 'F6'), ('6R', 'F6'), ('6Y', 'F6');
 
--- 科目
+-- 核心科目 (is_elective = FALSE)
 INSERT INTO subject (subject_name, is_elective) VALUES
-('Mathematics', FALSE),
-('English', FALSE),
-('Chinese', FALSE),
-('Science', FALSE),
-('History', FALSE),
-('Computer Science', TRUE),
-('Music', TRUE),
-('Art', TRUE);
+('中國語文', FALSE),
+('英國語文', FALSE),
+('數學', FALSE),
+('公民與社會發展', FALSE);
+
+-- 選修科目 (is_elective = TRUE)
+INSERT INTO subject (subject_name, is_elective) VALUES
+('中國文學', TRUE),
+('生物', TRUE),
+('企業、會計與財務概論', TRUE),
+('英語文學', TRUE),
+('化學', TRUE),
+('設計與應用科技', TRUE),
+('中國歷史', TRUE),
+('物理', TRUE),
+('健康管理與社會關懷', TRUE),
+('經濟', TRUE),
+('資訊及通訊科技', TRUE),
+('倫理與宗教', TRUE),
+('科技與生活', TRUE),
+('地理', TRUE),
+('音樂', TRUE),
+('歷史', TRUE),
+('視覺藝術', TRUE),
+('旅遊與款待', TRUE),
+('體育', TRUE);
 
 -- 學生資料
 INSERT INTO student (student_ch_name, student_eng_name, class_id, class_number, sex) VALUES
@@ -55,8 +96,62 @@ INSERT INTO student (student_ch_name, student_eng_name, class_id, class_number, 
 
 -- 班房
 INSERT INTO room (room_name) VALUES
-('Room 101'), ('Room 102'), ('Room 103'), ('Room 201'),
-('Room 202'), ('Computer Lab'), ('Music Room'), ('Art Room');
+('G01C 會見室(一)'),
+('G01D 會見室(二)'),
+('G01K 會議室'),
+('G01R 學生活動中心'),
+('操場'),
+('有蓋操場'),
+('101 視覺藝術室'),
+('102 音樂室'),
+('111 溫室'),
+('一樓玻璃房 (Sonata)'),
+('201 Little Britain'),
+('202 1M 課室'),
+('203 1A 課室'),
+('204 1R 課室'),
+('205 1Y 課室'),
+('209A 講廳'),
+('209B 創藝室'),
+('301 課室'),
+('302 2M 課室'),
+('303 2A 課室'),
+('304 2R 課室'),
+('305 2Y 課室'),
+('309 AI Lab'),
+('311 電腦室'),
+('401 課室'),
+('402 3M 課室'),
+('403 3A 課室'),
+('404 3R 課室'),
+('405 3Y 課室'),
+('409 IS Lab'),
+('412 IS Lab'),
+('413 CAL 室'),
+('415 圖書館'),
+('501 課室'),
+('502 4M 課室'),
+('503 4A 課室'),
+('504 4R 課室'),
+('505 4Y 課室'),
+('509 地理室'),
+('511 Bio Lab'),
+('513 家政室'),
+('601 課室'),
+('602 5Y 課室'),
+('603 5R 課室'),
+('604 5A 課室'),
+('605 5M 課室'),
+('609 Chm Lab'),
+('611 Phy Lab'),
+('612 源活齋'),
+('613 源活齋'),
+('701 課室'),
+('702 6M 課室'),
+('703 6A 課室'),
+('704 6R 課室'),
+('705 6Y 課室'),
+('710 Cozy Lounge');
 
 -- 課節
 INSERT INTO period (period_name, start_time, end_time) VALUES
@@ -75,35 +170,67 @@ INSERT INTO period (period_name, start_time, end_time) VALUES
 
 -- 學生選修科目
 INSERT INTO student_subject (student_id, subject_id) VALUES
-(1, 6), (2, 7), (3, 8), (4, 6), (5, 7), (10, 6),
-(6, 6),  -- Ho Ka Yi: Computer Science
-(7, 1),  -- Lam Tsz Ho: Mathematics
-(8, 2),  -- Chow Mei Wah: English
-(9, 3),  -- Chan Wai Keung: Chinese
-(10, 5); -- Law Suk Yi: History
+(1, 6),   -- 陳大文 → 中國文學
+(2, 7),   -- 張小麗 → 生物
+(3, 8),   -- 李志強 → 企會財
+(4, 9),   -- 王美玲 → 英語文學
+(5, 10),  -- 黃家輝 → 化學
+(6, 11),  -- 林小娟 → 設計與應用科技
+(7, 12),  -- 吳志明 → 中國歷史
+(8, 13),  -- 鄭秀文 → 物理
+(9, 14),  -- 馬國明 → 健康管理與社會關懷
+(10, 15), -- 劉德華 → 經濟
+(11, 16), -- 何嘉儀 → 資訊科技
+(12, 17), -- 林子豪 → 倫理與宗教
+(13, 18), -- 周美華 → 科技與生活
+(14, 19), -- 陳偉強 → 地理
+(15, 15); -- 羅淑儀 → 經濟
 
 -- 老師授課科目（需與 subject_id 對應）
 INSERT INTO teacher_subject (teacher_id, subject_id) VALUES
-(1, 1),  -- Tom 授數學
-(1, 2),  -- Tom 授英文
-(1, 6),  -- Tom 授電腦
-(2, 4),  -- qwe 授科學
-(2, 7),  -- qwe 授音樂
-(3, 1),  -- Mr. Chan teaches Mathematics
-(3, 6),  -- Mr. Chan teaches Computer Science
-(4, 5),  -- Ms. Mok teaches History
-(5, 3),  -- Ms. Lee teaches Chinese
+(1, 2),  -- Tom → 英文
+(1, 3),  -- Tom → 數學
+(1, 15), -- Tom → 資訊科技
 
--- 老師課表 (teacher_id, subject_id, class_id, room_id, day, period_id)
+(2, 4),  -- qwe → 科學
+(2, 7),  -- qwe → 生物
+(2, 15), -- qwe → 音樂
+
+(3, 3),  -- Mr. Chan → 數學
+(3, 16), -- Mr. Chan → 歷史
+(3, 13), -- Mr. Chan → 物理
+
+(4, 12), -- Ms. Mok → 中國歷史
+(4, 4),  -- Ms. Mok → 公民與社會發展
+
+(5, 1),  -- Ms. Lee → 中文
+(5, 6);  -- Ms. Lee → 中國文學
+
 INSERT INTO timetable (teacher_id, subject_id, class_id, room_id, day_of_week, period_id) VALUES
-(1, 2, 1, 2, 'Mon', 2),  -- Tom 授 1M 英文 在 Room 102, 星期一第二節
-(2, 4, 1, 3, 'Tue', 1),  -- qwe 授 1M 科學 在 Room 103, 星期二第一節
-(3, 1, 1, 1, 'Mon', 1),  -- Math by Mr. Chan
-(4, 5, 2, 4, 'Wed', 3),  -- History by Ms. Mok
-(5, 3, 2, 5, 'Thu', 4),  -- Chinese by Ms. Lee
-(1, 6, 1, 6, 'Fri', 2),  -- Computer Science by Tom
-(2, 7, 2, 7, 'Tue', 3),  -- Music by qwe
-(2, 4, 5, 8, 'Mon', 5),
-(3, 4, 6, 8, 'Fri', 5),
-(1, 2, 1, 2, 'Mon', 11);
-(1, 2, 1, 2, 'Tue', 12);
+(1, 2, 1, 12, 'Mon', 1),  -- Tom 英文 → 1M
+(1, 3, 2, 13, 'Tue', 2),  -- Tom 數學 → 1A
+(1, 15, 3, 23, 'Wed', 3), -- Tom ICT → 1R
+
+(2, 4, 1, 14, 'Mon', 2),  -- qwe 科學 → 1M
+(2, 7, 5, 22, 'Thu', 3),  -- qwe 生物 → 2Y
+(2, 15, 6, 8,  'Fri', 4), -- qwe 音樂 → 音樂室
+
+(3, 3, 2, 13, 'Mon', 3),  -- Mr. Chan 數學 → 1A
+(3, 16, 6, 22, 'Wed', 2), -- Mr. Chan 歷史 → 2Y
+(3, 13, 9, 29, 'Thu', 5), -- Mr. Chan 物理 → 3M
+
+(4, 12, 5, 20, 'Tue', 1), -- Ms. Mok 中國歷史 → 2A
+(4, 4, 8, 21, 'Fri', 3),  -- Ms. Mok 公社 → 2R
+
+(5, 1, 1, 12, 'Mon', 4),  -- Ms. Lee 中文 → 1M
+(5, 6, 4, 19, 'Thu', 1),  -- Ms. Lee 中國文學 → 2M
+
+(3, 5, 2, 1, 'Mon', 11),
+(1, 11, 4, 4, 'Mon', 12),
+(2, 20, 7, 5, 'Mon', 11),
+
+(1, 5, 2, 1, 'Fri', 8),
+(1, 11, 4, 4, 'Fri', 9),
+(1, 20, 7, 5, 'Fri', 10),
+(1, 11, 4, 4, 'Fri', 11),
+(1, 20, 7, 5, 'Fri', 12);

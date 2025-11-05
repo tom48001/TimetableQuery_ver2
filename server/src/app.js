@@ -17,6 +17,8 @@ import swapRoutes from './routes/swapRoutes.js';
 import blaRoutes from './routes/blaRoutes.js';
 import conductRoutes from './routes/conductRoutes.js';
 
+import importRoutes from "./routes/importRoutes.js";
+
 dotenv.config();
 const app = express();
 
@@ -52,6 +54,7 @@ app.use('/api/subjects', subjectRoutes);
 app.use('/api/swap', swapRoutes);
 app.use('/api/bla', blaRoutes);
 app.use('/api/conduct', conductRoutes);
+app.use("/api/import", importRoutes);
 
 // Server
 app.listen(3000, () => console.log('Server running on port 3000'));

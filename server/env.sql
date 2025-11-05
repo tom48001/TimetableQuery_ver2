@@ -30,8 +30,16 @@ CREATE TABLE teacher (
     teacher_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNIQUE NOT NULL,
     teacher_name VARCHAR(100) NOT NULL,
-    title VARCHAR(50), -- 教什麼科目
     FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+);
+ALTER TABLE teacher ADD COLUMN teacher_code VARCHAR(50) UNIQUE;
+ALTER TABLE teacher ADD COLUMN status ENUM('active','inactive') DEFAULT 'active';
+
+CREATE TABLE staging_teacher (
+    teacher_code VARCHAR(50) NOT NULL,
+    teacher_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255),
+    PRIMARY KEY (teacher_code)
 );
 
 -- 班级表
@@ -113,7 +121,7 @@ CREATE TABLE nomination (
     teacher_id BIGINT NOT NULL,
     student_id BIGINT NOT NULL,
     FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
-    FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
 );
 
 CREATE TABLE BLA (

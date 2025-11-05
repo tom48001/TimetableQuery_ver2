@@ -44,6 +44,7 @@
         <span style="font-size: 9px;">&#9660;</span>
         <ul id="SubMenu3" class="sub-menu" style="display: none;">
           <li><router-link to="/editTeacher">老師帳戶</router-link></li>
+          <li><router-link to="/ImportTeacher">上傳並更新</router-link></li>
         </ul>
       </span>
     </div>
