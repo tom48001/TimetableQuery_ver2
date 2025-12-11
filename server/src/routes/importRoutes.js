@@ -69,7 +69,7 @@ router.post("/excel", upload.single("file"), async (req, res) => {
     if (sheetNames.includes("Timetable")) {
       const timetableSheet = workbook.Sheets["Timetable"];
       const timetable = xlsx.utils.sheet_to_json(timetableSheet);
-      console.log(`📚 讀取 Timetable 共 ${timetable.length} 筆`);
+      console.log(`讀取 Timetable 共 ${timetable.length} 筆`);
 
       await conn.query("TRUNCATE TABLE staging_timetable");
 
