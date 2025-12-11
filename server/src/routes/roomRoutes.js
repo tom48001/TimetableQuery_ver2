@@ -18,7 +18,7 @@ router.get('/', ensureJWT, async (req, res) => {
 // 查詢某房間的課表
 router.get('/schedule/:roomId', ensureJWT, async (req, res) => {
   const { roomId } = req.params;
-
+  console.log("收到的 roomId =", JSON.stringify(roomId)); 
   try {
     const [rows] = await db.query(
       `SELECT 
@@ -28,7 +28,7 @@ router.get('/schedule/:roomId', ensureJWT, async (req, res) => {
           p.period_name,
           p.start_time,
           p.end_time,
-          tt.day
+          tt.day_of_week
        FROM timetable tt
        JOIN teacher t ON tt.teacher_id = t.teacher_id
        JOIN class c ON tt.class_id = c.class_id
@@ -36,16 +36,20 @@ router.get('/schedule/:roomId', ensureJWT, async (req, res) => {
        JOIN period p ON tt.period_id = p.period_id
        WHERE tt.room_id = ?
        ORDER BY 
-          FIELD(tt.day, 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'),
+          FIELD(tt.day_of_week, 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'),
           p.start_time`,
       [roomId]
     );
 
-    res.json(rows);
+    console.log("房間課表查詢結果：", rows);
+
+    return res.json(rows);
+
   } catch (err) {
     console.error('查詢房間課表失敗:', err);
-    res.status(500).json({ error: '資料庫錯誤' });
+    return res.status(500).json({ error: '資料庫錯誤' });
   }
 });
+
 
 export default router;
