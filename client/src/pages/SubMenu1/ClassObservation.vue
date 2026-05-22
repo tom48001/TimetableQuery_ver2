@@ -1,29 +1,45 @@
 <template>
   <div>
     <h1>觀課時間表</h1>
+    <!-- 觀課老師選擇 -->
     <div>
       <h3>選擇觀課老師：<br>(可選一人或多人)</h3>
       <div class="teacher-grid-observers">
-        <label v-for="teacher in teachers" :key="teacher.teacher_id" class="teacher-option-observers"
-          :class="{ selected: observerIds.includes(teacher.teacher_id) }">
-          <input type="checkbox" :value="teacher.teacher_id" v-model="observerIds" />
+        <label
+          v-for="teacher in teachers"
+          :key="teacher.teacher_id"
+          class="teacher-option-observers"
+          :class="{ selected: observerIds.includes(teacher.teacher_id) }"
+        >
+          <input
+            type="checkbox"
+            :value="teacher.teacher_id"
+            v-model="observerIds"
+          />
           {{ teacher.teacher_name }}
         </label>
       </div>
     </div>
-
     <!-- 被觀課老師選擇 -->
     <div>
       <h3>選擇被觀課老師：<br>(只可選一人)</h3>
       <div class="teacher-grid">
-        <label v-for="teacher in teachers" :key="teacher.teacher_id"
-          :class="['teacher-option', observerIds === teacher.teacher_id ? 'selected' : '']">
-          <input type="radio" name="teacher" :value="teacher.teacher_id" v-model="targetId" />
+        <label
+          v-for="teacher in teachers"
+          :key="teacher.teacher_id"
+          class="teacher-option"
+          :class="{ selected: targetId === teacher.teacher_id }"
+        >
+          <input
+            type="radio"
+            name="teacher"
+            :value="teacher.teacher_id"
+            v-model="targetId"
+          />
           {{ teacher.teacher_name }}
         </label>
       </div>
     </div>
-
     <!-- 查詢按鈕 -->
     <div class="text-center">
       <button @click="searchSchedule">
@@ -32,7 +48,6 @@
     </div>
   </div>
 </template>
-
 <script>
 import axios from 'axios';
 
@@ -120,7 +135,11 @@ h3 {
   border-color: #0056b3;
 }
 
-.teacher-option-observers input[type="checkbox"],
+.teacher-option-observers input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #007bff;
+}
+
 .teacher-option input[type="radio"] {
   margin-right: 8px;
   accent-color: #007bff;

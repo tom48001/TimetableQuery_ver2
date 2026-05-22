@@ -1,7 +1,6 @@
 <template>
   <div class="schedule-container">
     <h1>可觀課課表</h1>
-
     <table class="timetable">
       <thead>
         <tr>

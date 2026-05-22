@@ -29,6 +29,11 @@ import BLAResult from '@/pages/SubMenu2/BLAResult.vue'
 import ConductAward from '@/pages/SubMenu2/ConductAward.vue'
 import ConductAwardVote from '@/pages/SubMenu2/ConductAwardVote.vue'
 import ConductAwardResult from '@/pages/SubMenu2/ConductAwardResult.vue'
+import PrefectNomination from '@/pages/SubMenu2/PrefectNomination.vue'
+import PrefectNominationVote from '@/pages/SubMenu2/PrefectNominationVote.vue'
+import PrefectNominationResult from '@/pages/SubMenu2/PrefectNominationResult.vue'
+import LearningGoalEntry from '@/pages/SubMenu2/LearningGoalEntry.vue'
+import LearningGoalResult from '@/pages/SubMenu2/LearningGoalResult.vue'
 
 import editTeacher from '@/pages/SubMenu3/editTeacher.vue';
 import ImportTeacher from '@/pages/SubMenu3/ImportTeacher.vue';
@@ -173,6 +178,36 @@ const router = new Router({
       path: '/ConductAwardResult',
       name: 'ConductAwardResult',
       component: ConductAwardResult,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/PrefectNomination',
+      name: 'PrefectNomination',
+      component: PrefectNomination,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/PrefectNominationVote',
+      name: 'PrefectNominationVote',
+      component: PrefectNominationVote,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/PrefectNominationResult',
+      name: 'PrefectNominationResult',
+      component: PrefectNominationResult,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/LearningGoalEntry',
+      name: 'LearningGoalEntry',
+      component: LearningGoalEntry,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/LearningGoalResult',
+      name: 'LearningGoalResult',
+      component: LearningGoalResult,
       meta: { show: true, requiresAuth: true }
     },
     {

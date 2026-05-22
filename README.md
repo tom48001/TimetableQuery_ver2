@@ -1,62 +1,46 @@
-- This script requires the installation of necessary npm packages.
-- Please run `npm install` to install the required dependencies before executing the program.
+Timetable System (TimetableQuery_ver2)
+
+A school timetable management system for teachers and admins.  
+Teachers can view schedules, search free periods, check student/room timetables, and request lesson swaps.  
+Admins can import the official timetable Excel, manage teacher accounts, and monitor schedules.
+
+### Teacher
+- Google Login (OAuth)
+- View personal timetable
+- Search free teachers by date/period/special session
+- Check student timetable
+- Check room usage / room timetable
+- View elective course lists (S4–S6, includes additional 10th period)
+- Request swap lesson (select teacher → select lesson → show available free teachers)
+- Recent messages panel (announcements & activities)
+- Activity lookup by date (internal/external)
+
+### Admin (Manager)
+- Manage teacher accounts (create / update / delete)
+- Reset teacher password (support custom password)
+- Import Education Bureau Excel timetable
+- Observe class / view multiple teachers schedules
+---
+
+**Project Structure**
+
+```
+├── client/        # Vue frontend
+└── server/        # Node.js + Express backend
+```
 
 ---
 
-**client**
-
+**Installation & Setup**
+1. Frontend Setup (Client)
 ```
 cd client
 npm install
 npm start
 ```
-
----
-
-**server**
-
+2.Backend Setup (Server)
 ```
 cd server
 npm install
 npm start
-```
-
-**open DB**
-```
-mysql -u root -p
-```
-
-**create db**
-```
-mysql -u root -p
-CREATE DATABASE "name";
-use "name"
-```
-
----
-**import db***
-```
-mysql -u root -p school_management < env.sql
-```
-
----
-**password**
-```
-node
-import bcrypt from 'bcrypt';
-const saltRounds = 10;
-const password = "1234567"; // Your actual password
-bcrypt.hash(password, saltRounds, (err, hash) => {
-  console.log("Hashed password:", hash);
-});
-UPDATE user 
-SET password_hash = ''
-WHERE email = '2@gmail.com';
-```
-
----
-**clear port**
-```
-netstat -ano | findstr :3000
-taskkill /PID "" /F
 ```

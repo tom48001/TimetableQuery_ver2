@@ -1,66 +1,101 @@
 import db from '../db.js';
 import bcrypt from 'bcrypt';
 
-// 取得老師列表
+const MANAGED_ROLES = ['teacher', 'staff'];
+
+function normalizeRole(role) {
+  const normalizedRole = role ? role.trim().toLowerCase() : 'teacher';
+  return MANAGED_ROLES.includes(normalizedRole) ? normalizedRole : null;
+}
+
 export const getAllTeachers = async (req, res) => {
-  const [teachers] = await db.query('SELECT user_id, user_name, email FROM user WHERE role = "teacher"');
-  res.json(teachers);
+  try {
+    const [teachers] = await db.query(
+      'SELECT user_id, user_name, email, role FROM user WHERE role IN (?, ?) ORDER BY user_name',
+      MANAGED_ROLES
+    );
+    res.json(teachers);
+  } catch (error) {
+    console.error('Failed to load users:', error);
+    res.status(500).json({ error: 'Failed to load users.' });
+  }
 };
 
-// 新增老師
 export const createTeacher = async (req, res) => {
   try {
-    const { user_name, email, password } = req.body;
+    const { user_name, email, password, role } = req.body;
+    const normalizedRole = normalizeRole(role);
+
+    if (!user_name || !email || !password || !normalizedRole) {
+      return res.status(400).json({ error: 'Invalid user data.' });
+    }
+
     const hashed = await bcrypt.hash(password, 10);
     await db.query(
-      'INSERT INTO user (user_name, email, password, role) VALUES (?, ?, ?, "teacher")',
-      [user_name, email, hashed]
+      'INSERT INTO user (user_name, email, password, role) VALUES (?, ?, ?, ?)',
+      [user_name, email, hashed, normalizedRole]
     );
-    res.json({ message: '老師新增成功' });
+    res.json({ message: 'User created successfully.' });
   } catch (error) {
-    console.error('新增老師錯誤:', error);
-    res.status(500).json({ error: '新增老師失敗' });
+    console.error('Failed to create user:', error);
+    res.status(500).json({ error: 'Failed to create user.' });
   }
 };
 
-// 編輯老師
 export const updateTeacher = async (req, res) => {
   const { id } = req.params;
-  const { user_name, email, newPassword } = req.body;
+  const { user_name, email, role, newPassword } = req.body;
+  const normalizedRole = normalizeRole(role);
+
+  if (!user_name || !email || !normalizedRole) {
+    return res.status(400).json({ error: 'Invalid user data.' });
+  }
+
   try {
-    let query, params;
+    let query;
+    let params;
+
     if (newPassword) {
       const hashed = await bcrypt.hash(newPassword, 10);
-      query = 'UPDATE user SET user_name = ?, email = ?, password = ? WHERE user_id = ?';
-      params = [user_name, email, hashed, id];
+      query = 'UPDATE user SET user_name = ?, email = ?, role = ?, password = ? WHERE user_id = ?';
+      params = [user_name, email, normalizedRole, hashed, id];
     } else {
-      query = 'UPDATE user SET user_name = ?, email = ? WHERE user_id = ?';
-      params = [user_name, email, id];
+      query = 'UPDATE user SET user_name = ?, email = ?, role = ? WHERE user_id = ?';
+      params = [user_name, email, normalizedRole, id];
     }
+
     await db.query(query, params);
-    res.json({ message: '老師更新成功' });
+    res.json({ message: 'User updated successfully.' });
   } catch (error) {
-    console.error('更新老師錯誤:', error);
-    res.status(500).json({ error: '老師更新失敗' });
+    console.error('Failed to update user:', error);
+    res.status(500).json({ error: 'Failed to update user.' });
   }
 };
 
-// 刪除老師 
 export const deleteTeacher = async (req, res) => {
   const { id } = req.params;
-  await db.query('DELETE FROM user WHERE user_id = ?', [id]);
-  res.json({ message: '老師刪除成功' });
+
+  try {
+    await db.query('DELETE FROM user WHERE user_id = ?', [id]);
+    res.json({ message: 'User deleted successfully.' });
+  } catch (error) {
+    console.error('Failed to delete user:', error);
+    res.status(500).json({ error: 'Failed to delete user.' });
+  }
 };
 
-// 取得老師資料
 export const getTeacherById = async (req, res) => {
   const { id } = req.params;
+
   try {
-    const [rows] = await db.query('SELECT user_id, user_name, email, role FROM user WHERE user_id = ?', [id]);
-    if (!rows.length) return res.status(404).json({ error: '找不到老師' });
+    const [rows] = await db.query(
+      'SELECT user_id, user_name, email, role FROM user WHERE user_id = ?',
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'User not found.' });
     res.json(rows[0]);
   } catch (error) {
-    console.error('查詢老師失敗:', error);
-    res.status(500).json({ error: '資料庫錯誤' });
+    console.error('Failed to load user:', error);
+    res.status(500).json({ error: 'Failed to load user.' });
   }
 };

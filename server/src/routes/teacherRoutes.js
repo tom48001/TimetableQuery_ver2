@@ -8,6 +8,7 @@ import pool from '../db.js';
 const Roles = {
   MANAGER:'manager',
   TEACHER:'teacher',
+  STAFF:'staff',
 };
 
 const router = express.Router();

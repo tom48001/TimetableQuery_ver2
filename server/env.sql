@@ -22,7 +22,7 @@ CREATE TABLE user (
     user_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255),
-    role ENUM('teacher', 'manager') DEFAULT 'teacher'
+    role ENUM('teacher', 'staff', 'manager') DEFAULT 'teacher'
 );
 
 -- 老師表（可直接用user_id）
@@ -40,6 +40,16 @@ CREATE TABLE staging_teacher (
     teacher_name VARCHAR(100) NOT NULL,
     email VARCHAR(255),
     PRIMARY KEY (teacher_code)
+);
+
+CREATE TABLE staging_timetable (
+    staging_timetable_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_code VARCHAR(50) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    class VARCHAR(255) NOT NULL,
+    room VARCHAR(255) NOT NULL,
+    day_of_week ENUM('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat') NOT NULL,
+    period VARCHAR(50) NOT NULL
 );
 
 -- 班级表
@@ -120,6 +130,25 @@ CREATE TABLE nomination (
     nomination_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     teacher_id BIGINT NOT NULL,
     student_id BIGINT NOT NULL,
+    FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
+);
+
+CREATE TABLE prefect_nomination (
+    prefect_nomination_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+    UNIQUE KEY unique_prefect_nomination (teacher_id, student_id),
+    FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
+);
+
+CREATE TABLE learning_goal_record (
+    learning_goal_record_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+    completed_goals INT NOT NULL DEFAULT 0,
+    UNIQUE KEY unique_learning_goal_record (teacher_id, student_id),
     FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
 );

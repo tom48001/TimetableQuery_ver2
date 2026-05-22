@@ -16,6 +16,8 @@ import subjectRoutes from './routes/subjectRoutes.js';
 import swapRoutes from './routes/swapRoutes.js';
 import blaRoutes from './routes/blaRoutes.js';
 import conductRoutes from './routes/conductRoutes.js';
+import prefectRoutes from './routes/prefectRoutes.js';
+import learningGoalRoutes from './routes/learningGoalRoutes.js';
 
 import importRoutes from "./routes/importRoutes.js";
 
@@ -54,6 +56,8 @@ app.use('/api/subjects', subjectRoutes);
 app.use('/api/swap', swapRoutes);
 app.use('/api/bla', blaRoutes);
 app.use('/api/conduct', conductRoutes);
+app.use('/api/prefect', prefectRoutes);
+app.use('/api/learning-goals', learningGoalRoutes);
 app.use("/api/import", importRoutes);
 
 // Server

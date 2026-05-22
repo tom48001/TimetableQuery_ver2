@@ -1,17 +1,20 @@
 <template>
-  <div class='p-6'>
-    <h1 class='text-xl font-bold mb-4'>匯入老師 Excel</h1>
-    <input type='file' @change='handleFile' accept='.xlsx,.csv' />
+  <div class="import-page">
+    <h1>匯入 Timetable Excel</h1>
 
-    <button
-      @click='uploadFile'
-      :disabled='!file'
-      class='mt-4 bg-blue-500 text-white px-4 py-2 rounded'>
-      上傳並更新
+    <section class="format-box">
+      <h2>Excel 格式</h2>
+      <p>檔案必須是 .xlsx，並包含一個名為 Timetable 的工作表。</p>
+      <p>第一行欄位名稱必須完全是：teacher, subject, class, room, day, period</p>
+    </section>
+
+    <input type="file" @change="handleFile" accept=".xlsx" />
+
+    <button @click="uploadFile" :disabled="!file">
+      上載並匯入
     </button>
-    <div v-if='message' class='mt-4'>
-      <p>{{ message }}</p>
-    </div>
+
+    <pre v-if="message" class="message">{{ message }}</pre>
   </div>
 </template>
 
@@ -28,8 +31,30 @@ export default {
   methods: {
     handleFile(e) {
       this.file = e.target.files[0];
+      this.message = '';
     },
+    formatList(title, values) {
+      if (!values || values.length === 0) return '';
+      return `${title}:\n${values.join(', ')}`;
+    },
+    formatInvalidRows(rows) {
+      if (!rows || rows.length === 0) return '';
+      return `資料不完整或格式錯誤的列:\n${rows.map(row => `第 ${row.row} 列`).join(', ')}`;
+    },
+    buildErrorMessage(data) {
+      const parts = [
+        data.message || '匯入失敗',
+        this.formatList('缺少老師 teacher_code', data.missingTeachers),
+        this.formatList('缺少科目 subject', data.missingSubjects),
+        this.formatList('缺少班別 class', data.missingClasses),
+        this.formatList('缺少課室 room', data.missingRooms),
+        this.formatList('缺少節次 period', data.missingPeriods),
+        this.formatList('缺少欄位', data.missingColumns),
+        this.formatInvalidRows(data.invalidRows)
+      ].filter(Boolean);
 
+      return parts.join('\n\n');
+    },
     async uploadFile() {
       if (!this.file) {
         alert('請先選擇 Excel 檔案');
@@ -37,6 +62,7 @@ export default {
       }
 
       const formData = new FormData();
+      const token = localStorage.getItem('token');
       formData.append('file', this.file);
 
       try {
@@ -45,44 +71,77 @@ export default {
           formData,
           {
             headers: {
+              Authorization: `Bearer ${token}`,
               'Content-Type': 'multipart/form-data'
             }
           }
         );
 
-        // ✅ 對齊後端（Timetable 匯入）的回傳格式
-        this.message = `
-${res.data.message}
-新增課堂：${res.data.insertedTimetable}
-刪除舊課堂：${res.data.deletedTimetable}
-        `;
+        this.message = [
+          res.data.message,
+          `成功匯入堂數: ${res.data.insertedTimetable}`,
+          `略過列數: ${res.data.skippedRows}`
+        ].join('\n');
       } catch (err) {
-        console.error('前端捕捉錯誤：', err);
+        console.error('Import failed:', err);
 
         if (err.response && err.response.data) {
-          const data = err.response.data;
-
-          let msg = data.message || '匯入失敗';
-
-          if (data.missingTeachers) {
-            msg += '\n\n缺少老師：\n' + data.missingTeachers.join(', ');
-          }
-          if (data.missingSubjects) {
-            msg += '\n\n缺少科目：\n' + data.missingSubjects.join(', ');
-          }
-          if (data.missingClasses) {
-            msg += '\n\n缺少班別：\n' + data.missingClasses.join(', ');
-          }
-          if (data.missingRooms) {
-            msg += '\n\n缺少房間：\n' + data.missingRooms.join(', ');
-          }
-
-          alert(msg);
+          this.message = this.buildErrorMessage(err.response.data);
+          alert(this.message);
         } else {
-          alert('無法連線到伺服器');
+          alert('匯入失敗，請稍後再試');
         }
       }
     }
   }
 };
 </script>
+
+<style scoped>
+.import-page {
+  max-width: 760px;
+  margin: 40px auto;
+  padding: 24px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.format-box {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 24px 0;
+  background: #f9fbfd;
+}
+
+input {
+  display: block;
+  margin: 20px auto;
+}
+
+button {
+  display: block;
+  margin: 20px auto;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+.message {
+  white-space: pre-wrap;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+}
+</style>

@@ -1,50 +1,60 @@
 <template>
   <header class="header">
-    <h1>
-      <router-link to="/home">聖公會聖馬利亞堂莫慶堯中學 行政管理系統</router-link>
-    </h1>
-    <hr />
-    用戶資料
-    <button @click="handleLogout" class="logout-btn">Logout</button>
+    <div class="top-row">
+      <h1>
+        <router-link to="/home">Timetable Query System</router-link>
+      </h1>
+
+      <div class="account-info">
+        <span v-if="userRole" class="role-badge">Role: {{ displayRole }}</span>
+        <button @click="handleLogout" class="logout-btn">Logout</button>
+      </div>
+    </div>
+
     <hr />
 
     <div class="menu">
-      <!-- 選單1 (Hover) -->
-      <span class="main-menu" @mouseover="switchMenu('SubMenu1', $event)" @mouseout="hideMenu($event)">
-        時間表應用
-        <span style="font-size: 9px;">&#9660;</span>
+      <span class="main-menu" @mouseover="switchMenu('SubMenu1', $event)" @mouseout="hideMenu">
+        Timetable
+        <span class="arrow">&#9660;</span>
         <ul id="SubMenu1" class="sub-menu" style="display: none;">
-          <li><router-link to="/TeacherTimetable">老師上課與空堂時間表</router-link></li>
-          <li><router-link to="/ClassObservation">觀課選堂</router-link></li>
-          <li><router-link to="/SwapLesson">調課搜尋</router-link></li>
-          <li><router-link to="/FreeTeacher">空堂老師 / 課堂總表</router-link></li>
-          <li><router-link to="/ClassTimetable">各班上課時間表</router-link></li>
-          <li><router-link to="/RoomTimetable">各房間上課時間表</router-link></li>
-          <li><router-link to="/Electives">高中選修名單</router-link></li>
-          <li><router-link to="/StdTimetable">學生上課時間表</router-link></li>
+          <li><router-link to="/TeacherTimetable">Teacher Timetable</router-link></li>
+          <li><router-link to="/ClassObservation">Class Observation</router-link></li>
+          <li><router-link to="/SwapLesson">Swap Lesson</router-link></li>
+          <li><router-link to="/FreeTeacher">Free Teacher</router-link></li>
+          <li><router-link to="/ClassTimetable">Class Timetable</router-link></li>
+          <li><router-link to="/RoomTimetable">Room Timetable</router-link></li>
+          <li><router-link to="/Electives">Electives</router-link></li>
+          <li><router-link to="/StdTimetable">Student Timetable</router-link></li>
         </ul>
       </span>
 
-      <!-- 選單2 (Hover) -->
-      <span class="main-menu" @mouseover="switchMenu('SubMenu2', $event)" @mouseout="hideMenu($event)">
-        提名學生
-        <span style="font-size: 9px;">&#9660;</span>
+      <span class="main-menu" @mouseover="switchMenu('SubMenu2', $event)" @mouseout="hideMenu">
+        Students
+        <span class="arrow">&#9660;</span>
         <ul id="SubMenu2" class="sub-menu" style="display: none;">
-          <li><router-link to="/BLA">最佳學習態度提名</router-link></li>
-          <li><router-link to="/BLAResult">最佳學習態度提名結果</router-link></li>
-          <li><router-link to="/ConductAward">操行獎提名</router-link></li>
-          <li><router-link to="/ConductAwardResult">操行獎提名統計結果</router-link></li>
+          <li><router-link to="/BLA">BLA Vote</router-link></li>
+          <li><router-link to="/BLAResult">BLA Result</router-link></li>
+          <li><router-link to="/ConductAward">Conduct Award Vote</router-link></li>
+          <li><router-link to="/ConductAwardResult">Conduct Award Result</router-link></li>
+          <li><router-link to="/LearningGoalEntry">學習目標輸入</router-link></li>
+          <li><router-link to="/LearningGoalResult">學習目標獎勵結果</router-link></li>
+          <li><router-link to="/PrefectNomination">風紀提名</router-link></li>
+          <li><router-link to="/PrefectNominationResult">風紀提名結果</router-link></li>
         </ul>
       </span>
 
-      <!-- 只有管理員 (manager) 才能看到這個 -->
-      <span v-if="userRole === 'manager'" class="main-menu" @mouseover="switchMenu('SubMenu3', $event)"
-        @mouseout="hideMenu($event)">
-        管理老師帳戶
-        <span style="font-size: 9px;">&#9660;</span>
+      <span
+        v-if="userRole === 'manager'"
+        class="main-menu"
+        @mouseover="switchMenu('SubMenu3', $event)"
+        @mouseout="hideMenu"
+      >
+        Management
+        <span class="arrow">&#9660;</span>
         <ul id="SubMenu3" class="sub-menu" style="display: none;">
-          <li><router-link to="/editTeacher">老師帳戶</router-link></li>
-          <li><router-link to="/ImportTeacher">上傳並更新</router-link></li>
+          <li><router-link to="/editTeacher">Manage Users</router-link></li>
+          <li><router-link to="/ImportTeacher">Import Timetable</router-link></li>
         </ul>
       </span>
     </div>
@@ -55,12 +65,17 @@
 export default {
   data() {
     return {
-      userRole: null, // 用戶身份
-      visibleMenu: '' // 記錄當前打開的選單
+      userRole: null,
+      visibleMenu: ''
     };
   },
+  computed: {
+    displayRole() {
+      if (!this.userRole) return '';
+      return this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1);
+    }
+  },
   mounted() {
-    // 嘗試從 localStorage 獲取用戶資料
     const user = localStorage.getItem('user');
     if (user) {
       try {
@@ -73,28 +88,16 @@ export default {
   },
   methods: {
     switchMenu(subMenuId, event) {
-      // 取得對應的 <ul> 元素
+      this.hideMenu();
+
       const subMenuEl = this.$el.querySelector(`#${subMenuId}`);
       if (!subMenuEl) return;
-      // 如果目前是隱藏狀態，則顯示子選單
-      if (subMenuEl.style.display === 'none') {
-        // 讓子選單的最小寬度與主選單相同 (僅為了美觀)
-        subMenuEl.style.minWidth = `${event.currentTarget.clientWidth}px`;
-        subMenuEl.style.display = 'block';
-        // 先隱藏之前的子選單
-        this.hideMenu();
-        // 記錄目前顯示的子選單
-        this.visibleMenu = subMenuId;
-      } else {
-        // 隱藏子選單
-        if (event.type !== 'mouseover' || this.visibleMenu !== subMenuId) {
-          subMenuEl.style.display = 'none';
-          this.visibleMenu = '';
-        }
-      }
+
+      subMenuEl.style.minWidth = `${event.currentTarget.clientWidth}px`;
+      subMenuEl.style.display = 'block';
+      this.visibleMenu = subMenuId;
     },
     hideMenu() {
-      // 如果有記錄的子選單，就把它隱藏
       if (this.visibleMenu) {
         const oldMenuEl = this.$el.querySelector(`#${this.visibleMenu}`);
         if (oldMenuEl) {
@@ -109,25 +112,49 @@ export default {
           method: 'POST',
           credentials: 'include'
         });
-        localStorage.removeItem('user');
-        window.location.href = '/login'; // 或者使用 this.$router.push('/login') 如果你在 Vue Router 中
       } catch (error) {
         console.error('Logout failed:', error);
+      } finally {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        this.$router.push('/login');
       }
-    },
-    logout() {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      this.$router.push('/login');
-      window.location.reload(); // 清UI
     }
   }
 };
 </script>
+
 <style scoped>
-/* 主標題樣式 */
+.header {
+  background-color: #fff;
+}
+
+.top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 h1 {
   color: #000;
+  font-size: 24px;
+  margin: 0;
+}
+
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.role-badge {
+  border: 1px solid #d6e4f0;
+  border-radius: 6px;
+  color: #24415c;
+  background: #f5f9fc;
+  padding: 6px 10px;
+  font-weight: 600;
 }
 
 .menu {
@@ -136,7 +163,6 @@ h1 {
   background-color: #fff;
 }
 
-/* 主選單樣式 */
 .main-menu {
   color: #666;
   background-color: #fff;
@@ -152,7 +178,10 @@ h1 {
   border-radius: 8px;
 }
 
-/* 下拉清單樣式 */
+.arrow {
+  font-size: 9px;
+}
+
 .sub-menu {
   color: #666;
   background-color: #fff;
@@ -164,7 +193,6 @@ h1 {
   border: 1px solid #ddd;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  /* 預設隱藏 */
 }
 
 .sub-menu li {
@@ -207,7 +235,8 @@ h1 {
   text-decoration: none;
   color: black;
 }
-a{
+
+a {
   text-decoration: none;
   color: black;
 }

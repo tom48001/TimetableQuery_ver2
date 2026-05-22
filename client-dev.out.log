@@ -1,0 +1,7 @@
+
+> client@1.0.0 dev
+> webpack-dev-server --inline --progress --config build/webpack.dev.conf.js
+
+ DONE  Compiled successfully in 4819ms上午5:41:59
+
+ I  Your application is running here: http://localhost:8081
