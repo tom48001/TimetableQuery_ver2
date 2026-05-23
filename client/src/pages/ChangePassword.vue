@@ -2,7 +2,6 @@
   <main class="password-page">
     <form class="password-form" @submit.prevent="changePassword">
       <header>
-        <p>Account</p>
         <h1>&#x66F4;&#x6539;&#x5BC6;&#x78BC;</h1>
       </header>
 

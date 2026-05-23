@@ -1,44 +1,64 @@
 USE school_management;
 
--- 使用者帳號 (manager + 2 位老師)
+SET FOREIGN_KEY_CHECKS = 0;
+
+TRUNCATE TABLE import_schedule;
+TRUNCATE TABLE BLA;
+TRUNCATE TABLE learning_goal_record;
+TRUNCATE TABLE prefect_nomination;
+TRUNCATE TABLE nomination;
+TRUNCATE TABLE timetable;
+TRUNCATE TABLE teacher_subject;
+TRUNCATE TABLE student_subject;
+TRUNCATE TABLE period;
+TRUNCATE TABLE room;
+TRUNCATE TABLE student;
+TRUNCATE TABLE subject;
+TRUNCATE TABLE class;
+TRUNCATE TABLE staging_timetable;
+TRUNCATE TABLE staging_teacher;
+TRUNCATE TABLE teacher;
+TRUNCATE TABLE user;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- Login accounts. Password for every seeded account is: password123
 INSERT INTO user (user_name, email, password, role) VALUES
-('manager', 'manager@school.com', 'manager123', 'manager'),
-('tom', 'tom@school.com', 'password123', 'teacher'),
-('qwe', 'qwe@school.com', '$2b$10$g454V1eMzRdazPDBN1b6u.Hdyfg8/CU/53YAyTZKwLjl6A1ilpZpq', 'manager'),
-('jchan', 'jchan@school.edu', '123456', 'teacher'),
-('amok', 'amok@school.edu', '123456', 'teacher'),
-('llee', 'llee@school.edu', '123456', 'teacher'),
-('philip', 'singsing894@gmail.com', '123456', 'teacher'),
-('mwong', 'mwong@school.com', '123456', 'teacher'),
-('mho', 'mho@school.com', '123456', 'teacher'),
-('mlam', 'mlam@school.com', '123456', 'teacher'),
-('mng', 'mng@school.com', '123456', 'teacher'),
-('mcheung', 'mcheung@school.com', '123456', 'teacher'),
-('mlau', 'mlau@school.com', '123456', 'teacher'),
-('myip', 'myip@school.com', '123456', 'teacher'),
-('mcheng', 'mcheng@school.com', '123456', 'teacher'),
-('mtang', 'mtang@school.com', '123456', 'teacher'),
-('mfong', 'mfong@school.com', '123456', 'teacher');
+('manager', 'manager@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'manager'),
+('staff', 'staff@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'staff'),
+('qwe', 'qwe@gmail.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('cwt', 'cwt@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('cwk', 'cwk@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('msys', 'msys@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('wky', 'wky@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('wly', 'wly@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('lct', 'lct@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('hyk', 'hyk@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('sws', 'sws@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('teacher10', 'teacher10@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('teacher11', 'teacher11@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('teacher12', 'teacher12@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher');
 
--- 老師基本資料（user_id 要正確對應）
-INSERT INTO teacher (user_id, teacher_name) VALUES
-(2, 'Tom'),
-(3, 'qwe'),
-(4, 'Mr. Chan'),
-(5, 'Ms. Mok'),
-(6, 'Ms. Lee'),
-(7, 'Mr. Wong'),
-(8, 'Ms. Ho'),
-(9, 'Mr. Lam'),
-(10, 'Ms. Ng'),
-(11, 'Mr. Cheung'),
-(12, 'Ms. Lau'),
-(13, 'Mr. Yip'),
-(14, 'Ms. Cheng'),
-(15, 'Mr. Tang'),
-(16, 'Ms. Fong');
+INSERT INTO teacher (user_id, teacher_name, teacher_code, status) VALUES
+(3, 'QWE', 'QWE', 'active'),
+(4, 'CWT', 'CWT', 'active'),
+(5, 'CWK', 'CWK', 'active'),
+(6, 'MSYS', 'MSYS', 'active'),
+(7, 'WKY', 'WKY', 'active'),
+(8, 'WLY', 'WLY', 'active'),
+(9, 'LCT', 'LCT', 'active'),
+(10, 'HYK', 'HYK', 'active'),
+(11, 'SWS', 'SWS', 'active'),
+(12, 'T010', 'T010', 'active'),
+(13, 'T011', 'T011', 'active'),
+(14, 'T012', 'T012', 'active');
 
--- 班級資料 (會 auto-increment id，class_id 1~24)
+INSERT INTO staging_teacher (teacher_code, teacher_name, email) VALUES
+('QWE', 'QWE', 'qwe@gmail.com'),
+('CWT', 'CWT', 'cwt@school.com'),
+('CWK', 'CWK', 'cwk@school.com'),
+('MSYS', 'MSYS', 'msys@school.com');
+
 INSERT INTO class (class_name, grade_level) VALUES
 ('1M', 'F1'), ('1A', 'F1'), ('1R', 'F1'), ('1Y', 'F1'),
 ('2M', 'F2'), ('2A', 'F2'), ('2R', 'F2'), ('2Y', 'F2'),
@@ -46,13 +66,6 @@ INSERT INTO class (class_name, grade_level) VALUES
 ('4M', 'F4'), ('4A', 'F4'), ('4R', 'F4'), ('4Y', 'F4'),
 ('5M', 'F5'), ('5A', 'F5'), ('5R', 'F5'), ('5Y', 'F5'),
 ('6M', 'F6'), ('6A', 'F6'), ('6R', 'F6'), ('6Y', 'F6');
-
--- 核心科目 (is_elective = FALSE)
-INSERT INTO subject (subject_name, is_elective) VALUES
-('中國語文', FALSE),
-('英國語文', FALSE),
-('數學', FALSE),
-('公民與社會發展', FALSE);
 
 -- 選修科目 (is_elective = TRUE)
 INSERT INTO subject (subject_name, is_elective) VALUES
@@ -76,161 +89,211 @@ INSERT INTO subject (subject_name, is_elective) VALUES
 ('旅遊與款待', TRUE),
 ('體育', TRUE);
 
--- 學生資料
 INSERT INTO student (student_ch_name, student_eng_name, class_id, class_number, sex) VALUES
-('陳大文', 'Chan Tai Man', 1, '01', 'M'),
-('張小麗', 'Cheung Siu Lai', 1, '15', 'F'),
-('李志強', 'Lee Chi Keung', 2, '11', 'M'),
-('王美玲', 'Wong Mei Ling', 5, '09', 'F'),
-('黃家輝', 'Wong Ka Fai', 6, '03', 'M'),
-('林小娟', 'Lam Siu Kuen', 9, '20', 'F'),
-('吳志明', 'Ng Chi Ming', 10, '20', 'M'),
-('鄭秀文', 'Cheng Sau Man', 13, '21', 'F'),
-('馬國明', 'Ma Kwok Ming', 14, '07', 'M'),
-('劉德華', 'Lau Tak Wah', 17, '21', 'M'),
-('何嘉儀', 'Ho Ka Yi', 1, '04', 'F'),
-('林子豪', 'Lam Tsz Ho', 1, '05', 'M'),
-('周美華', 'Chow Mei Wah', 2, '06', 'F'),
-('陳偉強', 'Chan Wai Keung', 3, '07', 'M'),
-('羅淑儀', 'Law Suk Yi', 4, '08', 'F');
+('Chan Cheuk Ling', 'CHAN CHEUK LING', 1, '01', 'F'),
+('Chan Hoi Ying', 'CHAN HOI YING', 1, '02', 'F'),
+('Chan Hoi Yu', 'CHAN HOI YU', 1, '03', 'F'),
+('Chan Yin Ting', 'CHAN YIN TING', 1, '04', 'F'),
+('Chau Tsz Lok', 'CHAU TSZ LOK', 1, '05', 'M'),
+('Cheung Tze Chin', 'CHEUNG TZE CHIN', 1, '06', 'M'),
+('Ho Sum Yee Hailey', 'HO SUM YEE HAILEY', 1, '07', 'F'),
+('Huang Cathy', 'HUANG CATHY', 1, '08', 'F'),
+('Io Pui Yan', 'IO PUI YAN', 1, '09', 'F'),
+('Kan Hiu Man', 'KAN HIU MAN', 1, '10', 'F'),
+('Li Lai Ki', 'LI LAI KI', 1, '11', 'F'),
+('Li Yiwen', 'LI YIWEN', 1, '12', 'F'),
+('Lo Hiu Lam Macy', 'LO HIU LAM MACY', 1, '13', 'F'),
+('Mau Hing Yu Hailey', 'MAU HING YU HAILEY', 1, '14', 'F'),
+('Tran Lok Yung Harmony', 'TRAN LOK YUNG HARMONY', 1, '15', 'F'),
+('Wong Hei Yin', 'WONG HEI YIN', 1, '16', 'F'),
+('Wong Yuen Ching', 'WONG YUEN CHING', 1, '17', 'F'),
+('Yu Kat Kai', 'YU KAT KAI', 1, '18', 'M'),
+('Chan Chun Sing', 'CHAN CHUN SING', 1, '19', 'M'),
+('Chan Ming Wai', 'CHAN MING WAI', 1, '20', 'M'),
+('Chiu Yau', 'CHIU YAU', 1, '21', 'M'),
+('Chung Chi Pui', 'CHUNG CHI PUI', 1, '22', 'M'),
+('Lai Pak Kiu', 'LAI PAK KIU', 1, '23', 'M'),
+('Lai Tsz Hei', 'LAI TSZ HEI', 1, '24', 'M'),
+('Leung Sze Hon', 'LEUNG SZE HON', 1, '25', 'M'),
+('Liang Haoquan', 'LIANG HAOQUAN', 1, '26', 'M'),
+('Mak Chun Hei', 'MAK CHUN HEI', 1, '27', 'M'),
+('Mok Ping Hong', 'MOK PING HONG', 1, '28', 'M'),
+('Pang Ho Yin', 'PANG HO YIN', 1, '29', 'M'),
+('Siu Pak Hin', 'SIU PAK HIN', 1, '30', 'M'),
+('Chan Tsz Ling', 'CHAN TSZ LING', 2, '01', 'F'),
+('Cheung Hoi Lam', 'CHEUNG HOI LAM', 2, '02', 'F'),
+('Ho Ka Yan', 'HO KA YAN', 2, '03', 'F'),
+('Lam Wai Ting', 'LAM WAI TING', 2, '04', 'F'),
+('Lee Chun Hei', 'LEE CHUN HEI', 2, '05', 'M'),
+('Ng Wing Yan', 'NG WING YAN', 2, '06', 'F'),
+('Wong Tsz Kwan', 'WONG TSZ KWAN', 2, '07', 'M'),
+('Yip Lok Lam', 'YIP LOK LAM', 2, '08', 'F'),
+('Cheng Yu Hin', 'CHENG YU HIN', 5, '01', 'M'),
+('Fong Ching Yi', 'FONG CHING YI', 5, '02', 'F'),
+('Kwok Ho Yin', 'KWOK HO YIN', 5, '03', 'M'),
+('Lau Hoi Ching', 'LAU HOI CHING', 5, '04', 'F'),
+('Tang Ka Hei', 'TANG KA HEI', 5, '05', 'M'),
+('Tse Wing Lam', 'TSE WING LAM', 9, '01', 'F'),
+('Tsui Long Hei', 'TSUI LONG HEI', 9, '02', 'M'),
+('Yuen Ching Man', 'YUEN CHING MAN', 9, '03', 'F');
 
--- 班房
 INSERT INTO room (room_name) VALUES
-('G01C 會見室(一)'),
-('G01D 會見室(二)'),
-('G01K 會議室'),
-('G01R 學生活動中心'),
-('操場'),
-('有蓋操場'),
-('101 視覺藝術室'),
-('102 音樂室'),
-('111 溫室'),
-('一樓玻璃房 (Sonata)'),
+('G01C Meeting Room'),
+('G01D Meeting Room'),
+('G01K Meeting Room'),
+('G01R Learning Support Room'),
+('Playground'),
+('Covered Playground'),
+('101 Visual Arts Room'),
+('102 Music Room'),
+('111 Warm Room'),
+('1/F Glass Room Sonata'),
 ('201 Little Britain'),
-('202 1M 課室'),
-('203 1A 課室'),
-('204 1R 課室'),
-('205 1Y 課室'),
-('209A 講廳'),
-('209B 創藝室'),
-('301 課室'),
-('302 2M 課室'),
-('303 2A 課室'),
-('304 2R 課室'),
-('305 2Y 課室'),
+('202 1M Classroom'),
+('203 1A Classroom'),
+('204 1R Classroom'),
+('205 1Y Classroom'),
+('209A Lecture Room'),
+('209B Creative Room'),
+('301 Classroom'),
+('302 2M Classroom'),
+('303 2A Classroom'),
+('304 2R Classroom'),
+('305 2Y Classroom'),
 ('309 AI Lab'),
-('311 電腦室'),
-('401 課室'),
-('402 3M 課室'),
-('403 3A 課室'),
-('404 3R 課室'),
-('405 3Y 課室'),
+('311 Computer Room'),
+('401 Classroom'),
+('402 3M Classroom'),
+('403 3A Classroom'),
+('404 3R Classroom'),
+('405 3Y Classroom'),
 ('409 IS Lab'),
 ('412 IS Lab'),
-('413 CAL 室'),
-('415 圖書館'),
-('501 課室'),
-('502 4M 課室'),
-('503 4A 課室'),
-('504 4R 課室'),
-('505 4Y 課室'),
-('509 地理室'),
+('413 CAL Room'),
+('415 Library'),
+('501 Classroom'),
+('502 4M Classroom'),
+('503 4A Classroom'),
+('504 4R Classroom'),
+('505 4Y Classroom'),
+('509 Geography Room'),
 ('511 Bio Lab'),
-('513 家政室'),
-('601 課室'),
-('602 5Y 課室'),
-('603 5R 課室'),
-('604 5A 課室'),
-('605 5M 課室'),
+('513 Home Economics Room'),
+('601 Classroom'),
+('602 5Y Classroom'),
+('603 5R Classroom'),
+('604 5A Classroom'),
+('605 5M Classroom'),
 ('609 Chm Lab'),
 ('611 Phy Lab'),
-('612 源活齋'),
-('613 源活齋'),
-('701 課室'),
-('702 6M 課室'),
-('703 6A 課室'),
-('704 6R 課室'),
-('705 6Y 課室'),
+('612 Resource Room'),
+('613 Resource Room'),
+('701 Classroom'),
+('702 6M Classroom'),
+('703 6A Classroom'),
+('704 6R Classroom'),
+('705 6Y Classroom'),
 ('710 Cozy Lounge');
 
--- 課節
 INSERT INTO period (period_name, start_time, end_time) VALUES
 ('Period 1', '08:30:00', '09:05:00'),
 ('Period 2', '09:05:00', '09:40:00'),
 ('Period 3', '09:55:00', '10:30:00'),
 ('Period 4', '10:30:00', '11:05:00'),
 ('Period 5', '11:20:00', '11:55:00'),
-('Period 6', '11:55:00', '14:05:00'),
-('Period 7', '13:30:00', '15:00:00'),
+('Period 6', '11:55:00', '12:30:00'),
+('Period 7', '13:30:00', '14:05:00'),
 ('Period 8', '14:05:00', '14:40:00'),
 ('Period 9', '14:40:00', '15:15:00'),
-('Period 10', '15:15:00', '15:30:00'),
-('Period 11', '14:50:00', '15:25:00'),
-('Period 12', '15:25:00', '16:00:00');
+('Period 10', '15:25:00', '16:00:00');
 
--- 學生選修科目
-INSERT INTO student_subject (student_id, subject_id) VALUES
-(1, 6),   -- 陳大文 → 中國文學
-(2, 7),   -- 張小麗 → 生物
-(3, 8),   -- 李志強 → 企會財
-(4, 9),   -- 王美玲 → 英語文學
-(5, 10),  -- 黃家輝 → 化學
-(6, 11),  -- 林小娟 → 設計與應用科技
-(7, 12),  -- 吳志明 → 中國歷史
-(8, 13),  -- 鄭秀文 → 物理
-(9, 14),  -- 馬國明 → 健康管理與社會關懷
-(10, 15), -- 劉德華 → 經濟
-(11, 16), -- 何嘉儀 → 資訊科技
-(12, 17), -- 林子豪 → 倫理與宗教
-(13, 18), -- 周美華 → 科技與生活
-(14, 19), -- 陳偉強 → 地理
-(15, 15); -- 羅淑儀 → 經濟
-
--- 老師授課科目（需與 subject_id 對應）
 INSERT INTO teacher_subject (teacher_id, subject_id) VALUES
-(1, 2),  -- Tom → 英文
-(1, 3),  -- Tom → 數學
-(1, 15), -- Tom → 資訊科技
+(1, 2), (1, 3), (1, 6),
+(2, 1), (2, 11), (2, 20),
+(3, 3), (3, 7), (3, 10),
+(4, 4), (4, 19),
+(5, 2), (5, 8),
+(6, 1), (6, 18),
+(7, 9), (7, 10),
+(8, 5), (8, 12),
+(9, 3), (9, 6),
+(10, 13), (10, 14),
+(11, 15), (11, 16),
+(12, 17), (12, 11);
 
-(2, 4),  -- qwe → 科學
-(2, 7),  -- qwe → 生物
-(2, 15), -- qwe → 音樂
-
-(3, 3),  -- Mr. Chan → 數學
-(3, 16), -- Mr. Chan → 歷史
-(3, 13), -- Mr. Chan → 物理
-
-(4, 12), -- Ms. Mok → 中國歷史
-(4, 4),  -- Ms. Mok → 公民與社會發展
-
-(5, 1),  -- Ms. Lee → 中文
-(5, 6);  -- Ms. Lee → 中國文學
+INSERT INTO student_subject (student_id, subject_id) VALUES
+(31, 13), (32, 14), (33, 15), (34, 16), (35, 17), (36, 18),
+(37, 13), (38, 14), (39, 15), (40, 16), (41, 17), (42, 18),
+(43, 13), (44, 14), (45, 15), (46, 16);
 
 INSERT INTO timetable (teacher_id, subject_id, class_id, room_id, day_of_week, period_id) VALUES
-(1, 2, 1, 12, 'Mon', 1),  -- Tom 英文 → 1M
-(1, 3, 2, 13, 'Tue', 2),  -- Tom 數學 → 1A
-(1, 15, 3, 23, 'Wed', 3), -- Tom ICT → 1R
+(1, 2, 1, 12, 'Mon', 1),
+(2, 1, 1, 12, 'Mon', 2),
+(3, 3, 1, 12, 'Mon', 3),
+(4, 4, 1, 12, 'Mon', 4),
+(5, 8, 1, 7, 'Mon', 5),
+(6, 1, 2, 13, 'Mon', 1),
+(7, 10, 2, 13, 'Mon', 2),
+(8, 5, 2, 13, 'Mon', 3),
+(9, 6, 2, 13, 'Mon', 4),
+(1, 3, 5, 19, 'Mon', 5),
+(2, 11, 5, 19, 'Tue', 1),
+(3, 3, 5, 19, 'Tue', 2),
+(4, 19, 6, 20, 'Tue', 3),
+(5, 2, 6, 20, 'Tue', 4),
+(6, 18, 7, 21, 'Wed', 1),
+(7, 9, 7, 21, 'Wed', 2),
+(8, 12, 8, 22, 'Wed', 3),
+(9, 3, 8, 22, 'Wed', 4),
+(10, 13, 13, 35, 'Thu', 1),
+(11, 15, 14, 36, 'Thu', 2),
+(12, 17, 15, 37, 'Thu', 3),
+(1, 6, 16, 38, 'Thu', 4),
+(2, 20, 17, 46, 'Fri', 1),
+(3, 7, 18, 45, 'Fri', 2),
+(4, 4, 19, 44, 'Fri', 3),
+(5, 2, 20, 43, 'Fri', 4),
+(6, 1, 21, 52, 'Fri', 5),
+(7, 10, 22, 53, 'Fri', 6),
+(8, 5, 23, 54, 'Fri', 7),
+(9, 3, 24, 55, 'Fri', 8),
+(10, 14, 13, 47, 'Mon', 8),
+(11, 16, 14, 48, 'Tue', 8),
+(12, 11, 15, 39, 'Wed', 8);
 
-(2, 4, 1, 14, 'Mon', 2),  -- qwe 科學 → 1M
-(2, 7, 5, 22, 'Thu', 3),  -- qwe 生物 → 2Y
-(2, 15, 6, 8,  'Fri', 4), -- qwe 音樂 → 音樂室
+INSERT INTO staging_timetable (teacher_code, subject, class, room, day_of_week, period) VALUES
+('QWE', 'English Language', '1M', '202 1M Classroom', 'Mon', 'Period 6'),
+('CWT', 'Chinese Language', '1A', '203 1A Classroom', 'Tue', 'Period 6');
 
-(3, 3, 2, 13, 'Mon', 3),  -- Mr. Chan 數學 → 1A
-(3, 16, 6, 22, 'Wed', 2), -- Mr. Chan 歷史 → 2Y
-(3, 13, 9, 29, 'Thu', 5), -- Mr. Chan 物理 → 3M
+INSERT INTO nomination (teacher_id, student_id) VALUES
+(1, 1), (1, 2), (2, 1), (3, 5), (4, 10), (5, 31), (6, 32);
 
-(4, 12, 5, 20, 'Tue', 1), -- Ms. Mok 中國歷史 → 2A
-(4, 4, 8, 21, 'Fri', 3),  -- Ms. Mok 公社 → 2R
+INSERT INTO prefect_nomination (teacher_id, student_id) VALUES
+(1, 6), (2, 6), (3, 7), (4, 8), (5, 31), (6, 32);
 
-(5, 1, 1, 12, 'Mon', 4),  -- Ms. Lee 中文 → 1M
-(5, 6, 4, 19, 'Thu', 1),  -- Ms. Lee 中國文學 → 2M
+INSERT INTO BLA (teacher_id, student_id, subject_id) VALUES
+(1, 1, 2), (2, 1, 1), (3, 1, 3), (4, 1, 4),
+(5, 1, 8), (6, 1, 18), (7, 1, 10), (8, 1, 5),
+(1, 2, 2), (2, 2, 1), (3, 2, 3),
+(1, 3, 2), (3, 3, 3), (9, 3, 6),
+(1, 31, 2), (2, 31, 1), (3, 31, 3), (10, 31, 13);
 
-(3, 5, 2, 1, 'Mon', 11),
-(1, 11, 4, 4, 'Mon', 12),
-(2, 20, 7, 5, 'Mon', 11),
+INSERT INTO learning_goal_record (teacher_id, student_id, completed_goals) VALUES
+(1, 1, 2),
+(1, 2, 4),
+(1, 3, 6),
+(1, 4, 8),
+(1, 5, 3),
+(1, 6, 7),
+(1, 7, 1),
+(1, 8, 5),
+(1, 9, 0),
+(1, 10, 9),
+(2, 31, 4),
+(2, 32, 3),
+(2, 33, 6),
+(2, 34, 8);
 
-(1, 5, 2, 1, 'Fri', 8),
-(1, 11, 4, 4, 'Fri', 9),
-(1, 20, 7, 5, 'Fri', 10),
-(1, 11, 4, 4, 'Fri', 11),
-(1, 20, 7, 5, 'Fri', 12);
+INSERT INTO import_schedule (file_name) VALUES
+('sample-timetable.xlsx');
+
