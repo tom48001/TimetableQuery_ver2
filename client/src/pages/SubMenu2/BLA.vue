@@ -3,10 +3,8 @@
     <section class="page-panel">
       <header class="page-header">
         <div>
-          <p>Student Nomination</p>
           <h1>最佳學習態度提名</h1>
         </div>
-        <span class="summary-pill">{{ subjects.length }} 科目 / {{ classList.length }} 班別</span>
       </header>
 
       <div class="table-wrap">
@@ -48,7 +46,7 @@
 
       <footer class="actions">
         <button type="button" :disabled="!selectedChoice" @click="goNext">
-          下一步
+          Submit
         </button>
       </footer>
     </section>

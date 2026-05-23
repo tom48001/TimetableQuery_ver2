@@ -8,6 +8,7 @@ import { ensureJWT, checkRole } from '../auth/auth.js';
 
 dotenv.config();
 const router = express.Router();
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:8080';
 
 const MESSAGES = {
   needCredentials: '\u8acb\u8f38\u5165\u96fb\u90f5\u53ca\u5bc6\u78bc\u3002',
@@ -51,7 +52,7 @@ router.post('/login', async (req, res) => {
 
     const role = user.role ? user.role.trim().toLowerCase() : 'teacher';
     const token = jwt.sign(
-      { id: user.user_id, role },
+      { id: user.user_id, role, user_name: user.user_name, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: '2h' }
     );
@@ -67,20 +68,20 @@ router.post('/login', async (req, res) => {
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/' }),
+  passport.authenticate('google', { failureRedirect: `${CLIENT_ORIGIN}/login?error=google` }),
   (req, res) => {
     if (!req.user) {
-      return res.redirect('http://localhost:8080/login?error=unauthorized');
+      return res.redirect(`${CLIENT_ORIGIN}/login?error=unauthorized`);
     }
 
     const role = req.user.role ? req.user.role.trim().toLowerCase() : 'teacher';
     const token = jwt.sign(
-      { id: req.user.user_id, role },
+      { id: req.user.user_id, role, user_name: req.user.user_name, email: req.user.email },
       process.env.JWT_SECRET,
       { expiresIn: '2h' }
     );
 
-    return res.redirect(`http://localhost:8080/google-redirect?token=${token}`);
+    return res.redirect(`${CLIENT_ORIGIN}/google-redirect?token=${token}`);
   }
 );
 

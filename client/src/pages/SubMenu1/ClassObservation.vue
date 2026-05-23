@@ -3,16 +3,15 @@
     <section class="observation-panel">
       <header class="page-header">
         <div>
-          <p>Timetable</p>
-          <h1>Class Observation</h1>
+          <h1>觀課老師 (可選多人)</h1>
         </div>
-        <span class="count-badge">{{ observerIds.length }} observers</span>
+        <span class="count-badge">{{ observerIds.length }} 觀課老師</span>
       </header>
 
       <section class="selector-card">
         <div class="section-title">
-          <h2>Observers</h2>
-          <button type="button" class="secondary-btn" @click="clearObservers">Clear</button>
+          <h2>觀課老師</h2>
+          <button type="button" class="secondary-btn" @click="clearObservers">清除</button>
         </div>
         <input
           v-model.trim="observerSearch"
@@ -46,8 +45,7 @@
 
       <section class="selector-card">
         <div class="section-title">
-          <h2>Target Teacher</h2>
-          <span class="muted">Choose one</span>
+          <h2>被觀課老師 (只選一人)</h2>
         </div>
         <input
           v-model.trim="targetSearch"
@@ -71,7 +69,7 @@
       <footer class="footer-actions">
         <span>{{ teachers.length }} teachers loaded</span>
         <button type="button" class="primary-btn" @click="searchSchedule">
-          View Observation Timetable
+          Submit
         </button>
       </footer>
     </section>

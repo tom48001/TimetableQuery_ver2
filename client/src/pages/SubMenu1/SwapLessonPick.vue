@@ -3,23 +3,23 @@
     <section class="pick-panel">
       <header class="page-header">
         <div>
-          <p>Swap Lesson</p>
-          <h1>&#x8ABF;&#x8AB2;&#x9078;&#x5802;</h1>
+          <p>{{ teacherName || 'Swap Lesson' }}</p>
+          <h1>調課選堂</h1>
         </div>
-        <span class="count-badge">&#x5DF2;&#x6392;&#x9664;&#x5206;&#x7D44;&#x8AB2;&#x5802;&#x548C;&#x9AD8;&#x4E2D;&#x9078;&#x4FEE;&#x79D1;</span>
+        <span class="count-badge">不包括分組課堂或高中選修科</span>
       </header>
 
       <div class="table-wrap">
         <table class="lesson-table">
           <thead>
             <tr>
-              <th class="period-col"></th>
-              <th v-for="day in days" :key="day">{{ day }}</th>
+              <th class="period-col">課節</th>
+              <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="period in periodNumbers" :key="period">
-              <th class="period-col">P{{ period }}</th>
+              <th class="period-col">第{{ period }}節</th>
               <td
                 v-for="day in days"
                 :key="`${day}-${period}`"
@@ -36,7 +36,8 @@
                     :value="getLesson(day, period).timetable_id"
                     v-model="selectedLessonId"
                   />
-                  <span>{{ getLesson(day, period).class_name }} {{ getLesson(day, period).subject }}</span>
+                  <span class="class-pill">{{ getLesson(day, period).class_name }}</span>
+                  <span class="subject-name">{{ getLesson(day, period).subject }}</span>
                 </label>
               </td>
             </tr>
@@ -45,7 +46,7 @@
       </div>
 
       <button type="button" class="primary-btn" :disabled="!selectedLesson" @click="goNext">
-        &#x4E0B;&#x4E00;&#x6B65;
+        下一步
       </button>
     </section>
   </main>
@@ -75,6 +76,9 @@ export default {
     };
   },
   computed: {
+    teacherName() {
+      return this.$route.query.teacherName || '';
+    },
     days() {
       const lessonDays = this.lessons.map(lesson => lesson.day);
       return DAY_ORDER.filter(day => lessonDays.includes(day) || day !== 'Sat');
@@ -107,6 +111,9 @@ export default {
     }
   },
   methods: {
+    dayLabel(day) {
+      return DAY_LABELS[day] || day;
+    },
     getLesson(day, period) {
       return this.lessons.find(lesson =>
         lesson.day === day && Number(lesson.period) === Number(period)
@@ -146,12 +153,12 @@ export default {
 }
 
 .pick-panel {
-  max-width: 1040px;
+  max-width: 1120px;
   margin: 0 auto;
-  border: 1px solid #d1e0e5;
+  border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 38px rgba(25, 54, 69, 0.12);
+  box-shadow: var(--shadow);
   box-sizing: border-box;
   padding: 26px;
 }
@@ -165,7 +172,7 @@ export default {
 }
 
 .page-header p {
-  color: #6f5d12;
+  color: var(--primary);
   font-size: 13px;
   font-weight: 700;
   margin: 0 0 8px;
@@ -173,65 +180,71 @@ export default {
 }
 
 h1 {
-  color: #122635;
+  color: var(--text);
   font-size: 32px;
   letter-spacing: 0;
   margin: 0;
 }
 
 .count-badge {
-  border: 1px solid #ded0a1;
-  border-radius: 6px;
-  background: #fffaf0;
-  color: #6f5d12;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 700;
-  padding: 9px 12px;
+  padding: 9px 14px;
+  white-space: nowrap;
 }
 
 .table-wrap {
-  border: 1px solid #ded7c5;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #faf7ef;
+  background: #fff;
   overflow-x: auto;
-  padding: 10px;
 }
 
 .lesson-table {
   width: 100%;
   min-width: 900px;
-  border-collapse: separate;
-  border-spacing: 6px;
-  background: transparent;
+  border-collapse: collapse;
   table-layout: fixed;
 }
 
 .lesson-table th,
 .lesson-table td {
-  border: 1px solid #ded7c5;
-  border-radius: 6px;
-  height: 42px;
-  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  height: 54px;
+  padding: 8px;
   text-align: left;
   vertical-align: middle;
 }
 
+.lesson-table th:first-child,
+.lesson-table td:first-child {
+  border-left: none;
+}
+
+.lesson-table tr:last-child th,
+.lesson-table tr:last-child td {
+  border-bottom: none;
+}
+
 .lesson-table thead th {
-  border-color: transparent;
-  background: #4f6f52;
-  color: #fff;
+  background: var(--surface-soft);
+  color: var(--text);
   font-size: 14px;
-  letter-spacing: 0;
+  font-weight: 800;
   text-align: center;
 }
 
 .period-col {
-  width: 64px;
-  border-color: transparent;
-  background: #efe9d8;
-  color: #4b4637;
-  font-weight: 700;
-  text-align: center;
+  width: 76px;
+  background: #f8fbfc;
+  color: var(--text-muted);
+  font-weight: 800;
+  text-align: center !important;
   white-space: nowrap;
 }
 
@@ -240,60 +253,74 @@ h1 {
 }
 
 .lesson-table td.available {
-  background: #fffdf3;
-  border-color: #d8c88d;
+  background: #fbfdfd;
 }
 
 .lesson-cell {
-  min-height: 34px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #2f3e36;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text);
   cursor: pointer;
   font-size: 14px;
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.2;
+  padding: 4px 6px;
+}
+
+.lesson-cell:hover,
+.lesson-cell.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
 }
 
 .lesson-cell input {
+  flex: 0 0 auto;
   margin: 0;
+  accent-color: var(--primary);
 }
 
-.lesson-cell span {
+.class-pill {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #e7f4f6;
+  color: #0a5260;
+  font-size: 12px;
+  padding: 4px 7px;
+}
+
+.subject-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.lesson-cell.selected span {
-  color: #2d5935;
-  font-weight: 700;
-}
-
 .primary-btn {
   display: block;
   border: none;
   border-radius: 6px;
-  background: #4f6f52;
+  background: var(--primary);
   color: #fff;
   cursor: pointer;
   font-size: 15px;
   font-weight: 700;
   height: 46px;
   margin: 22px auto 0;
-  padding: 0 22px;
+  padding: 0 24px;
 }
 
 .primary-btn:disabled {
-  background: #d8d0bd;
-  color: #776f61;
+  background: #c7d2d8;
+  color: #607683;
   cursor: not-allowed;
 }
 
 .primary-btn:not(:disabled):hover {
-  background: #3f5e43;
+  background: var(--primary-dark);
 }
 
 @media (max-width: 720px) {

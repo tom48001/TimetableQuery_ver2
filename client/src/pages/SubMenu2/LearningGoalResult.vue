@@ -3,7 +3,6 @@
     <section class="page-panel">
       <header class="page-header">
         <div>
-          <p>Result</p>
           <h1>學習目標獎勵計劃結果（上學期）</h1>
         </div>
         <span class="summary-pill">{{ results.length }} 名學生</span>

@@ -15,6 +15,7 @@ import ClassTimetableResult from '@/pages/SubMenu1/ClassTimetableResult.vue'
 import Electives from '@/pages/SubMenu1/Electives.vue'
 import ElectivesResult from '@/pages/SubMenu1/ElectivesResult.vue'
 import FreeTeacher from '@/pages/SubMenu1/FreeTeacher.vue'
+import FreeTeacherResult from '@/pages/SubMenu1/FreeTeacherResult.vue'
 import RoomTimetable from '@/pages/SubMenu1/RoomTimetable.vue'
 import RoomTimetableResult from '@/pages/SubMenu1/RoomTimetableResult.vue'
 import StdTimetable from '@/pages/SubMenu1/StdTimetable.vue'
@@ -36,18 +37,18 @@ import PrefectNominationResult from '@/pages/SubMenu2/PrefectNominationResult.vu
 import LearningGoalEntry from '@/pages/SubMenu2/LearningGoalEntry.vue'
 import LearningGoalResult from '@/pages/SubMenu2/LearningGoalResult.vue'
 
-import editTeacher from '@/pages/SubMenu3/editTeacher.vue';
-import ImportTeacher from '@/pages/SubMenu3/ImportTeacher.vue';
+import editTeacher from '@/pages/SubMenu3/editTeacher.vue'
+import ImportTeacher from '@/pages/SubMenu3/ImportTeacher.vue'
 
-Vue.use(Router);
+Vue.use(Router)
 
 const router = new Router({
-  mode: 'history', // Use clean URLs
+  mode: 'history',
   routes: [
     { path: '/google-redirect', name: 'GoogleRedirect', component: GoogleRedirect },
     {
       path: '/',
-      redirect: '/login' // Redirect to login page by default
+      redirect: '/login'
     },
     {
       path: '/login',
@@ -119,6 +120,12 @@ const router = new Router({
       path: '/FreeTeacher',
       name: 'FreeTeacher',
       component: FreeTeacher,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/FreeTeacherResult',
+      name: 'FreeTeacherResult',
+      component: FreeTeacherResult,
       meta: { show: true, requiresAuth: true }
     },
     {
@@ -249,25 +256,24 @@ const router = new Router({
     },
     {
       path: '/*',
-      redirect: '/login' // Always redirect unknown routes to login
+      redirect: '/login'
     }
   ]
-});
+})
 
 router.beforeEach((to, from, next) => {
-  const user = JSON.parse(localStorage.getItem('user'));
+  const rawUser = localStorage.getItem('user')
+  const user = rawUser ? JSON.parse(rawUser) : null
 
-  // 只有 admin 可進入 editTeacher 頁
   if (to.meta.requiredRole && (!user || user.role !== to.meta.requiredRole)) {
-    return next('/login');
+    return next('/login')
   }
 
-  // 若需要登入卻沒登入，導去 login
   if (to.meta.requiresAuth && !user) {
-    return next('/login');
+    return next('/login')
   }
 
-  next();
-});
+  next()
+})
 
-export default router;
+export default router

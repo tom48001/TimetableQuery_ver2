@@ -3,18 +3,17 @@
     <section class="swap-panel">
       <header class="page-header">
         <div>
-          <p>Timetable</p>
-          <h1>Swap Lesson</h1>
+          <h1>需要調課老師</h1>
         </div>
-        <span class="count-badge">{{ selectedTeacherName || 'No teacher selected' }}</span>
+        <span class="count-badge">{{ teachers.length }} 位老師</span>
       </header>
 
       <label class="search-box">
-        <span>Search teacher</span>
+        <span>搜尋老師</span>
         <input
           v-model.trim="searchText"
           type="text"
-          placeholder="Type teacher name..."
+          placeholder="輸入老師名稱..."
         />
       </label>
 
@@ -35,12 +34,12 @@
         </label>
       </div>
 
-      <p v-else class="empty-message">No teacher found.</p>
+      <p v-else class="empty-message">找不到老師</p>
 
       <footer class="footer-actions">
-        <span>{{ filteredTeachers.length }} of {{ teachers.length }} teachers shown</span>
+        <span>顯示 {{ filteredTeachers.length }} / {{ teachers.length }} 位老師</span>
         <button type="button" class="primary-btn" @click="goNext">
-          Next
+          下一步
         </button>
       </footer>
     </section>
@@ -119,12 +118,12 @@ export default {
 }
 
 .swap-panel {
-  max-width: 860px;
+  max-width: 940px;
   margin: 0 auto;
-  border: 1px solid #d1e0e5;
+  border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 38px rgba(25, 54, 69, 0.12);
+  box-shadow: var(--shadow);
   box-sizing: border-box;
   padding: 26px;
 }
@@ -138,7 +137,7 @@ export default {
 }
 
 .page-header p {
-  color: #0d6b78;
+  color: var(--primary);
   font-size: 13px;
   font-weight: 700;
   margin: 0 0 8px;
@@ -146,36 +145,33 @@ export default {
 }
 
 h1 {
-  color: #122635;
+  color: var(--text);
   font-size: 32px;
   letter-spacing: 0;
   margin: 0;
 }
 
 .count-badge {
-  border: 1px solid #b8cad3;
-  border-radius: 6px;
-  background: #f7fafb;
-  color: #27485b;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
   font-weight: 700;
-  max-width: 260px;
-  overflow: hidden;
-  padding: 9px 12px;
-  text-overflow: ellipsis;
+  padding: 9px 14px;
   white-space: nowrap;
 }
 
 .search-box {
   display: grid;
   gap: 7px;
-  color: #27485b;
-  font-weight: 600;
+  color: var(--text-muted);
+  font-weight: 700;
   margin-top: 24px;
 }
 
 .search-box input {
   height: 44px;
-  border: 1px solid #b8cad3;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   background: #fff;
   box-sizing: border-box;
@@ -184,34 +180,36 @@ h1 {
 }
 
 .search-box input:focus {
-  border: 2px solid #0b7285;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(11, 114, 133, 0.13);
+  outline: none;
 }
 
 .teacher-list {
   max-height: 460px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 7px;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 8px;
   overflow-y: auto;
-  border: 1px solid #d6e2e6;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f7fafb;
+  background: var(--surface-soft);
   margin-top: 18px;
   padding: 10px;
 }
 
 .teacher-row {
-  min-height: 36px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid #d7e2e7;
+  border: 1px solid var(--border);
   border-radius: 6px;
   background: #fff;
-  color: #243f51;
+  color: var(--text);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 5px 8px;
 }
 
@@ -222,32 +220,28 @@ h1 {
   white-space: nowrap;
 }
 
-.teacher-row:hover {
-  border-color: #86adba;
-  background: #eef7f8;
-}
-
+.teacher-row:hover,
 .teacher-row.selected {
-  border-color: #0b7285;
-  background: #e0f1f2;
+  border-color: var(--primary);
+  background: var(--primary-soft);
   color: #0a5260;
 }
 
 .teacher-row input {
-  accent-color: #0b7285;
+  accent-color: var(--primary);
 }
 
 .empty-message {
-  border: 1px dashed #b8cad3;
+  border: 1px dashed var(--border-strong);
   border-radius: 8px;
-  color: #607683;
+  color: var(--text-muted);
   margin: 18px 0 0;
   padding: 28px;
   text-align: center;
 }
 
 .footer-actions {
-  color: #607683;
+  color: var(--text-muted);
   margin-top: 18px;
 }
 
@@ -260,14 +254,14 @@ button {
 
 .primary-btn {
   height: 48px;
-  background: #0b7285;
+  background: var(--primary);
   color: #fff;
   font-size: 15px;
   padding: 0 22px;
 }
 
 .primary-btn:hover {
-  background: #085c6b;
+  background: var(--primary-dark);
 }
 
 @media (max-width: 720px) {

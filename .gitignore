@@ -4,3 +4,8 @@ server/node_modules/
 **/server/.env
 **/server/src/.env
 **/server/src/db.js
+.DS_Store
+*.log
+client-dev.*.log
+server-dev.*.log
+server/uploads/

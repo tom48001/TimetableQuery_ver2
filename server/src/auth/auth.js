@@ -11,6 +11,7 @@ dotenv.config();
 const MANAGER_EMAILS = process.env.MANAGER_EMAILS
   ? process.env.MANAGER_EMAILS.split(',').map(e => e.trim())
   : [];
+const GOOGLE_ALLOWED_DOMAIN = process.env.GOOGLE_ALLOWED_DOMAIN || 'gmail.com';
 
 // ====== Google OAuth2 Strategy ======
 passport.use(new GoogleStrategy({
@@ -22,8 +23,8 @@ passport.use(new GoogleStrategy({
     const email = profile.emails[0].value;
 
     // 1. 檢查 domain
-    if (!email.endsWith('@gmail.com')) {
-      return done(null, false, { message: "只允許 smcc.edu.hk 帳號登入" });
+    if (!email.endsWith(`@${GOOGLE_ALLOWED_DOMAIN}`)) {
+      return done(null, false, { message: `只允許 ${GOOGLE_ALLOWED_DOMAIN} 帳號登入` });
     }
 
     // 2. 查 DB user 白名單

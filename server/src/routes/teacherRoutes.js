@@ -78,6 +78,57 @@ router.post('/free-teachers', async (req, res) => {
   }
 });
 
+router.post('/free-teachers-day', async (req, res) => {
+  const { weekday } = req.body;
+
+  if (!weekday) {
+    return res.status(400).json({ error: 'weekday is required' });
+  }
+
+  try {
+    const [rows] = await db.query(
+      `
+      SELECT
+        t.teacher_id,
+        t.teacher_name,
+        tt.period_id,
+        c.class_name
+      FROM teacher t
+      LEFT JOIN timetable tt
+        ON tt.teacher_id = t.teacher_id
+       AND tt.day_of_week = ?
+       AND tt.period_id BETWEEN 1 AND 10
+      LEFT JOIN class c ON tt.class_id = c.class_id
+      ORDER BY t.teacher_name, tt.period_id
+      `,
+      [weekday]
+    );
+
+    const teacherMap = new Map();
+    rows.forEach(row => {
+      if (!teacherMap.has(row.teacher_id)) {
+        teacherMap.set(row.teacher_id, {
+          teacher_id: row.teacher_id,
+          teacher_name: row.teacher_name,
+          lessons: []
+        });
+      }
+
+      if (row.period_id) {
+        teacherMap.get(row.teacher_id).lessons.push({
+          period_id: row.period_id,
+          class_name: row.class_name
+        });
+      }
+    });
+
+    res.json(Array.from(teacherMap.values()));
+  } catch (error) {
+    console.error('查詢全日空堂資料失敗:', error);
+    res.status(500).json({ error: '資料庫錯誤' });
+  }
+});
+
 router.get('/from-user/:userId', async (req, res) => {
   const { userId } = req.params;
   try {

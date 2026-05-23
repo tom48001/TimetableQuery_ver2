@@ -3,7 +3,6 @@
     <section class="page-panel">
       <header class="page-header">
         <div>
-          <p>Result</p>
           <h1>最佳學習態度學生提名結果</h1>
         </div>
         <span class="summary-pill">{{ BLAResults.length }} 名學生</span>

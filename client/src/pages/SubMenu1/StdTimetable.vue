@@ -3,8 +3,7 @@
     <section class="student-panel">
       <header class="page-header">
         <div>
-          <p>Timetable</p>
-          <h1>Student Timetable</h1>
+          <h1>查閱學生上課時間表</h1>
         </div>
       </header>
 
@@ -24,7 +23,7 @@
       </section>
 
       <section v-if="students.length > 0" class="selector-section">
-        <h2>Student</h2>
+        <h2>查閱學生上課時間表 (請選擇學生)</h2>
         <input
           v-model.trim="studentSearch"
           class="search-input"
@@ -46,7 +45,7 @@
       </section>
 
       <button type="button" class="primary-btn" :disabled="!selectedStudent" @click="goToResult">
-        View Timetable
+        Submit
       </button>
     </section>
   </main>

@@ -1,9 +1,9 @@
 <template>
   <div class="admin-panel">
-    <h2>User Management</h2>
+    <h2>使用者管理</h2>
 
     <section class="add-section">
-      <h3>Add User</h3>
+      <h3>新增用戶</h3>
       <input v-model="newTeacher.user_name" placeholder="Name" />
       <input v-model="newTeacher.email" placeholder="Email" />
       <input v-model="newTeacher.password" type="password" placeholder="Password" />
@@ -11,20 +11,20 @@
         <option value="teacher">Teacher</option>
         <option value="staff">Staff</option>
       </select>
-      <button @click="addTeacher">Add</button>
+      <button @click="addTeacher">新增</button>
     </section>
 
     <section class="table-section">
-      <h3>All Users</h3>
-      <button @click="fetchTeachers">Refresh</button>
+      <h3>所有老師帳戶</h3>
+      <button @click="fetchTeachers">重新整理</button>
       <table>
         <thead>
           <tr>
-            <th>Name</th>
+            <th>姓名</th>
             <th>Email</th>
             <th>Role</th>
-            <th>New Password</th>
-            <th>Actions</th>
+            <th>新密碼</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -39,8 +39,8 @@
             </td>
             <td><input v-model="teacher.newPassword" placeholder="Enter new password" /></td>
             <td>
-              <button @click="updateTeacher(teacher)">Save</button>
-              <button @click="deleteTeacher(teacher.user_id)">Delete</button>
+              <button @click="updateTeacher(teacher)">儲存</button>
+              <button @click="deleteTeacher(teacher.user_id)">刪除</button>
             </td>
           </tr>
         </tbody>
@@ -73,7 +73,11 @@ export default {
           newPassword: ''
         }));
       } catch (err) {
-        alert('Failed to load users.');
+        const status = err.response ? err.response.status : 0;
+        const message = status === 403
+          ? 'Failed to load users. This account must be manager role.'
+          : 'Failed to load users. Please check login token and server connection.';
+        alert(message);
       }
     },
     async updateTeacher(teacher) {

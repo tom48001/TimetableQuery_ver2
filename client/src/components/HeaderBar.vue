@@ -2,17 +2,18 @@
   <header class="header">
     <div class="top-row">
       <h1>
-        <router-link to="/home">Timetable Query System</router-link>
+        <router-link to="/home">聖公會聖馬利亞堂莫慶堯中學行政管理系統</router-link>
       </h1>
 
       <div class="account-info">
-        <span v-if="userRole" class="role-badge">Role: {{ displayRole }}</span>
+        <span v-if="displayUserName" class="user-badge">用戶名稱: {{ displayUserName }}</span>
+        <span v-if="showRoleBadge" class="role-badge">Role: {{ displayRole }}</span>
         <router-link
           v-if="userRole === 'teacher'"
           to="/change-password"
           class="account-link"
         >
-          Change Password
+          更改密碼
         </router-link>
         <button @click="handleLogout" class="logout-btn">Logout</button>
       </div>
@@ -22,32 +23,32 @@
 
     <div class="menu">
       <span class="main-menu" @mouseover="switchMenu('SubMenu1', $event)" @mouseout="hideMenu">
-        Timetable
+        時間表應用
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu1" class="sub-menu" style="display: none;">
-          <li><router-link to="/TeacherTimetable">Teacher Timetable</router-link></li>
-          <li><router-link to="/ClassObservation">Class Observation</router-link></li>
-          <li><router-link to="/SwapLesson">Swap Lesson</router-link></li>
-          <li><router-link to="/FreeTeacher">Free Teacher</router-link></li>
-          <li><router-link to="/ClassTimetable">Class Timetable</router-link></li>
-          <li><router-link to="/RoomTimetable">Room Timetable</router-link></li>
-          <li><router-link to="/Electives">Electives</router-link></li>
-          <li><router-link to="/StdTimetable">Student Timetable</router-link></li>
+          <li><router-link to="/TeacherTimetable">老師上課與空堂時間表</router-link></li>
+          <li><router-link to="/ClassObservation">觀課課堂</router-link></li>
+          <li><router-link to="/SwapLesson">調課搜尋</router-link></li>
+          <li><router-link to="/FreeTeacher">空堂老師 / 課堂總表</router-link></li>
+          <li><router-link to="/ClassTimetable">各班上課時間表</router-link></li>
+          <li><router-link to="/RoomTimetable">各房間上課時間表</router-link></li>
+          <li><router-link to="/Electives">高中選修名單</router-link></li>
+          <li><router-link to="/StdTimetable">學生上課時間表</router-link></li>
         </ul>
       </span>
 
       <span class="main-menu" @mouseover="switchMenu('SubMenu2', $event)" @mouseout="hideMenu">
-        Students
+        提名學生
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu2" class="sub-menu" style="display: none;">
-          <li><router-link to="/BLA">BLA Vote</router-link></li>
-          <li><router-link to="/BLAResult">BLA Result</router-link></li>
-          <li><router-link to="/ConductAward">Conduct Award Vote</router-link></li>
-          <li><router-link to="/ConductAwardResult">Conduct Award Result</router-link></li>
-          <li><router-link to="/LearningGoalEntry">學習目標輸入</router-link></li>
-          <li><router-link to="/LearningGoalResult">學習目標獎勵結果</router-link></li>
-          <li><router-link to="/PrefectNomination">風紀提名</router-link></li>
-          <li><router-link to="/PrefectNominationResult">風紀提名結果</router-link></li>
+          <li><router-link to="/BLA">最佳學習態度提名</router-link></li>
+          <li><router-link to="/BLAResult">最佳學習態度提名結果</router-link></li>
+          <li><router-link to="/ConductAward">操行獎提名</router-link></li>
+          <li><router-link to="/ConductAwardResult">操行獎提名統計結果</router-link></li>
+          <li><router-link to="/LearningGoalEntry">輸入完成學習目標數目</router-link></li>
+          <li><router-link to="/LearningGoalResult">學習目標獎勵計劃結果</router-link></li>
+          <li><router-link to="/PrefectNomination">紀律領袖生提名</router-link></li>
+          <li><router-link to="/PrefectNominationResult">紀律領袖生提名統計結果</router-link></li>
         </ul>
       </span>
 
@@ -57,11 +58,11 @@
         @mouseover="switchMenu('SubMenu3', $event)"
         @mouseout="hideMenu"
       >
-        Management
+        使用者管理
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu3" class="sub-menu" style="display: none;">
-          <li><router-link to="/editTeacher">Manage Users</router-link></li>
-          <li><router-link to="/ImportTeacher">Import Timetable</router-link></li>
+          <li><router-link to="/editTeacher">管理用戶</router-link></li>
+          <li><router-link to="/ImportTeacher">導入時間表</router-link></li>
         </ul>
       </span>
     </div>
@@ -73,10 +74,20 @@ export default {
   data() {
     return {
       userRole: null,
+      userName: '',
+      userEmail: '',
       visibleMenu: ''
     };
   },
   computed: {
+    displayUserName() {
+      if (this.userName) return this.userName;
+      if (this.userEmail) return this.userEmail.split('@')[0];
+      return '';
+    },
+    showRoleBadge() {
+      return this.userRole === 'staff' || this.userRole === 'manager';
+    },
     displayRole() {
       if (!this.userRole) return '';
       return this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1);
@@ -88,6 +99,8 @@ export default {
       try {
         const parsedUser = JSON.parse(user);
         this.userRole = parsedUser.role ? parsedUser.role.trim().toLowerCase() : 'teacher';
+        this.userName = parsedUser.user_name || parsedUser.userName || '';
+        this.userEmail = parsedUser.email || '';
       } catch (error) {
         console.error('Error parsing user data:', error);
       }
@@ -166,13 +179,19 @@ h1 a {
   gap: 12px;
 }
 
-.role-badge {
+.role-badge,
+.user-badge {
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--primary-dark);
   background: var(--primary-soft);
   padding: 6px 10px;
   font-weight: 600;
+}
+
+.user-badge {
+  background: #fff;
+  color: var(--text);
 }
 
 .account-link {

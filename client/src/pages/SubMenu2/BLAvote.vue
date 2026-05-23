@@ -1,29 +1,50 @@
 <template>
   <main class="student-page">
-    <h1>選擇學生</h1>
+    <section class="student-panel">
+      <header class="page-header">
+        <div>
+          <h1>選擇學生</h1>
+        </div>
+        <span class="count-badge">{{ selectedCount }} 位已選</span>
+      </header>
 
-    <div class="table-wrap">
-      <table v-if="studentRows.length" class="student-table">
-        <tbody>
-          <tr v-for="(row, rowIndex) in studentRows" :key="rowIndex">
-            <td v-for="cellIndex in columns" :key="cellIndex">
-              <label v-if="row[cellIndex - 1]" class="student-option">
-                <input
-                  type="checkbox"
-                  :value="row[cellIndex - 1].student_id"
-                  v-model="selectedStudents[row[cellIndex - 1].class_id]"
-                />
-                <span>{{ studentNumber(row[cellIndex - 1]) }} {{ row[cellIndex - 1].student_name }}</span>
-              </label>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-if="selectedSubject.subject_name" class="context-row">
+        <span>科目</span>
+        <strong>{{ selectedSubject.subject_name }}</strong>
+      </div>
+
+      <div v-if="allStudents.length" class="class-sections">
+        <section
+          v-for="classId in selectedClass"
+          :key="classId"
+          class="class-section"
+        >
+          <h2>{{ className(classId) }}</h2>
+          <div class="student-grid">
+            <label
+              v-for="student in studentsByClass[classId]"
+              :key="student.student_id"
+              class="student-card"
+              :class="{ selected: isSelected(classId, student.student_id) }"
+            >
+              <input
+                type="checkbox"
+                :value="student.student_id"
+                v-model="selectedStudents[classId]"
+              />
+              <span class="student-number">{{ studentNumber(student) }}</span>
+              <span class="student-name">{{ student.student_name }}</span>
+            </label>
+          </div>
+        </section>
+      </div>
 
       <p v-else class="state-text">載入中...</p>
-    </div>
 
-    <button type="button" @click="submitNomination">Submit</button>
+      <button type="button" class="primary-btn" @click="submitNomination">
+        提交
+      </button>
+    </section>
   </main>
 </template>
 
@@ -42,7 +63,6 @@ function parseJson(value, fallback) {
 export default {
   data() {
     return {
-      columns: 5,
       selectedSubject: parseJson(this.$route.query.selectedSubject, {}),
       selectedClass: parseJson(this.$route.query.selectedClass, []),
       studentsByClass: {},
@@ -55,17 +75,20 @@ export default {
     allStudents() {
       return this.selectedClass.flatMap(classId => this.studentsByClass[classId] || []);
     },
-    studentRows() {
-      const rows = [];
-      for (let index = 0; index < this.allStudents.length; index += this.columns) {
-        rows.push(this.allStudents.slice(index, index + this.columns));
-      }
-      return rows;
+    selectedCount() {
+      return Object.values(this.selectedStudents).flat().length;
     }
   },
   methods: {
     studentNumber(student) {
       return String(student.class_number || '').padStart(2, '0');
+    },
+    className(classId) {
+      const students = this.studentsByClass[classId] || [];
+      return students[0] && students[0].class_name ? students[0].class_name : `班別 ${classId}`;
+    },
+    isSelected(classId, studentId) {
+      return (this.selectedStudents[classId] || []).includes(studentId);
     },
     async getTeacherId() {
       const token = localStorage.getItem('token');
@@ -167,7 +190,7 @@ export default {
         this.$router.push({ name: 'BLA' });
       } catch (err) {
         console.error('Failed to submit BLA nomination:', err);
-        alert('提交失敗。');
+        alert('\u63d0\u4ea4\u5931\u6557\u3002');
       }
     }
   },
@@ -188,83 +211,173 @@ export default {
 .student-page {
   box-sizing: border-box;
   min-height: calc(100vh - 126px);
-  padding: 14px 20px 48px;
-  background: #fff;
-  color: #000;
+  padding: 42px 20px 56px;
+}
+
+.student-panel {
+  max-width: 1080px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  padding: 26px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.page-header p {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  text-transform: uppercase;
 }
 
 h1 {
-  margin: 0 0 28px;
-  text-align: center;
+  color: var(--text);
   font-size: 32px;
-  font-weight: 800;
   letter-spacing: 0;
+  margin: 0;
 }
 
-.table-wrap {
-  max-width: 1010px;
-  margin: 0 auto;
-  overflow-x: auto;
+.count-badge,
+.context-row {
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-weight: 800;
 }
 
-.student-table {
-  width: 100%;
-  border: 1px solid #444;
-  border-collapse: separate;
-  border-spacing: 2px;
-  background: #fff;
-}
-
-.student-table td {
-  width: 20%;
-  border: 1px solid #666;
-  height: 24px;
-  padding: 2px 6px;
-  font-size: 16px;
-  line-height: 1.25;
-  vertical-align: middle;
-}
-
-.student-option {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
+.count-badge {
+  padding: 9px 14px;
   white-space: nowrap;
 }
 
-.student-option input {
-  width: 13px;
-  height: 13px;
-  margin: 0;
+.context-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 8px 14px;
+}
+
+.context-row span {
+  color: #6b8391;
+}
+
+.context-row strong {
+  color: var(--text);
+}
+
+.class-sections {
+  display: grid;
+  gap: 18px;
+}
+
+.class-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 16px;
+}
+
+h2 {
+  color: var(--text);
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+
+.student-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.student-card {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+
+.student-card:hover,
+.student-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.student-card input {
+  accent-color: var(--primary);
+}
+
+.student-number {
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.student-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .state-text {
-  border: 1px solid #777;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
   margin: 0;
-  padding: 24px;
+  padding: 28px;
   text-align: center;
 }
 
-button {
+.primary-btn {
   display: block;
-  border: 1px solid #555;
-  border-radius: 4px;
-  background: #f4f4f4;
-  color: #000;
+  min-width: 96px;
+  height: 46px;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary);
+  color: #fff;
   cursor: pointer;
-  font-size: 14px;
-  margin: 18px auto 0;
-  padding: 3px 10px;
+  font-size: 15px;
+  font-weight: 800;
+  margin: 22px auto 0;
+  padding: 0 22px;
 }
 
-button:hover {
-  background: #e7e7e7;
+.primary-btn:hover {
+  background: var(--primary-dark);
 }
 
-@media (max-width: 760px) {
-  .student-table {
-    min-width: 920px;
+@media (max-width: 720px) {
+  .student-panel {
+    padding: 20px;
+  }
+
+  .page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .student-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

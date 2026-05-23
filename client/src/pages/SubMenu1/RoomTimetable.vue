@@ -3,34 +3,53 @@
     <section class="selector-panel">
       <header class="page-header">
         <div>
-          <p>Timetable</p>
-          <h1>Room Timetable</h1>
+          <h1>各房間上課時間表</h1>
         </div>
-        <span class="count-badge">{{ filteredRooms.length }} rooms</span>
+        <span class="count-badge">{{ filteredRooms.length }} / {{ roomList.length }} rooms</span>
       </header>
 
-      <input
-        v-model.trim="searchText"
-        class="search-input"
-        type="text"
-        placeholder="Search room..."
-      />
+      <div class="toolbar">
+        <input
+          v-model.trim="searchText"
+          class="search-input"
+          type="text"
+          placeholder="搜尋房間，例如 301、音樂室、操場"
+        />
 
-      <div class="option-grid">
+        <div class="floor-tabs" aria-label="room filters">
+          <button
+            v-for="filter in roomFilters"
+            :key="filter.value"
+            type="button"
+            :class="{ active: selectedFilter === filter.value }"
+            @click="selectedFilter = filter.value"
+          >
+            {{ filter.label }}
+          </button>
+        </div>
+      </div>
+
+      <div class="room-list" v-if="filteredRooms.length">
         <label
           v-for="room in filteredRooms"
           :key="room.room_id"
-          class="option-card"
+          class="room-card"
           :class="{ selected: selectedRoom === room.room_id }"
         >
           <input type="radio" :value="room.room_id" v-model="selectedRoom" />
-          <span>{{ room.room_name }}</span>
+          <span class="room-code">{{ roomCode(room.room_name) }}</span>
+          <span class="room-name">{{ roomLabel(room.room_name) }}</span>
         </label>
       </div>
 
-      <button type="button" class="primary-btn" :disabled="!selectedRoom" @click="searchSchedule">
-        View Timetable
-      </button>
+      <p v-else class="empty-message">找不到房間</p>
+
+      <footer class="footer-actions">
+        <span>{{ selectedRoomName || '請先選擇一個房間' }}</span>
+        <button type="button" class="primary-btn" :disabled="!selectedRoom" @click="searchSchedule">
+          查看時間表
+        </button>
+      </footer>
     </section>
   </main>
 </template>
@@ -38,27 +57,77 @@
 <script>
 import axios from 'axios';
 
+const ROOM_FILTERS = [
+  { label: '全部', value: 'all' },
+  { label: '1/F', value: '1' },
+  { label: '2/F', value: '2' },
+  { label: '3/F', value: '3' },
+  { label: '4/F', value: '4' },
+  { label: '5/F', value: '5' },
+  { label: '6/F+', value: '6plus' },
+  { label: '7/F+', value: '7plus' },
+  { label: '特別室', value: 'special' }
+];
+
 export default {
   data() {
     return {
       roomList: [],
       selectedRoom: '',
-      searchText: ''
+      searchText: '',
+      selectedFilter: 'all',
+      roomFilters: ROOM_FILTERS
     };
   },
   computed: {
     filteredRooms() {
       const keyword = this.searchText.toLowerCase();
-      if (!keyword) return this.roomList;
-      return this.roomList.filter(room =>
-        String(room.room_name || '').toLowerCase().includes(keyword)
-      );
+
+      return this.roomList.filter(room => {
+        const roomName = String(room.room_name || '');
+        const lowerName = roomName.toLowerCase();
+        const matchesSearch = !keyword || lowerName.includes(keyword);
+        const matchesFilter = this.matchesFilter(roomName);
+        return matchesSearch && matchesFilter;
+      });
+    },
+    selectedRoomName() {
+      const selected = this.roomList.find(room => room.room_id === this.selectedRoom);
+      return selected ? selected.room_name : '';
     }
   },
   mounted() {
     this.loadRooms();
   },
   methods: {
+    roomCode(roomName) {
+      const match = String(roomName || '').match(/^(\S+)/);
+      return match ? match[1] : roomName;
+    },
+    roomLabel(roomName) {
+      const code = this.roomCode(roomName);
+      return String(roomName || '').replace(code, '').trim() || '課室';
+    },
+    matchesFilter(roomName) {
+      if (this.selectedFilter === 'all') return true;
+
+      const code = this.roomCode(roomName);
+      const firstDigit = code.match(/^\d/) ? code.charAt(0) : '';
+
+      if (this.selectedFilter === '6plus') {
+        return ['6'].includes(firstDigit);
+      }
+
+      if (this.selectedFilter === '7plus') {
+        return ['7'].includes(firstDigit);
+      }
+
+      if (this.selectedFilter === 'special') {
+        return !firstDigit;
+      }
+
+      return firstDigit === this.selectedFilter;
+    },
     async loadRooms() {
       const token = localStorage.getItem('token');
       const res = await axios.get('http://localhost:3000/api/rooms', {
@@ -84,17 +153,18 @@ export default {
 }
 
 .selector-panel {
-  max-width: 820px;
+  max-width: 980px;
   margin: 0 auto;
-  border: 1px solid #d1e0e5;
+  border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 38px rgba(25, 54, 69, 0.12);
+  box-shadow: var(--shadow);
   box-sizing: border-box;
   padding: 26px;
 }
 
-.page-header {
+.page-header,
+.footer-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -102,92 +172,163 @@ export default {
 }
 
 .page-header p {
-  color: #0d6b78;
+  color: var(--primary);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   margin: 0 0 8px;
   text-transform: uppercase;
 }
 
 h1 {
-  color: #122635;
+  color: var(--text);
   font-size: 32px;
   letter-spacing: 0;
   margin: 0;
 }
 
 .count-badge {
-  border: 1px solid #b8cad3;
-  border-radius: 6px;
-  background: #f7fafb;
-  color: #27485b;
-  font-weight: 700;
-  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-weight: 800;
+  padding: 9px 14px;
+  white-space: nowrap;
+}
+
+.toolbar {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
 }
 
 .search-input {
   width: 100%;
   height: 44px;
-  border: 1px solid #b8cad3;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   box-sizing: border-box;
+  color: var(--text);
   font-size: 15px;
-  margin-top: 22px;
   padding: 0 12px;
 }
 
-.option-grid {
-  max-height: 460px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 8px;
-  overflow-y: auto;
-  margin-top: 18px;
+.search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(11, 114, 133, 0.13);
+  outline: none;
 }
 
-.option-card {
-  min-height: 40px;
+.floor-tabs {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid #d7e2e7;
-  border-radius: 6px;
-  background: #fff;
-  color: #243f51;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  padding: 6px 9px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.option-card:hover,
-.option-card.selected {
-  border-color: #0b7285;
-  background: #e0f1f2;
+.floor-tabs button {
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0 14px;
+}
+
+.floor-tabs button:hover,
+.floor-tabs button.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
   color: #0a5260;
 }
 
-.option-card span {
+.room-list {
+  max-height: 480px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  margin-top: 18px;
+  padding: 12px;
+}
+
+.room-card {
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  padding: 9px 11px;
+}
+
+.room-card:hover,
+.room-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.room-card input {
+  accent-color: var(--primary);
+}
+
+.room-code {
+  min-width: 46px;
+  border-radius: 999px;
+  background: #e7f4f6;
+  color: #0a5260;
+  font-weight: 800;
+  padding: 5px 8px;
+  text-align: center;
+}
+
+.room-name {
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.option-card input {
-  accent-color: #0b7285;
+.empty-message {
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
+  margin: 18px 0 0;
+  padding: 28px;
+  text-align: center;
+}
+
+.footer-actions {
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-top: 18px;
 }
 
 .primary-btn {
   height: 48px;
   border: none;
   border-radius: 6px;
-  background: #0b7285;
+  background: var(--primary);
   color: #fff;
   cursor: pointer;
   font-size: 15px;
-  font-weight: 700;
-  margin-top: 22px;
+  font-weight: 800;
   padding: 0 22px;
+}
+
+.primary-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
 }
 
 .primary-btn:disabled {
@@ -201,9 +342,14 @@ h1 {
     padding: 20px;
   }
 
-  .page-header {
+  .page-header,
+  .footer-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .room-list {
+    grid-template-columns: 1fr;
   }
 
   .primary-btn {

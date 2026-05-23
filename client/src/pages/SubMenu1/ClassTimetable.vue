@@ -3,10 +3,8 @@
     <section class="selector-panel">
       <header class="page-header">
         <div>
-          <p>Timetable</p>
-          <h1>Class Timetable</h1>
+          <h1>各班上課時間表</h1>
         </div>
-        <span class="count-badge">{{ filteredClasses.length }} classes</span>
       </header>
 
       <input
@@ -29,7 +27,7 @@
       </div>
 
       <button type="button" class="primary-btn" :disabled="!selectedClass" @click="goToResult">
-        View Timetable
+        Submit
       </button>
     </section>
   </main>

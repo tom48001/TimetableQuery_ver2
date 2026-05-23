@@ -1,10 +1,9 @@
 <template>
   <main class="import-page">
     <section class="import-intro">
-      <p class="eyebrow">Management</p>
-      <h1>Import Timetable</h1>
+      <h1>導入時間表</h1>
       <p class="intro-copy">
-        &#x4E0A;&#x8F09; Excel &#x8AB2;&#x8868;&#x5F8C;&#xFF0C;&#x7CFB;&#x7D71;&#x6703;&#x6AA2;&#x67E5;&#x8001;&#x5E2B;&#x3001;&#x73ED;&#x5225;&#x3001;&#x79D1;&#x76EE;&#x3001;&#x8AB2;&#x5BA4;&#x53CA;&#x7BC0;&#x6578;&#x8CC7;&#x6599;&#x3002;
+        上載 Excel 課表後，系統會檢查老師、班別、科目、課室及節數資料。
       </p>
     </section>
 
@@ -30,10 +29,10 @@
         >
           <span class="file-mark" aria-hidden="true">XLSX</span>
           <strong v-if="file">{{ file.name }}</strong>
-          <strong v-else>&#x9078;&#x64C7; Excel &#x6A94;&#x6848;</strong>
+          <strong v-else>選擇 Excel 檔案</strong>
           <span v-if="file" class="file-meta">{{ fileSize }}</span>
-          <span v-else class="file-meta">&#x53EA;&#x63A5;&#x53D7; .xlsx</span>
-          <span class="pick-file">&#x9078;&#x64C7;&#x6A94;&#x6848;</span>
+          <span v-else class="file-meta">只接受 .xlsx</span>
+          <span class="pick-file">選擇檔案</span>
         </label>
 
         <div class="upload-actions">
@@ -64,9 +63,9 @@
       </div>
 
       <div class="format-panel">
-        <h2>Excel &#x683C;&#x5F0F;</h2>
+        <h2>Excel 格式</h2>
         <div class="format-note">
-          <span>&#x5DE5;&#x4F5C;&#x8868;&#x540D;&#x7A31;</span>
+          <span>工作表名稱</span>
           <strong>Timetable</strong>
         </div>
 
@@ -98,7 +97,7 @@
         <ul>
           <li>day: Mon, Tue, Wed, Thu, Fri</li>
           <li>period: Period 1, P1, or 1</li>
-          <li>&#x6A94;&#x6848;&#x7B2C;&#x4E00;&#x5217;&#x8981;&#x4F7F;&#x7528;&#x4E0A;&#x9762;&#x7684;&#x6B04;&#x4F4D;&#x540D;&#x7A31;</li>
+          <li>檔案第一列要使用上面的欄位名稱</li>
         </ul>
       </div>
     </section>
@@ -244,28 +243,28 @@ export default {
 
 <style scoped>
 .import-page {
-  max-width: 1080px;
+  max-width: 1120px;
   min-height: calc(100vh - 130px);
   margin: 0 auto;
-  padding: 54px 28px 72px;
-  color: #163042;
+  padding: 44px 28px 72px;
+  color: var(--text);
 }
 
 .import-intro {
-  max-width: 700px;
-  margin: 0 0 30px;
+  max-width: 720px;
+  margin: 0 0 24px;
 }
 
 .eyebrow {
-  color: #0d6b78;
+  color: var(--primary);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   margin: 0 0 8px;
   text-transform: uppercase;
 }
 
 h1 {
-  color: #122635;
+  color: var(--text);
   font-size: 36px;
   line-height: 1.15;
   letter-spacing: 0;
@@ -273,7 +272,7 @@ h1 {
 }
 
 .intro-copy {
-  color: #355367;
+  color: var(--text-muted);
   font-size: 16px;
   line-height: 1.6;
   margin: 0;
@@ -281,17 +280,17 @@ h1 {
 
 .import-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(360px, 0.95fr);
+  grid-template-columns: minmax(340px, 0.95fr) minmax(420px, 1.05fr);
   gap: 22px;
   align-items: start;
 }
 
 .upload-panel,
 .format-panel {
-  border: 1px solid rgba(25, 66, 85, 0.16);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 18px 44px rgba(19, 46, 64, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
 }
 
 .upload-panel {
@@ -307,7 +306,7 @@ h1 {
 }
 
 .drop-zone {
-  min-height: 286px;
+  min-height: 260px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -315,8 +314,8 @@ h1 {
   gap: 13px;
   border: 2px dashed #80a9b7;
   border-radius: 8px;
-  background: #eef7f8;
-  color: #17374d;
+  background: var(--primary-soft);
+  color: var(--text);
   cursor: pointer;
   text-align: center;
   transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
@@ -324,7 +323,7 @@ h1 {
 
 .drop-zone.dragging,
 .drop-zone:hover {
-  border-color: #0d6b78;
+  border-color: var(--primary);
   background: #e0f1f2;
   transform: translateY(-1px);
 }
@@ -340,7 +339,7 @@ h1 {
   background: #17614d;
   color: #fff;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   padding: 16px 12px;
 }
 
@@ -354,16 +353,16 @@ h1 {
 }
 
 .file-meta {
-  color: #557182;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
 .pick-file {
-  border: 1px solid #8db1bc;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   background: #fff;
-  color: #17374d;
-  font-weight: 600;
+  color: var(--text);
+  font-weight: 700;
   padding: 10px 15px;
 }
 
@@ -380,20 +379,25 @@ button {
   margin: 0;
   border: none;
   border-radius: 6px;
+  cursor: pointer;
   padding: 0 20px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .upload-button {
-  background: #0b7285;
+  background: var(--primary);
   color: #fff;
 }
 
+.upload-button:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
 .clear-button {
-  border: 1px solid #b8c8d1;
+  border: 1px solid var(--border-strong);
   background: #fff;
-  color: #244152;
+  color: var(--text);
 }
 
 button:disabled {
@@ -407,10 +411,10 @@ button:disabled {
   min-height: 68px;
   box-sizing: border-box;
   white-space: pre-wrap;
-  border: 1px solid #d4e0e5;
+  border: 1px solid var(--border);
   border-radius: 8px;
   background: #f5f8fa;
-  color: #18364a;
+  color: var(--text);
   line-height: 1.5;
   margin: 18px 0 0;
   padding: 15px;
@@ -433,7 +437,7 @@ button:disabled {
 }
 
 h2 {
-  color: #122635;
+  color: var(--text);
   font-size: 22px;
   letter-spacing: 0;
   margin: 0 0 16px;
@@ -444,25 +448,25 @@ h2 {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  border: 1px solid #d1e0e5;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #f7fafb;
+  background: var(--surface-soft);
   padding: 13px 14px;
   margin-bottom: 18px;
 }
 
 .format-note span {
-  color: #4d6879;
+  color: var(--text-muted);
 }
 
 .format-note strong {
-  color: #0d6b78;
+  color: var(--primary);
   font-size: 16px;
 }
 
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid #d6e2e6;
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 
@@ -475,28 +479,32 @@ table {
 
 th,
 td {
-  border-bottom: 1px solid #e3ecef;
+  border-bottom: 1px solid var(--border);
   padding: 12px 10px;
   text-align: left;
   white-space: nowrap;
 }
 
 th {
-  background: #dceff1;
-  color: #12374b;
-  font-weight: 700;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-weight: 800;
 }
 
 td {
-  color: #355367;
+  color: var(--text-muted);
 }
 
 ul {
-  color: #355367;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfdfd;
+  color: var(--text-muted);
   font-size: 14px;
   line-height: 1.7;
+  list-style-position: inside;
   margin: 18px 0 0;
-  padding-left: 20px;
+  padding: 14px 16px;
 }
 
 @media (max-width: 820px) {

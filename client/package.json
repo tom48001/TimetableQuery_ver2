@@ -16,9 +16,6 @@
   "dependencies": {
     "axios": "^0.27.2",
     "core-js": "^3.44.0",
-    "dotenv": "^16.4.7",
-    "google-auth-library": "^9.15.1",
-    "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1"

@@ -3,13 +3,12 @@
     <section class="elective-panel">
       <header class="page-header">
         <div>
-          <p>Timetable</p>
-          <h1>Elective Students</h1>
+          <h1>高中選修名單</h1>
         </div>
       </header>
 
       <section class="selector-section">
-        <h2>Form</h2>
+        <h2>級別</h2>
         <div class="form-grid">
           <label
             v-for="formLevel in ['F4', 'F5', 'F6']"
@@ -24,7 +23,7 @@
       </section>
 
       <section class="selector-section">
-        <h2>Subject</h2>
+        <h2>科目</h2>
         <input
           v-model.trim="searchText"
           class="search-input"
@@ -45,7 +44,7 @@
       </section>
 
       <button type="button" class="primary-btn" @click="goNext">
-        View Elective Students
+        Submit
       </button>
     </section>
   </main>

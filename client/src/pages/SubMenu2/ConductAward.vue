@@ -14,7 +14,7 @@
       </label>
     </div>
     <div class="button-container">
-      <button @click="goNext">下一步</button>
+      <button @click="goNext">Submit</button>
     </div>
   </div>
 </template>

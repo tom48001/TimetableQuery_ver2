@@ -3,7 +3,6 @@
     <section class="page-panel">
       <header class="page-header">
         <div>
-          <p>Result</p>
           <h1>操行獎提名統計結果</h1>
         </div>
         <span class="summary-pill">{{ nominationResults.length }} 名學生</span>

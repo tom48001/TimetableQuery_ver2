@@ -3,15 +3,14 @@
     <section class="teacher-panel">
       <header class="page-header">
         <div>
-          <p>Timetable</p>
-          <h1>Teacher Timetable</h1>
+          <h1>上課與空堂時間表(可選一人或多人)</h1>
         </div>
         <span class="count-badge">{{ selectedTeacherId.length }} selected</span>
       </header>
 
       <div class="toolbar">
         <label class="search-box">
-          <span>Search teacher</span>
+          <span>搜尋老師</span>
           <input
             v-model.trim="searchText"
             type="text"
@@ -21,10 +20,10 @@
 
         <div class="toolbar-actions">
           <button type="button" class="secondary-btn" @click="selectVisibleTeachers">
-            Select shown
+            選擇全部
           </button>
           <button type="button" class="secondary-btn" @click="clearSelection">
-            Clear
+            清除
           </button>
         </div>
       </div>
@@ -62,7 +61,7 @@
       <footer class="footer-actions">
         <span>{{ filteredTeachers.length }} of {{ teachers.length }} teachers shown</span>
         <button type="button" class="primary-btn" @click="goNext">
-          View Timetable
+          Submit
         </button>
       </footer>
     </section>

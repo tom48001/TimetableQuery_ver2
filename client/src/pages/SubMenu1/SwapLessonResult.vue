@@ -3,10 +3,9 @@
     <section class="result-panel">
       <header class="page-header">
         <div>
-          <p>Swap Lesson</p>
           <h1>&#x53EF;&#x4F9B;&#x8ABF;&#x8AB2;&#x7684;&#x8001;&#x5E2B;</h1>
         </div>
-        <span class="count-badge">{{ filteredTeachers.length }} available</span>
+        <span class="count-badge">{{ filteredTeachers.length }} 位老師</span>
       </header>
 
       <div class="request-summary">

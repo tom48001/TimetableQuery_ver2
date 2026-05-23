@@ -1,45 +1,52 @@
 <template>
   <main class="entry-page">
-    <h1>輸入學生完成目標總數（<br />上學期）</h1>
+    <section class="entry-panel">
+      <header class="page-header">
+        <div>
+          <h1>輸入學生完成目標總數（上學期）</h1>
+        </div>
+      </header>
 
-    <section class="class-picker">
-      <label for="classSelect">班別</label>
-      <select id="classSelect" v-model="selectedClassId" @change="fetchSelectedClassStudents">
-        <option value="">請選擇班別</option>
-        <option v-for="cls in classList" :key="cls.class_id" :value="cls.class_id">
-          {{ cls.class_name }}
-        </option>
-      </select>
+      <section class="class-picker">
+        <label for="classSelect">選擇班別</label>
+        <select id="classSelect" v-model="selectedClassId" @change="fetchSelectedClassStudents">
+          <option value="">請選擇班別</option>
+          <option v-for="cls in classList" :key="cls.class_id" :value="cls.class_id">
+            {{ cls.class_name }}
+          </option>
+        </select>
+      </section>
+
+      <form v-if="selectedClassId" class="entry-form" @submit.prevent="saveGoals">
+        <div v-if="students.length" class="student-list">
+          <label
+            v-for="student in students"
+            :key="student.student_id"
+            class="student-row"
+          >
+            <span class="student-code">{{ studentCode(student) }}</span>
+            <span class="student-name">
+              {{ student.student_name || student.student_ch_name }}
+              <small v-if="student.english_name">{{ student.english_name }}</small>
+            </span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              v-model.number="goalCounts[student.student_id]"
+              @focus="$event.target.select()"
+            />
+          </label>
+        </div>
+
+        <p v-else-if="loading" class="state-text">載入中...</p>
+        <p v-else class="state-text">沒有學生資料</p>
+
+        <button type="submit" class="primary-btn" :disabled="saving || loading || !students.length">
+          {{ saving ? '提交中...' : '提交' }}
+        </button>
+      </form>
     </section>
-
-    <form v-if="selectedClassId" class="entry-form" @submit.prevent="saveGoals">
-      <table v-if="students.length" class="entry-table">
-        <tbody>
-          <tr v-for="student in students" :key="student.student_id">
-            <td class="student-cell">
-              {{ studentCode(student) }} {{ student.student_name || student.student_ch_name }}
-              <span v-if="student.english_name">{{ student.english_name }}</span>
-            </td>
-            <td class="input-cell">
-              <input
-                type="number"
-                min="0"
-                step="1"
-                v-model.number="goalCounts[student.student_id]"
-                @focus="$event.target.select()"
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <p v-else-if="loading" class="state-text">載入中...</p>
-      <p v-else class="state-text">沒有學生資料</p>
-
-      <button type="submit" :disabled="saving || loading || !students.length">
-        {{ saving ? '提交中...' : '提交' }}
-      </button>
-    </form>
   </main>
 </template>
 
@@ -199,135 +206,176 @@ export default {
 .entry-page {
   box-sizing: border-box;
   min-height: calc(100vh - 126px);
-  padding: 4px 16px 48px;
-  background: #fff;
-  color: #000;
+  padding: 42px 20px 56px;
+}
+
+.entry-panel {
+  max-width: 940px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  padding: 26px;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-header p {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  text-transform: uppercase;
 }
 
 h1 {
-  margin: 0 0 28px;
-  text-align: center;
+  color: var(--text);
   font-size: 32px;
-  font-weight: 800;
-  line-height: 1.45;
+  line-height: 1.25;
   letter-spacing: 0;
+  margin: 0;
 }
 
 .class-picker {
-  display: flex;
+  display: grid;
+  grid-template-columns: 110px minmax(180px, 260px);
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin: 0 auto 18px;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  margin-bottom: 18px;
+  padding: 16px;
 }
 
 .class-picker label {
-  font-size: 18px;
-  font-weight: 700;
+  color: var(--text-muted);
+  font-weight: 800;
 }
 
 .class-picker select {
-  min-width: 160px;
-  border: 1px solid #777;
-  border-radius: 4px;
+  height: 42px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
   background: #fff;
-  font-size: 16px;
-  padding: 5px 8px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 0 10px;
 }
 
 .entry-form {
-  max-width: 374px;
-  margin: 0 auto;
+  margin: 0;
 }
 
-.entry-table {
-  width: 100%;
-  border: 1px solid #444;
-  border-collapse: separate;
-  border-spacing: 2px;
+.student-list {
+  display: grid;
+  gap: 8px;
+}
+
+.student-row {
+  display: grid;
+  grid-template-columns: 84px 1fr 96px;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   background: #fff;
+  padding: 10px 12px;
 }
 
-.entry-table td {
-  border: 1px solid #777;
-  padding: 3px 5px;
+.student-code {
+  border-radius: 999px;
+  background: #e7f4f6;
+  color: #0a5260;
+  font-weight: 800;
+  justify-self: start;
+  padding: 5px 9px;
+}
+
+.student-name {
+  min-width: 0;
+  color: var(--text);
   font-size: 16px;
-  line-height: 1.25;
-  vertical-align: middle;
+  font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
-.student-cell {
-  width: 270px;
+.student-name small {
+  color: var(--text-muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 2px;
 }
 
-.student-cell span {
-  margin-left: 4px;
-}
-
-.input-cell {
-  width: 96px;
-}
-
-.input-cell input {
-  width: 52px;
-  height: 20px;
-  border: 1px solid #888;
-  border-radius: 3px;
+.student-row input {
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
   box-sizing: border-box;
-  font-size: 15px;
-  padding: 1px 4px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+  padding: 0 10px;
+}
+
+.student-row input:focus,
+.class-picker select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(11, 114, 133, 0.13);
+  outline: none;
 }
 
 .state-text {
-  border: 1px solid #999;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
   margin: 0;
-  padding: 18px;
+  padding: 28px;
   text-align: center;
 }
 
-button {
+.primary-btn {
   display: block;
-  min-width: 92px;
-  border: 1px solid #444;
-  border-radius: 4px;
-  background: #f4f4f4;
-  color: #000;
+  min-width: 96px;
+  height: 46px;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary);
+  color: #fff;
   cursor: pointer;
-  font-size: 16px;
-  font-weight: 700;
-  margin: 18px auto 0;
-  padding: 7px 16px;
+  font-size: 15px;
+  font-weight: 800;
+  margin: 22px auto 0;
+  padding: 0 22px;
 }
 
-button:hover:not(:disabled) {
-  background: #e7e7e7;
+.primary-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
 }
 
-button:disabled {
-  color: #888;
+.primary-btn:disabled {
+  background: #c7d2d8;
+  color: #607683;
   cursor: not-allowed;
 }
 
-@media (max-width: 480px) {
-  .entry-page {
-    padding-left: 10px;
-    padding-right: 10px;
+@media (max-width: 640px) {
+  .entry-panel {
+    padding: 20px;
   }
 
   h1 {
     font-size: 28px;
   }
 
-  .entry-form {
-    max-width: 100%;
-  }
-
-  .student-cell {
-    width: auto;
-  }
-
-  .input-cell {
-    width: 82px;
+  .class-picker,
+  .student-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>
