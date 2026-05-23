@@ -133,7 +133,14 @@ export default {
 
 <style scoped>
 .header {
-  background-color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 22px rgba(23, 48, 64, 0.08);
+  backdrop-filter: blur(10px);
+  padding: 12px 24px 0;
 }
 
 .top-row {
@@ -144,9 +151,13 @@ export default {
 }
 
 h1 {
-  color: #000;
+  color: var(--text);
   font-size: 24px;
   margin: 0;
+}
+
+h1 a {
+  color: var(--text);
 }
 
 .account-info {
@@ -156,47 +167,50 @@ h1 {
 }
 
 .role-badge {
-  border: 1px solid #d6e4f0;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: #24415c;
-  background: #f5f9fc;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
   padding: 6px 10px;
   font-weight: 600;
 }
 
 .account-link {
-  border: 1px solid #b8cad3;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
-  color: #24415c;
+  color: var(--text);
   background: #fff;
   padding: 8px 12px;
   font-weight: 600;
 }
 
 .account-link:hover {
-  border-color: #0b7285;
-  color: #0b7285;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .menu {
   display: flex;
-  justify-content: space-evenly;
-  background-color: #fff;
+  justify-content: center;
+  gap: 12px;
+  background: transparent;
+  padding: 8px 0 10px;
 }
 
 .main-menu {
-  color: #666;
-  background-color: #fff;
-  padding: 5px;
+  color: var(--muted);
+  background: transparent;
+  border-radius: 6px;
+  padding: 8px 12px;
   margin: 0;
   cursor: pointer;
   display: inline-block;
+  font-weight: 700;
 }
 
 .main-menu:hover {
-  color: #0069c2;
-  background-color: #cfe8fd;
-  border-radius: 8px;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
 }
 
 .arrow {
@@ -204,43 +218,46 @@ h1 {
 }
 
 .sub-menu {
-  color: #666;
-  background-color: #fff;
-  margin: 5px -5px;
-  padding: 0;
+  color: var(--text);
+  background: #fff;
+  margin: 8px -12px;
+  padding: 6px;
   list-style-type: none;
   position: absolute;
   display: none;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow);
 }
 
 .sub-menu li {
-  padding: 3px 5px;
+  padding: 0;
   text-align: left;
 }
 
 .sub-menu li:hover {
-  color: #fff;
-  background-color: #f9f9f9;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  border-radius: 6px;
 }
 
 .sub-menu a {
   text-align: left;
   display: block;
   text-decoration: none;
-  color: #666;
+  color: inherit;
+  padding: 8px 10px;
+  white-space: nowrap;
 }
 
 .sub-menu a:hover {
-  color: #696969;
-  background-color: #f9f9fb;
+  color: var(--primary-dark);
+  background: transparent;
   text-decoration: none;
 }
 
 .logout-btn {
-  background-color: #f44336;
+  background: var(--danger);
   color: white;
   padding: 8px 16px;
   border: none;
@@ -249,7 +266,7 @@ h1 {
 }
 
 .logout-btn:hover {
-  background-color: #d32f2f;
+  background: #9f302b;
 }
 
 .router-link-active {

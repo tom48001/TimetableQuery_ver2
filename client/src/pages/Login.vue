@@ -4,9 +4,10 @@
       <div class="image-holder">
         <img src="../assets/smcc1.jpg" alt="">
       </div>
+
       <div class="login">
         <h2>行政管理系統</h2>
-        <!--  手動登入 -->
+
         <form @submit.prevent="handleLogin">
           <div>
             <label for="email">帳號</label>
@@ -19,7 +20,6 @@
           <button type="submit">登入</button>
         </form>
 
-        <!--  Google 登入 -->
         <a href="http://localhost:3000/auth/google" class="google-login-link">
           <img :src="require('@/assets/google-icon.png')" alt="Google Icon" class="google-icon" />
           <span>使用 Google 登入</span>
@@ -62,12 +62,12 @@ export default {
           localStorage.setItem('user', JSON.stringify(cleanedUser));
 
           this.$router.push('/home');
-          window.location.reload(); // 強制重新整理 UI
+          window.location.reload();
         } else {
           alert(TEXT.noUser);
         }
       } catch (err) {
-        console.error('登入錯誤：', err);
+        console.error('Login failed:', err);
         const data = err.response && err.response.data ? err.response.data : {};
         const status = err.response ? err.response.status : 0;
         const fallback = status === 400 || status === 401
@@ -80,123 +80,77 @@ export default {
 };
 </script>
 
-<style>
-body {
-  font-family: "Poppins-Regular";
-  color: #333;
-  font-size: 13px;
-  margin: 0;
-}
-
-input {
-  border: none;
-  outline: none;
-  font-family: "Poppins-Regular";
-  color: #333;
-  background: transparent;
-  border-bottom: 1px solid #ccc;
-  font-size: 13px;
-}
-
-textarea,
-select,
-button {
-  border: none;
-  outline: none;
-  font-family: "Poppins-Regular";
-  color: #333;
-  background: transparent;
-  border-bottom: 1px solid #ccc;
-  font-size: 13px;
-  -webkit-border-radius: 5px;
-  border-radius: 5px;
-}
-
-input:focus {
-  border-bottom: 2px solid #000;
-}
-
-p,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-ul {
-  margin: 0 auto;
-  padding: 0;
-}
-
-img {
-  max-width: 100%;
-}
-
-a:hover {
-  text-decoration: none;
-}
-
-:focus {
-  outline: none;
-}
-
+<style scoped>
 .wrapper {
   min-height: 100vh;
-  background-color: #f0f0f0;
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, var(--app-bg-soft) 0%, var(--app-bg) 100%);
 }
 
 .inner {
-  padding: 20px;
-  background: #fff;
-  max-width: 850px;
-  margin: auto;
+  width: min(900px, 100%);
   display: flex;
+  overflow: hidden;
 }
 
-.inner .image-holder {
+.image-holder {
   width: 50%;
-  height: 50%;
+  min-height: 430px;
+  background: var(--surface-soft);
+}
+
+.image-holder img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .login {
   width: 50%;
-  padding: 20px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
-}
-
-.login form {
-  width: 150%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
+  gap: 20px;
+  padding: 44px;
 }
 
 .login h2 {
-  margin-bottom: 20px;
+  color: var(--text);
+  font-size: 30px;
+  margin: 0;
   text-align: center;
 }
 
+.login form {
+  display: grid;
+  gap: 16px;
+}
+
+.login form div {
+  display: grid;
+  gap: 8px;
+}
+
+.login label {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.login input {
+  width: 100%;
+  height: 46px;
+  padding: 0 12px;
+}
+
 button {
-  border: none;
-  width: 164px;
-  height: 51px;
-  margin: auto;
-  margin-top: 40px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: #333;
-  font-size: 15px;
-  color: #fff;
-  vertical-align: middle;
+  width: 100%;
+  height: 48px;
+  margin-top: 8px;
 }
 
 .google-login-link {
@@ -204,23 +158,41 @@ button {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background-color: white;
-  border: 1px solid #ccc;
-  padding: 10px 20px;
-  border-radius: 4px;
-  text-decoration: none;
-  color: #333;
-  font-weight: bold;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
   cursor: pointer;
+  font-weight: 700;
+  padding: 12px 20px;
   transition: background-color 0.2s ease;
 }
 
 .google-login-link:hover {
-  background-color: #f5f5f5;
+  background: var(--surface-soft);
 }
 
 .google-icon {
   width: 20px;
   height: 20px;
+}
+
+@media (max-width: 760px) {
+  .inner {
+    display: block;
+  }
+
+  .image-holder,
+  .login {
+    width: 100%;
+  }
+
+  .image-holder {
+    min-height: 180px;
+  }
+
+  .login {
+    padding: 28px;
+  }
 }
 </style>

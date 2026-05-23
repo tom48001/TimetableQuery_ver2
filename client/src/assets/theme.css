@@ -1,0 +1,207 @@
+:root {
+  --app-bg: #eef5f6;
+  --app-bg-soft: #f8fbfc;
+  --surface: #ffffff;
+  --surface-soft: #f5f9fa;
+  --border: #d4e1e6;
+  --border-strong: #aebfc7;
+  --text: #173040;
+  --muted: #607683;
+  --primary: #0b7285;
+  --primary-dark: #075f70;
+  --primary-soft: #e7f5f7;
+  --danger: #c2413a;
+  --shadow: 0 14px 34px rgba(23, 48, 64, 0.1);
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--text);
+  font-family: Arial, "Microsoft JhengHei", "PingFang TC", sans-serif;
+  font-size: 15px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, var(--app-bg-soft) 0%, var(--app-bg) 52%, #e8f0f2 100%);
+}
+
+.page-shell,
+.container,
+.schedule-container,
+.nomination-page,
+.learning-goal-page,
+.results-container,
+.electives-container,
+.subject-container {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 34px 0 56px;
+}
+
+.page-panel,
+.panel,
+.card,
+.teacher-panel,
+.result-panel,
+.pick-panel,
+.password-form,
+.inner {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: var(--shadow);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--text);
+  letter-spacing: 0;
+}
+
+h1 {
+  margin: 0 0 24px;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: 24px;
+}
+
+h3 {
+  font-size: 20px;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(11, 114, 133, 0.12);
+  outline: none;
+}
+
+button,
+.primary-btn,
+.action-btn {
+  border: none;
+  border-radius: 6px;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.app-shell button:not(.logout-btn) {
+  border: none !important;
+  border-radius: 6px !important;
+  background: var(--primary) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+.app-shell button:not(.logout-btn):hover:not(:disabled) {
+  background: var(--primary-dark) !important;
+}
+
+.app-shell button:not(.logout-btn):disabled {
+  background: #c7d2d8 !important;
+  color: var(--muted) !important;
+}
+
+.app-shell input:not([type="radio"]):not([type="checkbox"]),
+.app-shell select,
+.app-shell textarea {
+  border: 1px solid var(--border-strong) !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  color: var(--text) !important;
+}
+
+button:hover:not(:disabled),
+.primary-btn:hover:not(:disabled),
+.action-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+button:disabled,
+.primary-btn:disabled,
+.action-btn:disabled {
+  background: #c7d2d8;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+table:not(.print-table):not(.choice-table):not(.student-table):not(.entry-table) {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+table:not(.print-table):not(.choice-table):not(.student-table):not(.entry-table) th {
+  background: var(--surface-soft);
+  color: var(--text);
+  font-weight: 800;
+}
+
+table:not(.print-table):not(.choice-table):not(.student-table):not(.entry-table) th,
+table:not(.print-table):not(.choice-table):not(.student-table):not(.entry-table) td {
+  border: 1px solid var(--border);
+  padding: 8px;
+}
+
+.empty-state,
+.empty-message,
+.state-text,
+.loading {
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .page-shell,
+  .container,
+  .schedule-container,
+  .nomination-page,
+  .learning-goal-page,
+  .results-container,
+  .electives-container,
+  .subject-container {
+    width: min(100% - 20px, 1180px);
+    padding-top: 24px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+}

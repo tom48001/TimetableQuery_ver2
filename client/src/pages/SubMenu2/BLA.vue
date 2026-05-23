@@ -1,47 +1,57 @@
 <template>
-  <main class="bla-page">
-    <h1>最佳學習態度提名<br />選擇班別與科目</h1>
+  <main class="matrix-page">
+    <section class="page-panel">
+      <header class="page-header">
+        <div>
+          <p>Student Nomination</p>
+          <h1>最佳學習態度提名</h1>
+        </div>
+        <span class="summary-pill">{{ subjects.length }} 科目 / {{ classList.length }} 班別</span>
+      </header>
 
-    <div class="table-wrap">
-      <table class="choice-table">
-        <thead>
-          <tr>
-            <th class="subject-col"></th>
-            <th v-for="cls in classList" :key="cls.class_id">
-              {{ cls.class_name }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="subject in subjects" :key="subject.subject_id">
-            <th class="subject-col">{{ subject.subject_name }}</th>
-            <td
-              v-for="cls in classList"
-              :key="`${subject.subject_id}-${cls.class_id}`"
-              :class="{ unavailable: !isAvailable(subject.subject_id, cls.class_id) }"
-            >
-              <label
-                v-if="isAvailable(subject.subject_id, cls.class_id)"
-                class="choice-cell"
-                :class="{ selected: selectedChoice === choiceValue(subject, cls) }"
+      <div class="table-wrap">
+        <table class="choice-table">
+          <thead>
+            <tr>
+              <th class="subject-col">科目</th>
+              <th v-for="cls in classList" :key="cls.class_id">
+                {{ cls.class_name }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="subject in subjects" :key="subject.subject_id">
+              <th class="subject-col">{{ subject.subject_name }}</th>
+              <td
+                v-for="cls in classList"
+                :key="`${subject.subject_id}-${cls.class_id}`"
+                :class="{ unavailable: !isAvailable(subject.subject_id, cls.class_id) }"
               >
-                <input
-                  type="radio"
-                  name="subjectClass"
-                  :value="choiceValue(subject, cls)"
-                  v-model="selectedChoice"
-                />
-                <span>{{ countFor(subject.subject_id, cls.class_id) }}</span>
-              </label>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+                <label
+                  v-if="isAvailable(subject.subject_id, cls.class_id)"
+                  class="choice-cell"
+                  :class="{ selected: selectedChoice === choiceValue(subject, cls) }"
+                >
+                  <input
+                    type="radio"
+                    name="subjectClass"
+                    :value="choiceValue(subject, cls)"
+                    v-model="selectedChoice"
+                  />
+                  <span>{{ countFor(subject.subject_id, cls.class_id) }}</span>
+                </label>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-    <button type="button" :disabled="!selectedChoice" @click="goNext">
-      下一步
-    </button>
+      <footer class="actions">
+        <button type="button" :disabled="!selectedChoice" @click="goNext">
+          下一步
+        </button>
+      </footer>
+    </section>
   </main>
 </template>
 
@@ -136,124 +146,148 @@ export default {
 </script>
 
 <style scoped>
-.bla-page {
-  box-sizing: border-box;
+.matrix-page {
   min-height: calc(100vh - 126px);
-  padding: 26px 4px 48px;
-  background: #fff;
-  color: #000;
+  padding: 34px 20px 56px;
+}
+
+.page-panel {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 26px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.page-header p {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  text-transform: uppercase;
 }
 
 h1 {
-  margin: 0 0 28px;
-  text-align: center;
-  font-size: 32px;
+  margin: 0;
+  text-align: left;
+}
+
+.summary-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
   font-weight: 800;
-  line-height: 1.35;
-  letter-spacing: 0;
+  padding: 8px 13px;
+  white-space: nowrap;
 }
 
 .table-wrap {
-  max-width: 1260px;
-  margin: 0 auto;
   overflow-x: auto;
 }
 
 .choice-table {
   width: 100%;
-  min-width: 1180px;
-  border: 1px solid #444;
+  min-width: 1100px;
   border-collapse: separate;
-  border-spacing: 2px;
-  background: #fff;
+  border-spacing: 0;
 }
 
 .choice-table th,
 .choice-table td {
-  border: 1px solid #666;
-  height: 24px;
-  padding: 2px 4px;
-  font-size: 15px;
-  line-height: 1.2;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 6px;
+  text-align: center;
   vertical-align: middle;
 }
 
 .choice-table thead th {
-  text-align: center;
-  font-weight: 800;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.choice-table tbody tr:hover {
+  background: #fbfdfe;
 }
 
 .subject-col {
-  width: 126px;
-  min-width: 126px;
-  text-align: left;
-  font-weight: 700;
-}
-
-.choice-table tbody tr:nth-child(odd) td,
-.choice-table tbody tr:nth-child(odd) .subject-col {
-  background: #fffed0;
-}
-
-.choice-table tbody tr:nth-child(even) td,
-.choice-table tbody tr:nth-child(even) .subject-col {
-  background: #fff;
-}
-
-.choice-table td.unavailable {
-  background: #fff;
+  width: 154px;
+  min-width: 154px;
+  color: var(--text);
+  font-weight: 800;
+  text-align: left !important;
 }
 
 .choice-cell {
-  display: flex;
+  min-width: 44px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-width: 34px;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
   cursor: pointer;
+  padding: 5px 9px;
 }
 
 .choice-cell input {
-  width: 13px;
-  height: 13px;
   margin: 0;
 }
 
 .choice-cell span {
-  color: #f00;
-  font-size: 14px;
-}
-
-.choice-cell.selected span {
+  color: var(--primary-dark);
   font-weight: 800;
 }
 
-button {
-  display: block;
-  min-width: 92px;
-  border: 1px solid #555;
-  border-radius: 4px;
-  background: #f4f4f4;
-  color: #000;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 700;
-  margin: 20px auto 0;
-  padding: 7px 16px;
+.choice-cell.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
 }
 
-button:hover:not(:disabled) {
-  background: #e7e7e7;
+.unavailable {
+  background: repeating-linear-gradient(
+    -45deg,
+    #f8fafb,
+    #f8fafb 6px,
+    #eef3f5 6px,
+    #eef3f5 12px
+  );
 }
 
-button:disabled {
-  color: #888;
-  cursor: not-allowed;
+.actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.actions button {
+  min-width: 120px;
+  height: 44px;
 }
 
 @media (max-width: 720px) {
-  h1 {
-    font-size: 28px;
+  .page-panel {
+    padding: 20px;
+  }
+
+  .page-header {
+    display: block;
+  }
+
+  .summary-pill {
+    display: inline-block;
+    margin-top: 14px;
   }
 }
 </style>
