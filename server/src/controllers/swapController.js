@@ -16,6 +16,9 @@ export const getTeacherLessons = async (req, res) => {
   JOIN class c ON tt.class_id = c.class_id
   JOIN subject s ON tt.subject_id = s.subject_id
   WHERE tt.teacher_id = ?
+    AND COALESCE(s.is_elective, FALSE) = FALSE
+    AND s.subject_name NOT LIKE '%分組%'
+    AND c.class_name NOT LIKE '%分組%'
   ORDER BY tt.day_of_week, tt.period_id`, [teacherId]);
     res.json(rows);
   } catch (err) {

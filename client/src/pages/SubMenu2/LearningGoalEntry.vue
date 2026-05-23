@@ -1,53 +1,46 @@
 <template>
-  <div class="learning-goal-page">
-    <h1>&#x5B78;&#x7FD2;&#x76EE;&#x6A19;&#x734E;&#x52F5;&#x8A08;&#x5283;</h1>
+  <main class="entry-page">
+    <h1>輸入學生完成目標總數（<br />上學期）</h1>
 
-    <section class="class-section">
-      <h2>&#x9078;&#x64C7;&#x73ED;&#x5225;</h2>
-      <div class="class-grid">
-        <label
-          v-for="cls in classList"
-          :key="cls.class_id"
-          class="class-option"
-          :class="{ selected: selectedClassIds.includes(cls.class_id) }"
-        >
-          <input type="checkbox" :value="cls.class_id" v-model="selectedClassIds" />
+    <section class="class-picker">
+      <label for="classSelect">班別</label>
+      <select id="classSelect" v-model="selectedClassId" @change="fetchSelectedClassStudents">
+        <option value="">請選擇班別</option>
+        <option v-for="cls in classList" :key="cls.class_id" :value="cls.class_id">
           {{ cls.class_name }}
-        </label>
-      </div>
+        </option>
+      </select>
     </section>
 
-    <section class="student-section">
-      <div v-for="classId in selectedClassIds" :key="classId" class="class-students">
-        <h3>{{ className(classId) }}</h3>
-        <div v-if="studentsByClass[classId]" class="student-list">
-          <label
-            v-for="student in studentsByClass[classId]"
-            :key="student.student_id"
-            class="student-row"
-          >
-            <span>{{ student.student_name || student.student_ch_name }}</span>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              v-model.number="goalCounts[student.student_id]"
-              placeholder="0"
-            />
-          </label>
-        </div>
-        <p v-else class="loading">&#x8F09;&#x5165;&#x4E2D;...</p>
-      </div>
+    <form v-if="selectedClassId" class="entry-form" @submit.prevent="saveGoals">
+      <table v-if="students.length" class="entry-table">
+        <tbody>
+          <tr v-for="student in students" :key="student.student_id">
+            <td class="student-cell">
+              {{ studentCode(student) }} {{ student.student_name || student.student_ch_name }}
+              <span v-if="student.english_name">{{ student.english_name }}</span>
+            </td>
+            <td class="input-cell">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                v-model.number="goalCounts[student.student_id]"
+                @focus="$event.target.select()"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      <button
-        type="button"
-        :disabled="!selectedClassIds.length"
-        @click="saveGoals"
-      >
-        &#x63D0;&#x4EA4;
+      <p v-else-if="loading" class="state-text">載入中...</p>
+      <p v-else class="state-text">沒有學生資料</p>
+
+      <button type="submit" :disabled="saving || loading || !students.length">
+        {{ saving ? '提交中...' : '提交' }}
       </button>
-    </section>
-  </div>
+    </form>
+  </main>
 </template>
 
 <script>
@@ -56,7 +49,7 @@ import { jwtDecode } from 'jwt-decode';
 
 const TEXT = {
   loginFirst: '\u8acb\u5148\u767b\u5165\u3002',
-  chooseStudents: '\u8acb\u5148\u9078\u64c7\u73ed\u5225\u53ca\u5b78\u751f\u3002',
+  chooseStudents: '\u8acb\u5148\u9078\u64c7\u73ed\u5225\u3002',
   saved: '\u5df2\u5132\u5b58\u5b78\u7fd2\u76ee\u6a19\u8cc7\u6599\u3002',
   saveFailed: '\u5132\u5b58\u5931\u6557\u3002'
 };
@@ -65,22 +58,19 @@ export default {
   data() {
     return {
       classList: [],
-      selectedClassIds: [],
-      studentsByClass: {},
+      selectedClassId: '',
+      students: [],
       goalCounts: {},
-      teacher_id: null
+      teacher_id: null,
+      loading: false,
+      saving: false
     };
   },
-  watch: {
-    selectedClassIds() {
-      this.selectedClassIds.sort((a, b) => a - b);
-      this.fetchStudentsForSelectedClasses();
-    }
-  },
   methods: {
-    className(classId) {
-      const foundClass = this.classList.find(cls => cls.class_id === classId);
-      return foundClass ? foundClass.class_name : `Class ${classId}`;
+    studentCode(student) {
+      const className = student.class_name || '';
+      const classNumber = String(student.class_number || '').padStart(2, '0');
+      return `${className}${classNumber}`;
     },
     async fetchClasses() {
       const token = localStorage.getItem('token');
@@ -127,29 +117,33 @@ export default {
         console.warn('Could not load existing learning goals:', err);
       }
     },
-    async fetchStudentsForSelectedClasses() {
+    async fetchSelectedClassStudents() {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token || !this.selectedClassId) {
+        this.students = [];
+        return;
+      }
 
-      await Promise.all(this.selectedClassIds.map(async classId => {
-        if (this.studentsByClass[classId]) return;
+      this.loading = true;
+      this.students = [];
 
-        try {
-          const res = await axios.get(`http://localhost:3000/api/students/by-class/${classId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+      try {
+        const res = await axios.get(`http://localhost:3000/api/students/by-class/${this.selectedClassId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
-          this.$set(this.studentsByClass, classId, res.data);
-          res.data.forEach(student => {
-            if (this.goalCounts[student.student_id] === undefined) {
-              this.$set(this.goalCounts, student.student_id, 0);
-            }
-          });
-        } catch (err) {
-          console.error(`Failed to load students for class ${classId}:`, err);
-          this.$set(this.studentsByClass, classId, []);
-        }
-      }));
+        this.students = res.data;
+        this.students.forEach(student => {
+          if (this.goalCounts[student.student_id] === undefined) {
+            this.$set(this.goalCounts, student.student_id, 0);
+          }
+        });
+      } catch (err) {
+        console.error(`Failed to load students for class ${this.selectedClassId}:`, err);
+        this.students = [];
+      } finally {
+        this.loading = false;
+      }
     },
     async saveGoals() {
       const token = localStorage.getItem('token');
@@ -158,20 +152,17 @@ export default {
         return;
       }
 
-      const selectedStudentIds = this.selectedClassIds.flatMap(classId =>
-        (this.studentsByClass[classId] || []).map(student => student.student_id)
-      );
-
-      if (selectedStudentIds.length === 0) {
+      if (!this.selectedClassId || this.students.length === 0) {
         alert(TEXT.chooseStudents);
         return;
       }
 
-      const records = selectedStudentIds.map(studentId => ({
-        student_id: studentId,
-        completed_goals: Math.max(0, Number(this.goalCounts[studentId]) || 0)
+      const records = this.students.map(student => ({
+        student_id: student.student_id,
+        completed_goals: Math.max(0, Number(this.goalCounts[student.student_id]) || 0)
       }));
 
+      this.saving = true;
       try {
         await axios.post('http://localhost:3000/api/learning-goals/records', {
           teacher_id: this.teacher_id,
@@ -187,6 +178,8 @@ export default {
         const error = responseData.error || TEXT.saveFailed;
         const detail = responseData.detail;
         alert(detail ? `${error}\n${detail}` : error);
+      } finally {
+        this.saving = false;
       }
     }
   },
@@ -203,96 +196,138 @@ export default {
 </script>
 
 <style scoped>
-.learning-goal-page {
-  padding: 20px;
+.entry-page {
+  box-sizing: border-box;
+  min-height: calc(100vh - 126px);
+  padding: 4px 16px 48px;
+  background: #fff;
+  color: #000;
 }
 
-h1,
-h2,
-h3 {
+h1 {
+  margin: 0 0 28px;
   text-align: center;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.45;
+  letter-spacing: 0;
 }
 
-.class-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  max-width: 800px;
-  margin: 30px auto;
-}
-
-.class-option {
+.class-picker {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border: 2px solid #dcdcdc;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-  cursor: pointer;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 auto 18px;
 }
 
-.class-option:hover,
-.class-option.selected {
-  border-color: #007bff;
-  background-color: #eaf3ff;
+.class-picker label {
+  font-size: 18px;
+  font-weight: 700;
 }
 
-.student-section {
-  max-width: 900px;
+.class-picker select {
+  min-width: 160px;
+  border: 1px solid #777;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 16px;
+  padding: 5px 8px;
+}
+
+.entry-form {
+  max-width: 374px;
   margin: 0 auto;
 }
 
-.class-students {
-  margin-bottom: 28px;
-}
-
-.student-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.student-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+.entry-table {
+  width: 100%;
+  border: 1px solid #444;
+  border-collapse: separate;
+  border-spacing: 2px;
   background: #fff;
 }
 
-.student-row input {
-  width: 80px;
-  padding: 6px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+.entry-table td {
+  border: 1px solid #777;
+  padding: 3px 5px;
+  font-size: 16px;
+  line-height: 1.25;
+  vertical-align: middle;
 }
 
-.loading {
+.student-cell {
+  width: 270px;
+}
+
+.student-cell span {
+  margin-left: 4px;
+}
+
+.input-cell {
+  width: 96px;
+}
+
+.input-cell input {
+  width: 52px;
+  height: 20px;
+  border: 1px solid #888;
+  border-radius: 3px;
+  box-sizing: border-box;
+  font-size: 15px;
+  padding: 1px 4px;
+}
+
+.state-text {
+  border: 1px solid #999;
+  margin: 0;
+  padding: 18px;
   text-align: center;
 }
 
 button {
   display: block;
-  margin: 30px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
-  border-radius: 6px;
-  border: none;
+  min-width: 92px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #f4f4f4;
+  color: #000;
   cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 18px auto 0;
+  padding: 7px 16px;
 }
 
-button:hover {
-  background-color: #0056b3;
+button:hover:not(:disabled) {
+  background: #e7e7e7;
 }
 
 button:disabled {
-  background-color: #b8c2cc;
+  color: #888;
   cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .entry-page {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+
+  .entry-form {
+    max-width: 100%;
+  }
+
+  .student-cell {
+    width: auto;
+  }
+
+  .input-cell {
+    width: 82px;
+  }
 }
 </style>

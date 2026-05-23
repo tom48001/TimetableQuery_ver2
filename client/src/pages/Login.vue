@@ -32,6 +32,12 @@
 <script>
 import axios from 'axios';
 
+const TEXT = {
+  noUser: '\u767b\u5165\u5931\u6557\uff0c\u7121\u6cd5\u7372\u53d6\u4f7f\u7528\u8005\u8cc7\u8a0a\u3002',
+  invalidCredentials: '\u767b\u5165\u5931\u6557\uff0c\u8acb\u6aa2\u67e5\u5e33\u865f\u5bc6\u78bc\u3002',
+  serverUnavailable: '\u767b\u5165\u5931\u6557\uff0c\u8acb\u6aa2\u67e5\u5f8c\u7aef\u4f3a\u670d\u5668\u662f\u5426\u5df2\u555f\u52d5\u3002'
+};
+
 export default {
   data() {
     return {
@@ -58,11 +64,16 @@ export default {
           this.$router.push('/home');
           window.location.reload(); // 強制重新整理 UI
         } else {
-          alert('登入失敗，無法獲取使用者資訊');
+          alert(TEXT.noUser);
         }
       } catch (err) {
         console.error('登入錯誤：', err);
-        alert('登入失敗，請檢查帳號密碼');
+        const data = err.response && err.response.data ? err.response.data : {};
+        const status = err.response ? err.response.status : 0;
+        const fallback = status === 400 || status === 401
+          ? TEXT.invalidCredentials
+          : TEXT.serverUnavailable;
+        alert(data.error || fallback);
       }
     }
   }

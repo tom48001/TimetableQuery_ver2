@@ -1,287 +1,270 @@
 <template>
-  <div class="nomination-page">
-    <h2>提名學生 - 科目：{{ selectedSubject.subject_name }}</h2>
+  <main class="student-page">
+    <h1>選擇學生</h1>
 
-    <div v-for="classItem in selectedClass" :key="classItem" class="class-section">
-      <h3>{{ classTable[classItem - 1] }} 班</h3>
+    <div class="table-wrap">
+      <table v-if="studentRows.length" class="student-table">
+        <tbody>
+          <tr v-for="(row, rowIndex) in studentRows" :key="rowIndex">
+            <td v-for="cellIndex in columns" :key="cellIndex">
+              <label v-if="row[cellIndex - 1]" class="student-option">
+                <input
+                  type="checkbox"
+                  :value="row[cellIndex - 1].student_id"
+                  v-model="selectedStudents[row[cellIndex - 1].class_id]"
+                />
+                <span>{{ studentNumber(row[cellIndex - 1]) }} {{ row[cellIndex - 1].student_name }}</span>
+              </label>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      <div v-if="studentsByClass[classItem]" class="student-grid">
-        <label
-          v-for="student in studentsByClass[classItem]"
-          :key="student.student_id"
-          :value="student.student_id"
-          class="student-option"
-        >
-          <input
-            type="checkbox"
-            :value="student.student_id"
-            v-model="selectedStudents[classItem]"
-          />
-          {{ student.student_name }}
-        </label>
-      </div>
-      <div v-else>載入中...</div>
+      <p v-else class="state-text">載入中...</p>
     </div>
 
-    <button @click="submitNomination">送出提名</button>
-  </div>
+    <button type="button" @click="submitNomination">Submit</button>
+  </main>
 </template>
 
 <script>
-import axios from 'axios'
+import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+
+function parseJson(value, fallback) {
+  try {
+    return JSON.parse(value || '');
+  } catch (err) {
+    return fallback;
+  }
+}
 
 export default {
   data() {
     return {
-      classTable: ['1M', '1A', '1R', '1Y', '2M', '2A', '2R', '2Y', '3M', '3A', '3R', '3Y', '4M', '4A', '4R', '4Y', '5M', '5A', '5R', '5Y', '6M', '6A', '6R', '6Y'],
-      selectedSubject: this.$route.query.selectedSubject || '',
-      selectedClass: JSON.parse(this.$route.query.selectedClass || '[]'),
+      columns: 5,
+      selectedSubject: parseJson(this.$route.query.selectedSubject, {}),
+      selectedClass: parseJson(this.$route.query.selectedClass, []),
       studentsByClass: {},
       selectedStudents: {},
-      previousSelectedStudents: {}
-    }
+      previousSelectedStudents: {},
+      teacher_id: null
+    };
   },
-  created() {
-    if (!this.selectedSubject || !this.selectedClass.length) {
-      this.$router.push({ name: 'BLA' })
-      return
-    }
-    console.log('已選擇科目:', this.selectedSubject)
-    console.log('已選擇班級:', this.selectedClass)
-  },
-  watch: {
-    selectedClass: {
-      immediate: true,
-      handler(newClassList) {
-        if (!Array.isArray(newClassList)) return
-
-        const token = localStorage.getItem('token')
-        if (!token) {
-          console.error('未找到 token，請重新登入')
-          return
-        }
-
-        for (const classid of newClassList) {
-          console.log(`載入班級 ${classid} 的學生`)
-          this.$set(this.selectedStudents, classid, [])
-          axios.get(`http://localhost:3000/api/students/by-class/${classid}/subject/${this.selectedSubject.subject_id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-            .then(res => {
-              this.$set(this.studentsByClass, classid, res.data)
-            })
-            .catch(err => {
-              console.error(`載入 ${classid} 的學生失敗:`, err)
-              this.$set(this.studentsByClass, classid, [])
-            })
-        }
+  computed: {
+    allStudents() {
+      return this.selectedClass.flatMap(classId => this.studentsByClass[classId] || []);
+    },
+    studentRows() {
+      const rows = [];
+      for (let index = 0; index < this.allStudents.length; index += this.columns) {
+        rows.push(this.allStudents.slice(index, index + this.columns));
       }
+      return rows;
     }
   },
   methods: {
+    studentNumber(student) {
+      return String(student.class_number || '').padStart(2, '0');
+    },
     async getTeacherId() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
       try {
         const decoded = jwtDecode(token);
-        const userId = decoded.id;
+        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${decoded.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        this.teacher_id = res.data.teacher_id;
+      } catch (error) {
+        console.error('Failed to load teacher id:', error);
+      }
+    },
+    async loadStudents() {
+      const token = localStorage.getItem('token');
+      if (!token) return;
 
-        // 呼叫後端，用 user_id 換 teacher_id
-        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${userId}`, {
+      await Promise.all(this.selectedClass.map(async classId => {
+        this.$set(this.selectedStudents, classId, []);
+
+        try {
+          const res = await axios.get(
+            `http://localhost:3000/api/students/by-class/${classId}/subject/${this.selectedSubject.subject_id}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          this.$set(this.studentsByClass, classId, res.data);
+        } catch (err) {
+          console.error(`Failed to load students for class ${classId}:`, err);
+          this.$set(this.studentsByClass, classId, []);
+        }
+      }));
+    },
+    async loadSelectedStudents() {
+      const token = localStorage.getItem('token');
+      if (!token || !this.teacher_id) return;
+
+      try {
+        const res = await axios.get('http://localhost:3000/api/bla/students', {
+          params: {
+            subject_id: this.selectedSubject.subject_id,
+            teacher_id: this.teacher_id
+          },
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        this.teacher_id = res.data.teacher_id;
-        console.log('老師 ID:', this.teacher_id);
-      } catch (error) {
-        console.error('取得 teacher_id 失敗:', error);
-      }
-    },
-    async loadSelectedStudents() {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.error('未登入，缺少 token');
-          return;
-        }
+        const selectedIds = res.data.map(student => student.student_id);
+        const updatedSelected = {};
 
-        // 確保必要參數已經存在
-        if (!this.selectedSubject || !this.selectedSubject.subject_id) {
-          console.warn('selectedSubject 尚未載入，跳過請求');
-          return;
-        }
-        try {
-          const decoded = jwtDecode(token);
-          const userId = decoded.id;
+        this.selectedClass.forEach(classId => {
+          const classStudents = this.studentsByClass[classId] || [];
+          updatedSelected[classId] = classStudents
+            .filter(student => selectedIds.includes(student.student_id))
+            .map(student => student.student_id);
+        });
 
-          // 呼叫後端，用 user_id 換 teacher_id
-          const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${userId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-
-          this.teacher_id = res.data.teacher_id;
-          console.log('老師 ID:', this.teacher_id);
-        } catch (error) {
-          console.error('取得 teacher_id 失敗:', error);
-        }
-        if (!this.teacher_id) {
-          console.warn('teacher_id 尚未載入，跳過請求');
-          return;
-        }
-
-        const subjectId = this.selectedSubject.subject_id;
-        const teacherId = this.teacher_id;
-
-        // 發送請求
-        const res = await axios.get(
-          `http://localhost:3000/api/bla/students`,
-          {
-            params: {
-              subject_id: subjectId,
-              teacher_id: teacherId
-            },
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
-
-        // 後端返回的已選擇學生 id
-        const selectedIds = res.data.map(stu => stu.student_id);
-        console.log('後端已選擇學生 ID:', selectedIds);
-
-        // 用 Vue.set / this.$set 或深拷貝方式更新，避免響應式問題
-        const updatedSelected = { ...this.selectedStudents };
-        for (const classId in this.studentsByClass) {
-          const stuList = this.studentsByClass[classId] || [];
-          updatedSelected[classId] = stuList
-            .filter(stu => selectedIds.includes(stu.student_id))
-            .map(stu => stu.student_id);
-        }
         this.selectedStudents = updatedSelected;
         this.previousSelectedStudents = JSON.parse(JSON.stringify(updatedSelected));
-        console.log('更新後的 selectedStudents:', this.selectedStudents);
       } catch (err) {
-        console.error('取得已選擇學生失敗:', err);
+        console.error('Failed to load selected students:', err);
       }
     },
-    submitNomination() {
+    async submitNomination() {
       const token = localStorage.getItem('token');
-      if (!token) {
-        console.error('未登入');
-        return;
-      }
-      const teacherId = this.teacher_id
-      const subjectId = this.selectedSubject.subject_id
-      const selectedStudentIds = Object.values(this.selectedStudents).flat()
-      console.log('送出的 student_ids:', selectedStudentIds)
+      if (!token) return;
 
-      axios.post('http://localhost:3000/api/bla/insert', {
-        teacher_id: teacherId,
-        subject_id: subjectId,
-        student_ids: selectedStudentIds
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
-        console.log('投票成功', res.data);
+      const teacherId = this.teacher_id;
+      const subjectId = this.selectedSubject.subject_id;
+      const selectedStudentIds = Object.values(this.selectedStudents).flat();
 
-        // 投票成功後再刪除
-        for (const classId in this.previousSelectedStudents) {
-          const currentSelected = this.selectedStudents[classId] || []
+      try {
+        await axios.post('http://localhost:3000/api/bla/insert', {
+          teacher_id: teacherId,
+          subject_id: subjectId,
+          student_ids: selectedStudentIds
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        await Promise.all(Object.keys(this.previousSelectedStudents).map(async classId => {
+          const currentSelected = this.selectedStudents[classId] || [];
           const removed = (this.previousSelectedStudents[classId] || []).filter(
-            id => !currentSelected.includes(id)
-          )
-          if (removed.length > 0) {
-            axios.delete(`http://localhost:3000/api/bla/delete`, {
-              data: {
-                subjectId: subjectId,
-                teacherId: teacherId,
-                removed: Array.isArray(removed) ? removed : [removed]
-              },
-              headers: { Authorization: `Bearer ${token}` }
-            }).then(() => {
-              console.log('刪除成功:', removed);
-            }).catch(err => {
-              console.error('刪除失敗:', err);
-            });
-          }
-        }
+            studentId => !currentSelected.includes(studentId)
+          );
+
+          if (removed.length === 0) return;
+
+          await axios.delete('http://localhost:3000/api/bla/delete', {
+            data: {
+              subjectId,
+              teacherId,
+              removed
+            },
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }));
+
         this.$router.push({ name: 'BLA' });
-      }).catch(err => {
-        console.error('投票失敗', err);
-        this.$router.push({ name: 'BLA' });
-      });
+      } catch (err) {
+        console.error('Failed to submit BLA nomination:', err);
+        alert('提交失敗。');
+      }
     }
   },
   async mounted() {
+    if (!this.selectedSubject.subject_id || !this.selectedClass.length) {
+      this.$router.push({ name: 'BLA' });
+      return;
+    }
+
     await this.getTeacherId();
+    await this.loadStudents();
     await this.loadSelectedStudents();
   }
-}
+};
 </script>
 
 <style scoped>
-.class-section {
-  margin-bottom: 20px;
+.student-page {
+  box-sizing: border-box;
+  min-height: calc(100vh - 126px);
+  padding: 14px 20px 48px;
+  background: #fff;
+  color: #000;
 }
 
-.student-checkbox {
-  display: block;
-  margin-left: 10px;
+h1 {
+  margin: 0 0 28px;
+  text-align: center;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
-.student-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  margin: 20px 0;
+.table-wrap {
+  max-width: 1010px;
+  margin: 0 auto;
+  overflow-x: auto;
+}
+
+.student-table {
+  width: 100%;
+  border: 1px solid #444;
+  border-collapse: separate;
+  border-spacing: 2px;
+  background: #fff;
+}
+
+.student-table td {
+  width: 20%;
+  border: 1px solid #666;
+  height: 24px;
+  padding: 2px 6px;
+  font-size: 16px;
+  line-height: 1.25;
+  vertical-align: middle;
 }
 
 .student-option {
   display: flex;
   align-items: center;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 2px solid #dcdcdc;
-  background-color: #f9f9f9;
-  font-weight: 500;
+  gap: 4px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  min-width: 180px;
-  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.05);
+  white-space: nowrap;
 }
 
-.student-option:hover {
-  background-color: #eaf3ff;
-  border-color: #7ab8f5;
+.student-option input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
 }
 
-.student-option::selection {
-  background-color: #007bff;
-  color: white;
-  border-color: #0056b3;
-}
-
-.student-option input[type="checkbox"] {
-  margin-right: 8px;
-  accent-color: #007bff;
+.state-text {
+  border: 1px solid #777;
+  margin: 0;
+  padding: 24px;
+  text-align: center;
 }
 
 button {
   display: block;
-  margin: 30px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
-  border-radius: 6px;
-  border: none;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #f4f4f4;
+  color: #000;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  font-size: 14px;
+  margin: 18px auto 0;
+  padding: 3px 10px;
 }
 
 button:hover {
-  background-color: #0056b3;
+  background: #e7e7e7;
+}
+
+@media (max-width: 760px) {
+  .student-table {
+    min-width: 920px;
+  }
 }
 </style>

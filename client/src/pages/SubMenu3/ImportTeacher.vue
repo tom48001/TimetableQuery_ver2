@@ -1,37 +1,175 @@
 <template>
-  <div class="import-page">
-    <h1>匯入 Timetable Excel</h1>
-
-    <section class="format-box">
-      <h2>Excel 格式</h2>
-      <p>檔案必須是 .xlsx，並包含一個名為 Timetable 的工作表。</p>
-      <p>第一行欄位名稱必須完全是：teacher, subject, class, room, day, period</p>
+  <main class="import-page">
+    <section class="import-intro">
+      <p class="eyebrow">Management</p>
+      <h1>Import Timetable</h1>
+      <p class="intro-copy">
+        &#x4E0A;&#x8F09; Excel &#x8AB2;&#x8868;&#x5F8C;&#xFF0C;&#x7CFB;&#x7D71;&#x6703;&#x6AA2;&#x67E5;&#x8001;&#x5E2B;&#x3001;&#x73ED;&#x5225;&#x3001;&#x79D1;&#x76EE;&#x3001;&#x8AB2;&#x5BA4;&#x53CA;&#x7BC0;&#x6578;&#x8CC7;&#x6599;&#x3002;
+      </p>
     </section>
 
-    <input type="file" @change="handleFile" accept=".xlsx" />
+    <section class="import-layout">
+      <div class="upload-panel">
+        <input
+          id="timetable-file"
+          ref="fileInput"
+          class="file-input"
+          type="file"
+          accept=".xlsx"
+          @change="handleFile"
+        />
 
-    <button @click="uploadFile" :disabled="!file">
-      上載並匯入
-    </button>
+        <label
+          for="timetable-file"
+          class="drop-zone"
+          :class="{ dragging: dragging, ready: file }"
+          @dragenter.prevent="dragging = true"
+          @dragover.prevent="dragging = true"
+          @dragleave.prevent="dragging = false"
+          @drop.prevent="handleDrop"
+        >
+          <span class="file-mark" aria-hidden="true">XLSX</span>
+          <strong v-if="file">{{ file.name }}</strong>
+          <strong v-else>&#x9078;&#x64C7; Excel &#x6A94;&#x6848;</strong>
+          <span v-if="file" class="file-meta">{{ fileSize }}</span>
+          <span v-else class="file-meta">&#x53EA;&#x63A5;&#x53D7; .xlsx</span>
+          <span class="pick-file">&#x9078;&#x64C7;&#x6A94;&#x6848;</span>
+        </label>
 
-    <pre v-if="message" class="message">{{ message }}</pre>
-  </div>
+        <div class="upload-actions">
+          <button
+            type="button"
+            class="upload-button"
+            :disabled="!file || uploading"
+            @click="uploadFile"
+          >
+            {{ uploading ? text.uploading : text.upload }}
+          </button>
+          <button
+            v-if="file"
+            type="button"
+            class="clear-button"
+            :disabled="uploading"
+            @click="clearFile"
+          >
+            {{ text.clear }}
+          </button>
+        </div>
+
+        <pre
+          v-if="message"
+          class="message"
+          :class="{ error: messageType === 'error', success: messageType === 'success' }"
+        >{{ message }}</pre>
+      </div>
+
+      <div class="format-panel">
+        <h2>Excel &#x683C;&#x5F0F;</h2>
+        <div class="format-note">
+          <span>&#x5DE5;&#x4F5C;&#x8868;&#x540D;&#x7A31;</span>
+          <strong>Timetable</strong>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>teacher</th>
+                <th>subject</th>
+                <th>class</th>
+                <th>room</th>
+                <th>day</th>
+                <th>period</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>T001</td>
+                <td>ENG</td>
+                <td>1A</td>
+                <td>101</td>
+                <td>Mon</td>
+                <td>Period 1</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul>
+          <li>day: Mon, Tue, Wed, Thu, Fri</li>
+          <li>period: Period 1, P1, or 1</li>
+          <li>&#x6A94;&#x6848;&#x7B2C;&#x4E00;&#x5217;&#x8981;&#x4F7F;&#x7528;&#x4E0A;&#x9762;&#x7684;&#x6B04;&#x4F4D;&#x540D;&#x7A31;</li>
+        </ul>
+      </div>
+    </section>
+  </main>
 </template>
 
 <script>
 import axios from 'axios';
 
+const TEXT = {
+  upload: '\u4e0a\u8f09\u8ab2\u8868',
+  uploading: '\u4e0a\u8f09\u4e2d...',
+  clear: '\u6e05\u9664',
+  chooseFile: '\u8acb\u9078\u64c7 Excel \u6a94\u6848\u3002',
+  xlsxOnly: '\u8acb\u4e0a\u8f09 .xlsx \u6a94\u6848\u3002',
+  loginFirst: '\u8acb\u5148\u767b\u5165\u518d\u4e0a\u8f09\u3002',
+  failed: '\u4e0a\u8f09\u5931\u6557\u3002',
+  networkFailed: '\u4e0a\u8f09\u5931\u6557\uff0c\u8acb\u6aa2\u67e5\u4f3a\u670d\u5668\u9023\u7dda\u3002',
+  invalidRows: '\u8cc7\u6599\u5217\u6709\u683c\u5f0f\u554f\u984c'
+};
+
 export default {
   data() {
     return {
       file: null,
-      message: ''
+      dragging: false,
+      uploading: false,
+      message: '',
+      messageType: '',
+      text: TEXT
     };
   },
+  computed: {
+    fileSize() {
+      if (!this.file) return '';
+      const sizeInKb = Math.max(1, Math.round(this.file.size / 1024));
+      return `${sizeInKb} KB`;
+    }
+  },
   methods: {
-    handleFile(e) {
-      this.file = e.target.files[0];
+    setFile(file) {
+      this.dragging = false;
       this.message = '';
+      this.messageType = '';
+
+      if (!file) return;
+      if (!/\.xlsx$/i.test(file.name)) {
+        this.clearFile();
+        this.showMessage(TEXT.xlsxOnly, 'error');
+        return;
+      }
+
+      this.file = file;
+    },
+    handleFile(event) {
+      this.setFile(event.target.files[0]);
+    },
+    handleDrop(event) {
+      this.setFile(event.dataTransfer.files[0]);
+    },
+    clearFile() {
+      this.file = null;
+      this.dragging = false;
+
+      if (this.$refs.fileInput) {
+        this.$refs.fileInput.value = '';
+      }
+    },
+    showMessage(message, type) {
+      this.message = message;
+      this.messageType = type;
     },
     formatList(title, values) {
       if (!values || values.length === 0) return '';
@@ -39,17 +177,17 @@ export default {
     },
     formatInvalidRows(rows) {
       if (!rows || rows.length === 0) return '';
-      return `資料不完整或格式錯誤的列:\n${rows.map(row => `第 ${row.row} 列`).join(', ')}`;
+      return `${TEXT.invalidRows}:\n${rows.map(row => `Row ${row.row}`).join(', ')}`;
     },
     buildErrorMessage(data) {
       const parts = [
-        data.message || '匯入失敗',
-        this.formatList('缺少老師 teacher_code', data.missingTeachers),
-        this.formatList('缺少科目 subject', data.missingSubjects),
-        this.formatList('缺少班別 class', data.missingClasses),
-        this.formatList('缺少課室 room', data.missingRooms),
-        this.formatList('缺少節次 period', data.missingPeriods),
-        this.formatList('缺少欄位', data.missingColumns),
+        data.message || TEXT.failed,
+        this.formatList('Missing teacher_code', data.missingTeachers),
+        this.formatList('Missing subject', data.missingSubjects),
+        this.formatList('Missing class', data.missingClasses),
+        this.formatList('Missing room', data.missingRooms),
+        this.formatList('Missing period', data.missingPeriods),
+        this.formatList('Missing columns', data.missingColumns),
         this.formatInvalidRows(data.invalidRows)
       ].filter(Boolean);
 
@@ -57,13 +195,19 @@ export default {
     },
     async uploadFile() {
       if (!this.file) {
-        alert('請先選擇 Excel 檔案');
+        this.showMessage(TEXT.chooseFile, 'error');
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        this.showMessage(TEXT.loginFirst, 'error');
         return;
       }
 
       const formData = new FormData();
-      const token = localStorage.getItem('token');
       formData.append('file', this.file);
+      this.uploading = true;
 
       try {
         const res = await axios.post(
@@ -77,20 +221,21 @@ export default {
           }
         );
 
-        this.message = [
+        this.showMessage([
           res.data.message,
-          `成功匯入堂數: ${res.data.insertedTimetable}`,
-          `略過列數: ${res.data.skippedRows}`
-        ].join('\n');
+          `Imported rows: ${res.data.insertedTimetable}`,
+          `Skipped rows: ${res.data.skippedRows}`
+        ].join('\n'), 'success');
       } catch (err) {
         console.error('Import failed:', err);
 
         if (err.response && err.response.data) {
-          this.message = this.buildErrorMessage(err.response.data);
-          alert(this.message);
+          this.showMessage(this.buildErrorMessage(err.response.data), 'error');
         } else {
-          alert('匯入失敗，請稍後再試');
+          this.showMessage(TEXT.networkFailed, 'error');
         }
+      } finally {
+        this.uploading = false;
       }
     }
   }
@@ -99,49 +244,276 @@ export default {
 
 <style scoped>
 .import-page {
-  max-width: 760px;
-  margin: 40px auto;
-  padding: 24px;
+  max-width: 1080px;
+  min-height: calc(100vh - 130px);
+  margin: 0 auto;
+  padding: 54px 28px 72px;
+  color: #163042;
+}
+
+.import-intro {
+  max-width: 700px;
+  margin: 0 0 30px;
+}
+
+.eyebrow {
+  color: #0d6b78;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  text-transform: uppercase;
 }
 
 h1 {
-  text-align: center;
+  color: #122635;
+  font-size: 36px;
+  line-height: 1.15;
+  letter-spacing: 0;
+  margin: 0 0 12px;
 }
 
-.format-box {
-  border: 1px solid #ddd;
+.intro-copy {
+  color: #355367;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.import-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(360px, 0.95fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.upload-panel,
+.format-panel {
+  border: 1px solid rgba(25, 66, 85, 0.16);
   border-radius: 8px;
-  padding: 16px;
-  margin: 24px 0;
-  background: #f9fbfd;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 44px rgba(19, 46, 64, 0.12);
 }
 
-input {
-  display: block;
-  margin: 20px auto;
+.upload-panel {
+  padding: 24px;
+}
+
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.drop-zone {
+  min-height: 286px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 13px;
+  border: 2px dashed #80a9b7;
+  border-radius: 8px;
+  background: #eef7f8;
+  color: #17374d;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.drop-zone.dragging,
+.drop-zone:hover {
+  border-color: #0d6b78;
+  background: #e0f1f2;
+  transform: translateY(-1px);
+}
+
+.drop-zone.ready {
+  border-style: solid;
+  background: #f2f8ed;
+}
+
+.file-mark {
+  min-width: 76px;
+  border-radius: 8px;
+  background: #17614d;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 16px 12px;
+}
+
+.drop-zone strong {
+  max-width: 100%;
+  padding: 0 18px;
+  box-sizing: border-box;
+  font-size: 20px;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+}
+
+.file-meta {
+  color: #557182;
+  font-size: 14px;
+}
+
+.pick-file {
+  border: 1px solid #8db1bc;
+  border-radius: 6px;
+  background: #fff;
+  color: #17374d;
+  font-weight: 600;
+  padding: 10px 15px;
+}
+
+.upload-actions {
+  min-height: 52px;
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
 }
 
 button {
-  display: block;
-  margin: 20px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
+  width: auto;
+  height: 48px;
+  margin: 0;
   border: none;
   border-radius: 6px;
-  cursor: pointer;
+  padding: 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.upload-button {
+  background: #0b7285;
+  color: #fff;
+}
+
+.clear-button {
+  border: 1px solid #b8c8d1;
+  background: #fff;
+  color: #244152;
 }
 
 button:disabled {
-  background-color: #aaa;
+  background: #c7d2d8;
+  border-color: #c7d2d8;
+  color: #607683;
   cursor: not-allowed;
 }
 
 .message {
+  min-height: 68px;
+  box-sizing: border-box;
   white-space: pre-wrap;
-  border: 1px solid #ddd;
+  border: 1px solid #d4e0e5;
   border-radius: 8px;
-  padding: 16px;
+  background: #f5f8fa;
+  color: #18364a;
+  line-height: 1.5;
+  margin: 18px 0 0;
+  padding: 15px;
+}
+
+.message.success {
+  border-color: #a8d0b5;
+  background: #edf8f0;
+  color: #1c5634;
+}
+
+.message.error {
+  border-color: #e5b6b6;
+  background: #fff1f0;
+  color: #8c2929;
+}
+
+.format-panel {
+  padding: 24px;
+}
+
+h2 {
+  color: #122635;
+  font-size: 22px;
+  letter-spacing: 0;
+  margin: 0 0 16px;
+}
+
+.format-note {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #d1e0e5;
+  border-radius: 8px;
+  background: #f7fafb;
+  padding: 13px 14px;
+  margin-bottom: 18px;
+}
+
+.format-note span {
+  color: #4d6879;
+}
+
+.format-note strong {
+  color: #0d6b78;
+  font-size: 16px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid #d6e2e6;
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
   background: #fff;
+}
+
+th,
+td {
+  border-bottom: 1px solid #e3ecef;
+  padding: 12px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  background: #dceff1;
+  color: #12374b;
+  font-weight: 700;
+}
+
+td {
+  color: #355367;
+}
+
+ul {
+  color: #355367;
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 18px 0 0;
+  padding-left: 20px;
+}
+
+@media (max-width: 820px) {
+  .import-page {
+    padding: 34px 16px 50px;
+  }
+
+  .import-layout {
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: 30px;
+  }
+
+  .drop-zone {
+    min-height: 238px;
+  }
 }
 </style>

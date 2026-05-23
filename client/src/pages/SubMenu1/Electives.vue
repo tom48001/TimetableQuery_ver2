@@ -1,37 +1,81 @@
-<template lang="">
-  <div>
-    <h1>高中選修名單</h1>
-    <h3>選擇年級：</h3>
-    <div class="class-grid">
-      <label v-for="formLevel in ['F4', 'F5', 'F6']" :key="formLevel" class="form-option">
-        <input type="radio" :value="formLevel" v-model="form" />
-        {{ formLevel }}
-      </label>
-    </div>
-    <h3>選擇科目：</h3>
-    <div class="subject-grid">
-      <select v-model="selectedSubject">
-        <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">
-          {{ subject.subject_name }}
-        </option>
-      </select>
-    </div>
-    <div class="text-center">
-      <button @click="goNext">查詢選修科目</button>
-    </div>
-  </div>
+<template>
+  <main class="elective-page">
+    <section class="elective-panel">
+      <header class="page-header">
+        <div>
+          <p>Timetable</p>
+          <h1>Elective Students</h1>
+        </div>
+      </header>
+
+      <section class="selector-section">
+        <h2>Form</h2>
+        <div class="form-grid">
+          <label
+            v-for="formLevel in ['F4', 'F5', 'F6']"
+            :key="formLevel"
+            class="option-card"
+            :class="{ selected: form === formLevel }"
+          >
+            <input type="radio" :value="formLevel" v-model="form" />
+            {{ formLevel }}
+          </label>
+        </div>
+      </section>
+
+      <section class="selector-section">
+        <h2>Subject</h2>
+        <input
+          v-model.trim="searchText"
+          class="search-input"
+          type="text"
+          placeholder="Search subject..."
+        />
+        <div class="subject-list">
+          <label
+            v-for="subject in filteredSubjects"
+            :key="subject.subject_id"
+            class="subject-row"
+            :class="{ selected: selectedSubject === subject.subject_id }"
+          >
+            <input type="radio" :value="subject.subject_id" v-model="selectedSubject" />
+            <span>{{ subject.subject_name }}</span>
+          </label>
+        </div>
+      </section>
+
+      <button type="button" class="primary-btn" @click="goNext">
+        View Elective Students
+      </button>
+    </section>
+  </main>
 </template>
 
 <script>
 import axios from 'axios';
 
+const TEXT = {
+  chooseForm: '\u8acb\u9078\u64c7\u7d1a\u5225\u3002',
+  chooseSubject: '\u8acb\u9078\u64c7\u79d1\u76ee\u3002'
+};
+
 export default {
   data() {
     return {
       subjects: [],
-      selectedSubject: [],
-      form: ''
+      selectedSubject: '',
+      form: '',
+      searchText: ''
     };
+  },
+  computed: {
+    filteredSubjects() {
+      const keyword = this.searchText.toLowerCase();
+      if (!keyword) return this.subjects;
+      return this.subjects.filter(subject =>
+        String(subject.subject_name || '').toLowerCase().includes(keyword)
+      );
+    }
   },
   methods: {
     async fetchSubjects() {
@@ -43,14 +87,15 @@ export default {
     },
     goNext() {
       if (!this.form) {
-        alert('請選擇年級');
+        alert(TEXT.chooseForm);
         return;
       }
-      if (this.selectedSubject.length === 0) {
-        alert('請選擇科目');
+
+      if (!this.selectedSubject) {
+        alert(TEXT.chooseSubject);
         return;
       }
-      // 跳轉到下一頁或 fetch class 列表
+
       this.$router.push({
         name: 'ElectivesResult',
         query: {
@@ -63,82 +108,145 @@ export default {
   mounted() {
     this.fetchSubjects();
   }
-}
+};
 </script>
 
 <style scoped>
+.elective-page {
+  min-height: calc(100vh - 126px);
+  box-sizing: border-box;
+  padding: 44px 20px 64px;
+}
+
+.elective-panel {
+  max-width: 900px;
+  margin: 0 auto;
+  border: 1px solid #d1e0e5;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 38px rgba(25, 54, 69, 0.12);
+  box-sizing: border-box;
+  padding: 26px;
+}
+
+.page-header p {
+  color: #0d6b78;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+h1,
+h2 {
+  color: #122635;
+  letter-spacing: 0;
+  margin: 0;
+}
+
 h1 {
-  text-align: center;
-  margin-top: 50px;
+  font-size: 32px;
 }
 
-h3 {
-  font-size: 20px;
-  color: #34495e;
-  margin-bottom: 0.5rem;
-  text-align: center;
+h2 {
+  font-size: 21px;
 }
 
-.subject-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  margin: 20px 0;
+.selector-section {
+  border: 1px solid #d6e2e6;
+  border-radius: 8px;
+  background: #f7fafb;
+  margin-top: 22px;
+  padding: 16px;
 }
 
-.class-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  margin: 20px 0;
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(80px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
 }
 
-.form-option {
+.option-card,
+.subject-row {
+  min-height: 40px;
   display: flex;
   align-items: center;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 2px solid #dcdcdc;
-  background-color: #f9f9f9;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  min-width: 180px;
-  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.05);
-}
-
-.form-option:hover {
-  background-color: #eaf3ff;
-  border-color: #7ab8f5;
-}
-
-.form-option.selected {
-  background-color: #007bff;
-  color: white;
-  border-color: #0056b3;
-}
-
-.form-option input[type="radio"] {
-  margin-right: 8px;
-  accent-color: #007bff;
-}
-
-button {
-  display: block;
-  margin: 30px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
+  gap: 7px;
+  border: 1px solid #d7e2e7;
   border-radius: 6px;
-  border: none;
+  background: #fff;
+  color: #243f51;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 6px 9px;
 }
 
-button:hover {
-  background-color: #0056b3;
+.option-card:hover,
+.option-card.selected,
+.subject-row:hover,
+.subject-row.selected {
+  border-color: #0b7285;
+  background: #e0f1f2;
+  color: #0a5260;
+}
+
+.search-input {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #b8cad3;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 15px;
+  margin-top: 14px;
+  padding: 0 12px;
+}
+
+.subject-list {
+  max-height: 360px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  margin-top: 14px;
+}
+
+.subject-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+input {
+  accent-color: #0b7285;
+}
+
+.primary-btn {
+  height: 48px;
+  border: none;
+  border-radius: 6px;
+  background: #0b7285;
+  color: #fff;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 22px;
+  padding: 0 22px;
+}
+
+@media (max-width: 720px) {
+  .elective-panel {
+    padding: 20px;
+  }
+
+  .form-grid,
+  .subject-list {
+    grid-template-columns: 1fr;
+  }
+
+  .primary-btn {
+    width: 100%;
+  }
 }
 </style>

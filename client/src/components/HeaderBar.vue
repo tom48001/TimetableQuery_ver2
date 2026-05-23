@@ -7,6 +7,13 @@
 
       <div class="account-info">
         <span v-if="userRole" class="role-badge">Role: {{ displayRole }}</span>
+        <router-link
+          v-if="userRole === 'teacher'"
+          to="/change-password"
+          class="account-link"
+        >
+          Change Password
+        </router-link>
         <button @click="handleLogout" class="logout-btn">Logout</button>
       </div>
     </div>
@@ -155,6 +162,20 @@ h1 {
   background: #f5f9fc;
   padding: 6px 10px;
   font-weight: 600;
+}
+
+.account-link {
+  border: 1px solid #b8cad3;
+  border-radius: 6px;
+  color: #24415c;
+  background: #fff;
+  padding: 8px 12px;
+  font-weight: 600;
+}
+
+.account-link:hover {
+  border-color: #0b7285;
+  color: #0b7285;
 }
 
 .menu {

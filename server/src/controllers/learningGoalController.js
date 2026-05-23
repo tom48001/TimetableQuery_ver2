@@ -47,7 +47,7 @@ export const upsertLearningGoals = async (req, res) => {
 
     const normalizedRecords = records
       .map(record => ({
-        student_id: Number(record.student_id),
+        student_id: String(record.student_id || '').trim(),
         completed_goals: Math.max(0, Number(record.completed_goals) || 0)
       }))
       .filter(record => record.student_id);

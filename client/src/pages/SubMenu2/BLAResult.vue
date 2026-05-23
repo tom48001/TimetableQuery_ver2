@@ -1,41 +1,34 @@
 <template>
-  <div>
+  <main class="print-page">
     <h1>最佳學習態度學生提名結果</h1>
-    <div class="subject-container">
-      <h3>選擇科目：</h3>
-      <div class="subject-grid">
-        <select v-model="selectedSubject">
-          <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">
-            {{ subject.subject_name }}
-          </option>
-        </select>
-      </div>
+
+    <div class="table-wrap">
+      <table v-if="BLAResults.length" class="print-table">
+        <thead>
+          <tr>
+            <th class="code-col">編號</th>
+            <th class="name-col">姓名</th>
+            <th>獲提名科目</th>
+            <th class="count-col">科數</th>
+            <th class="award-col">獲獎</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in BLAResults" :key="row.student_id">
+            <td>{{ row.student_id }}</td>
+            <td>{{ row.student_ch_name || row.student_id }}</td>
+            <td>{{ row.subject_names }}</td>
+            <td class="center">{{ row.subject_count }} 科</td>
+            <td class="center">{{ row.award }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p v-if="searched && BLAResults.length === 0" class="empty-state">
+        沒有提名結果
+      </p>
     </div>
-    <div class="text-center">
-      <button @click="fetchBLA">查詢選修科目</button>
-    </div>
-    <!-- 顯示結果 -->
-    <div v-if="BLAResults.length">
-      <h3>提名結果：</h3>
-      <div class="electives-container">
-        <table class=electives-Result>
-          <thead>
-            <tr>
-              <th>姓名</th>
-              <th>提名老師</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="b in BLAResults" :key="b.BLA_id">
-              <td>{{ b.student_ch_name || b.student_id }}</td>
-              <td>{{ b.teacher_names }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <p v-else-if="searched">查無提名結果</p>
-  </div>
+  </main>
 </template>
 
 <script>
@@ -44,117 +37,108 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      subjects: [],
-      selectedSubject: '',
       BLAResults: [],
-      searched: false,
-      teacher_id: null
+      searched: false
     };
   },
   methods: {
-    async fetchSubjects() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/subjects/findElective', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      this.subjects = res.data;
-    },
     async fetchBLA() {
-      if (!this.selectedSubject) {
-        alert('請選擇科目');
-        return;
-      }
       const token = localStorage.getItem('token');
+
       try {
         const res = await axios.get('http://localhost:3000/api/bla/results', {
-          params: {
-            subject_id: this.selectedSubject
-          },
           headers: { Authorization: `Bearer ${token}` }
         });
         this.BLAResults = res.data;
         this.searched = true;
       } catch (err) {
-        console.error('查詢提名結果失敗', err);
+        console.error('Failed to load BLA results:', err);
         this.BLAResults = [];
         this.searched = true;
       }
     }
   },
-  async mounted() {
-    await this.fetchSubjects();
+  mounted() {
+    this.fetchBLA();
   }
 };
 </script>
 
 <style scoped>
-h1{
+.print-page {
+  box-sizing: border-box;
+  min-height: calc(100vh - 126px);
+  padding: 24px 20px 56px;
+  background: #fff;
+  color: #000;
+}
+
+h1 {
+  margin: 0 0 34px;
   text-align: center;
-  margin-top: 50px;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
-h3{
-  text-align: center;
+.table-wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  overflow-x: auto;
 }
 
-.text-center {
-  text-align: center;
-  margin: 15px 0;
-}
-
-.subject-container {
-  padding: 20px;
-  max-width: 1200px;
-  text-align: center;
-  margin: auto;
-}
-
-select {
-  margin: 10px;
-  padding: 6px;
-}
-
-.subject-grid {
-  margin: 10px 0;
-}
-
-.electives-container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: auto;
-}
-
-.electives-Result {
+.print-table {
   width: 100%;
-  border-collapse: collapse;
+  border: 1px solid #444;
+  border-collapse: separate;
+  border-spacing: 2px;
+  background: #fff;
 }
 
-.electives-Result th,
-.electives-Result td {
-  border: 1px solid #ccc;
-  padding: 8px;
-  vertical-align: top;
+.print-table th,
+.print-table td {
+  border: 1px solid #666;
+  padding: 4px 6px;
+  font-size: 16px;
+  line-height: 1.35;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.print-table th {
+  font-weight: 800;
+}
+
+.code-col {
+  width: 58px;
+}
+
+.name-col {
+  width: 92px;
+}
+
+.count-col {
+  width: 54px;
+}
+
+.award-col {
+  width: 48px;
+}
+
+.center {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.empty-state {
+  margin-top: 28px;
   text-align: center;
 }
 
-.electives-Result th {
-  background-color: #f0f0f0;
-}
-
-button {
-  display: block;
-  margin: 30px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-button:hover {
-  background-color: #0056b3;
+@media print {
+  .print-page {
+    min-height: 0;
+    padding: 0;
+  }
 }
 </style>

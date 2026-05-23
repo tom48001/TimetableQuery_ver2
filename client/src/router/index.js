@@ -4,6 +4,7 @@ import Router from 'vue-router'
 import Login from '@/pages/Login.vue'
 import Home from '@/pages/Home.vue'
 import GoogleRedirect from '@/pages/GoogleRedirect.vue'
+import ChangePassword from '@/pages/ChangePassword.vue'
 
 import TeacherTimetable from '@/pages/SubMenu1/TeacherTimetable.vue'
 import TeacherTimetableResult from '../pages/SubMenu1/TeacherTimetableResult.vue'
@@ -59,6 +60,12 @@ const router = new Router({
       name: 'home',
       component: Home,
       meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/change-password',
+      name: 'ChangePassword',
+      component: ChangePassword,
+      meta: { show: true, requiredRole: 'teacher' }
     },
     {
       path: '/TeacherTimetable',

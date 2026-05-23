@@ -71,25 +71,23 @@ export const deleteBLA = async (req, res) => {
 
 export const getBLAResults = async (req, res) => {
   try {
-    const { subject_id } = req.query;
-
-    if (!subject_id) {
-      return res.status(400).json({ error: "缺少必要參數" });
-    }
     const [rows] = await pool.query(
       `
       SELECT 
         b.student_id,
         s.student_ch_name,
-        GROUP_CONCAT(t.teacher_name ORDER BY t.teacher_name SEPARATOR ', ') AS teacher_names
+        GROUP_CONCAT(DISTINCT sub.subject_name ORDER BY sub.subject_name SEPARATOR '、') AS subject_names,
+        COUNT(DISTINCT b.subject_id) AS subject_count,
+        CASE
+          WHEN COUNT(DISTINCT b.subject_id) >= 8 THEN '獲獎'
+          ELSE ''
+        END AS award
       FROM BLA b
       JOIN student s ON b.student_id = s.student_id
-      JOIN teacher t ON b.teacher_id = t.teacher_id
-      WHERE b.subject_id = ?
+      JOIN subject sub ON b.subject_id = sub.subject_id
       GROUP BY b.student_id, s.student_ch_name
       ORDER BY s.student_id
-      `,
-      [subject_id]
+      `
     );
 
     res.json(rows);
@@ -123,4 +121,3 @@ export const getSelectBLA = async (req, res) => {
     res.status(500).json({ error: "查詢提名結果失敗" });
   }
 };
-

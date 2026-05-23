@@ -143,7 +143,7 @@ CREATE TABLE prefect_nomination (
     FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
 );
 
-CREATE TABLE learning_goal_record (
+CREATE TABLE IF NOT EXISTS learning_goal_record (
     learning_goal_record_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     teacher_id BIGINT NOT NULL,
     student_id BIGINT NOT NULL,

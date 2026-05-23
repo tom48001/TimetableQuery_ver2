@@ -9,6 +9,7 @@ export const getStudentsByClassId = async (req, res) => {
         s.student_id, 
         s.student_ch_name AS student_name,
         s.student_eng_name AS english_name,
+        s.class_number,
         s.sex, 
         s.class_id,
         c.class_name
@@ -48,11 +49,40 @@ export const getStudentsBySubject = async (req, res) => {
 export const getStudentsByClassNSubject = async (req, res) => {
   const { classId, subjectId } = req.params;
   try {
+    const [subjectRows] = await pool.query(
+      'SELECT is_elective FROM subject WHERE subject_id = ?',
+      [subjectId]
+    );
+
+    if (!subjectRows.length) {
+      return res.status(404).json({ error: 'Subject not found' });
+    }
+
+    if (!subjectRows[0].is_elective) {
+      const [students] = await pool.query(
+        `SELECT 
+          s.student_id, 
+          s.student_ch_name AS student_name,
+          s.student_eng_name AS english_name,
+          s.class_number,
+          s.sex, 
+          s.class_id,
+          c.class_name
+        FROM student s
+        JOIN class c ON s.class_id = c.class_id
+        WHERE s.class_id = ?
+        ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name`,
+        [classId]
+      );
+      return res.json(students);
+    }
+
     const [students] = await pool.query(
       `SELECT 
         s.student_id, 
         s.student_ch_name AS student_name,
         s.student_eng_name AS english_name,
+        s.class_number,
         s.sex, 
         s.class_id,
         c.class_name
@@ -60,7 +90,7 @@ export const getStudentsByClassNSubject = async (req, res) => {
       JOIN class c ON s.class_id = c.class_id
       JOIN student_subject ss ON s.student_id = ss.student_id
       WHERE s.class_id = ? AND ss.subject_id = ?
-      ORDER BY s.student_ch_name`, 
+      ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name`, 
       [classId, subjectId]
     );
     res.json(students);
