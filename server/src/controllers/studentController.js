@@ -143,7 +143,10 @@ export const getStudents = async (req, res) => {
         c.class_name
       FROM student s
       JOIN class c ON s.class_id = c.class_id
-      ORDER BY c.class_name, s.student_ch_name
+      ORDER BY
+        CAST(LEFT(c.class_name, 1) AS UNSIGNED),
+        FIELD(SUBSTRING(c.class_name, 2, 1), 'M', 'A', 'R', 'Y'),
+        s.student_ch_name
     `);
     res.json(rows);
   } catch (error) {

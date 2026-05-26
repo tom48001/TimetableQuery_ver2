@@ -24,11 +24,11 @@ router.get('/class-counts', ensureJWT, async (req, res) => {
         COUNT(DISTINCT st.student_id) AS student_count
       FROM subject sub
       JOIN class c
+      JOIN student st
+        ON st.class_id = c.class_id
       LEFT JOIN timetable tt
         ON tt.subject_id = sub.subject_id
        AND tt.class_id = c.class_id
-      LEFT JOIN student st
-        ON st.class_id = c.class_id
       LEFT JOIN student_subject ss
         ON ss.student_id = st.student_id
        AND ss.subject_id = sub.subject_id
@@ -37,7 +37,11 @@ router.get('/class-counts', ensureJWT, async (req, res) => {
         OR
         (sub.is_elective = TRUE AND ss.subject_id IS NOT NULL)
       GROUP BY sub.subject_id, c.class_id
-      ORDER BY sub.subject_id, c.class_id
+      ORDER BY
+        sub.subject_id,
+        CAST(LEFT(c.class_name, 1) AS UNSIGNED),
+        FIELD(SUBSTRING(c.class_name, 2, 1), 'M', 'A', 'R', 'Y'),
+        c.class_name
     `);
     res.json(rows);
   } catch (error) {

@@ -75,7 +75,7 @@ export default {
       } catch (err) {
         const status = err.response ? err.response.status : 0;
         const message = status === 403
-          ? 'Failed to load users. This account must be manager role.'
+          ? 'Failed to load users. This account must be manager or staff role.'
           : 'Failed to load users. Please check login token and server connection.';
         alert(message);
       }

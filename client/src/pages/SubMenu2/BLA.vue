@@ -12,7 +12,7 @@
           <thead>
             <tr>
               <th class="subject-col">科目</th>
-              <th v-for="cls in classList" :key="cls.class_id">
+              <th v-for="cls in visibleClassList" :key="cls.class_id">
                 {{ cls.class_name }}
               </th>
             </tr>
@@ -21,7 +21,7 @@
             <tr v-for="subject in subjects" :key="subject.subject_id">
               <th class="subject-col">{{ subject.subject_name }}</th>
               <td
-                v-for="cls in classList"
+                v-for="cls in visibleClassList"
                 :key="`${subject.subject_id}-${cls.class_id}`"
                 :class="{ unavailable: !isAvailable(subject.subject_id, cls.class_id) }"
               >
@@ -70,6 +70,13 @@ export default {
     };
   },
   computed: {
+    visibleClassList() {
+      const classIds = new Set(
+        Object.keys(this.counts).map(key => Number(key.split('-')[1]))
+      );
+
+      return this.classList.filter(cls => classIds.has(Number(cls.class_id)));
+    },
     selectedSubject() {
       if (!this.selectedChoice) return null;
       const subjectId = Number(this.selectedChoice.split('-')[0]);

@@ -22,7 +22,14 @@ router.post('/:classId', async (req, res) => {
 // 取得所有班級列表
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT class_id, class_name FROM class ORDER BY class_id');
+    const [rows] = await db.query(`
+      SELECT class_id, class_name
+      FROM class
+      ORDER BY
+        CAST(LEFT(class_name, 1) AS UNSIGNED),
+        FIELD(SUBSTRING(class_name, 2, 1), 'M', 'A', 'R', 'Y'),
+        class_name
+    `);
     res.json(rows);
   } catch (err) {
     console.error('取得班級失敗:', err);

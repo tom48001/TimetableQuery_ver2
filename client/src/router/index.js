@@ -246,7 +246,7 @@ const router = new Router({
       path: '/editTeacher',
       name: 'editTeacher',
       component: editTeacher,
-      meta: { show: true, requiredRole: 'manager' }
+      meta: { show: true, allowedRoles: ['manager', 'staff'] }
     },
     {
       path: '/ImportTeacher',
@@ -266,6 +266,10 @@ router.beforeEach((to, from, next) => {
   const user = rawUser ? JSON.parse(rawUser) : null
 
   if (to.meta.requiredRole && (!user || user.role !== to.meta.requiredRole)) {
+    return next('/login')
+  }
+
+  if (to.meta.allowedRoles && (!user || !to.meta.allowedRoles.includes(user.role))) {
     return next('/login')
   }
 

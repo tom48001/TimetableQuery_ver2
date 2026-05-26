@@ -30,7 +30,7 @@ export default {
       };
       localStorage.setItem('user', JSON.stringify(cleanedUser));
 
-      if (cleanedUser.role === 'manager') {
+      if (cleanedUser.role === 'manager' || cleanedUser.role === 'staff') {
         this.$router.push('/editTeacher');
       } else {
         this.$router.push('/home');

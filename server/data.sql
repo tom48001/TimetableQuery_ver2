@@ -22,7 +22,7 @@ TRUNCATE TABLE user;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- Login accounts. Password for every seeded account is: password123
+-- All seeded accounts use password: password123
 INSERT INTO user (user_name, email, password, role) VALUES
 ('manager', 'manager@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'manager'),
 ('staff', 'staff@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'staff'),
@@ -57,7 +57,12 @@ INSERT INTO staging_teacher (teacher_code, teacher_name, email) VALUES
 ('QWE', 'QWE', 'qwe@gmail.com'),
 ('CWT', 'CWT', 'cwt@school.com'),
 ('CWK', 'CWK', 'cwk@school.com'),
-('MSYS', 'MSYS', 'msys@school.com');
+('MSYS', 'MSYS', 'msys@school.com'),
+('WKY', 'WKY', 'wky@school.com'),
+('WLY', 'WLY', 'wly@school.com'),
+('LCT', 'LCT', 'lct@school.com'),
+('HYK', 'HYK', 'hyk@school.com'),
+('SWS', 'SWS', 'sws@school.com');
 
 INSERT INTO class (class_name, grade_level) VALUES
 ('1M', 'F1'), ('1A', 'F1'), ('1R', 'F1'), ('1Y', 'F1'),
@@ -67,8 +72,14 @@ INSERT INTO class (class_name, grade_level) VALUES
 ('5M', 'F5'), ('5A', 'F5'), ('5R', 'F5'), ('5Y', 'F5'),
 ('6M', 'F6'), ('6A', 'F6'), ('6R', 'F6'), ('6Y', 'F6');
 
--- 選修科目 (is_elective = TRUE)
 INSERT INTO subject (subject_name, is_elective) VALUES
+-- 核心科目 (is_elective = FALSE)
+('中國語文', FALSE),
+('英國語文', FALSE),
+('數學', FALSE),
+('公民與社會發展', FALSE),
+
+-- 選修科目 (is_elective = TRUE)
 ('中國文學', TRUE),
 ('生物', TRUE),
 ('企業、會計與財務概論', TRUE),
@@ -138,61 +149,61 @@ INSERT INTO student (student_ch_name, student_eng_name, class_id, class_number, 
 ('Yuen Ching Man', 'YUEN CHING MAN', 9, '03', 'F');
 
 INSERT INTO room (room_name) VALUES
-('G01C Meeting Room'),
-('G01D Meeting Room'),
-('G01K Meeting Room'),
-('G01R Learning Support Room'),
-('Playground'),
-('Covered Playground'),
-('101 Visual Arts Room'),
-('102 Music Room'),
-('111 Warm Room'),
-('1/F Glass Room Sonata'),
+('G01C 會見室(一)'),
+('G01D 會見室(二)'),
+('G01K 會議室'),
+('G01R 學生活動中心'),
+('操場'),
+('有蓋操場'),
+('101 視覺藝術室'),
+('102 音樂室'),
+('111 溫室'),
+('一樓玻璃房 (Sonata)'),
 ('201 Little Britain'),
-('202 1M Classroom'),
-('203 1A Classroom'),
-('204 1R Classroom'),
-('205 1Y Classroom'),
-('209A Lecture Room'),
-('209B Creative Room'),
-('301 Classroom'),
-('302 2M Classroom'),
-('303 2A Classroom'),
-('304 2R Classroom'),
-('305 2Y Classroom'),
+('202 1M 課室'),
+('203 1A 課室'),
+('204 1R 課室'),
+('205 1Y 課室'),
+('209A 講廳'),
+('209B 創藝室'),
+('301 課室'),
+('302 2M 課室'),
+('303 2A 課室'),
+('304 2R 課室'),
+('305 2Y 課室'),
 ('309 AI Lab'),
-('311 Computer Room'),
-('401 Classroom'),
-('402 3M Classroom'),
-('403 3A Classroom'),
-('404 3R Classroom'),
-('405 3Y Classroom'),
+('311 電腦室'),
+('401 課室'),
+('402 3M 課室'),
+('403 3A 課室'),
+('404 3R 課室'),
+('405 3Y 課室'),
 ('409 IS Lab'),
 ('412 IS Lab'),
-('413 CAL Room'),
-('415 Library'),
-('501 Classroom'),
-('502 4M Classroom'),
-('503 4A Classroom'),
-('504 4R Classroom'),
-('505 4Y Classroom'),
-('509 Geography Room'),
+('413 CAL 室'),
+('415 圖書館'),
+('501 課室'),
+('502 4M 課室'),
+('503 4A 課室'),
+('504 4R 課室'),
+('505 4Y 課室'),
+('509 地理室'),
 ('511 Bio Lab'),
-('513 Home Economics Room'),
-('601 Classroom'),
-('602 5Y Classroom'),
-('603 5R Classroom'),
-('604 5A Classroom'),
-('605 5M Classroom'),
+('513 家政室'),
+('601 課室'),
+('602 5Y 課室'),
+('603 5R 課室'),
+('604 5A 課室'),
+('605 5M 課室'),
 ('609 Chm Lab'),
 ('611 Phy Lab'),
-('612 Resource Room'),
-('613 Resource Room'),
-('701 Classroom'),
-('702 6M Classroom'),
-('703 6A Classroom'),
-('704 6R Classroom'),
-('705 6Y Classroom'),
+('612 源活齋'),
+('613 源活齋'),
+('701 課室'),
+('702 6M 課室'),
+('703 6A 課室'),
+('704 6R 課室'),
+('705 6Y 課室'),
 ('710 Cozy Lounge');
 
 INSERT INTO period (period_name, start_time, end_time) VALUES
@@ -205,95 +216,99 @@ INSERT INTO period (period_name, start_time, end_time) VALUES
 ('Period 7', '13:30:00', '14:05:00'),
 ('Period 8', '14:05:00', '14:40:00'),
 ('Period 9', '14:40:00', '15:15:00'),
-('Period 10', '15:25:00', '16:00:00');
+('Period 10', '15:25:00', '16:00:00'),
+('Period 11', '14:50:00', '15:25:00'),
+('Period 12', '15:25:00', '16:00:00');
 
 INSERT INTO teacher_subject (teacher_id, subject_id) VALUES
-(1, 2), (1, 3), (1, 6),
-(2, 1), (2, 11), (2, 20),
-(3, 3), (3, 7), (3, 10),
-(4, 4), (4, 19),
-(5, 2), (5, 8),
-(6, 1), (6, 18),
-(7, 9), (7, 10),
-(8, 5), (8, 12),
-(9, 3), (9, 6),
-(10, 13), (10, 14),
-(11, 15), (11, 16),
-(12, 17), (12, 11);
+(1, 2), (1, 3), (1, 6), (1, 7), (1, 13),
+(2, 1), (2, 11), (2, 19), (2, 20), (2, 18),
+(3, 3), (3, 7), (3, 10), (3, 14), (3, 15),
+(4, 4), (4, 19), (4, 5), (4, 11), (4, 16),
+(5, 2), (5, 8), (5, 9), (5, 17),
+(6, 1), (6, 18), (6, 11), (6, 12),
+(7, 9), (7, 10), (7, 5), (7, 20),
+(8, 5), (8, 12), (8, 4), (8, 19),
+(9, 3), (9, 6), (9, 7), (9, 13),
+(10, 13), (10, 14), (10, 15), (10, 16),
+(11, 15), (11, 16), (11, 17), (11, 14),
+(12, 17), (12, 11), (12, 18), (12, 13);
 
 INSERT INTO student_subject (student_id, subject_id) VALUES
+(1, 13), (1, 14), (2, 15), (2, 16), (3, 17), (3, 18),
+(4, 13), (5, 14), (6, 15), (7, 16), (8, 17), (9, 18),
+(10, 13), (11, 14), (12, 15), (13, 16), (14, 17), (15, 18),
+(16, 13), (17, 14), (18, 15), (19, 16), (20, 17), (21, 18),
+(22, 13), (23, 14), (24, 15), (25, 16), (26, 17), (27, 18),
+(28, 13), (29, 14), (30, 15),
 (31, 13), (32, 14), (33, 15), (34, 16), (35, 17), (36, 18),
 (37, 13), (38, 14), (39, 15), (40, 16), (41, 17), (42, 18),
-(43, 13), (44, 14), (45, 15), (46, 16);
+(43, 13), (44, 14), (45, 15), (46, 16),
+(31, 17), (32, 18), (33, 13), (34, 14), (35, 15), (36, 16),
+(37, 17), (38, 18), (39, 13), (40, 14), (41, 15), (42, 16);
 
-INSERT INTO timetable (teacher_id, subject_id, class_id, room_id, day_of_week, period_id) VALUES
-(1, 2, 1, 12, 'Mon', 1),
-(2, 1, 1, 12, 'Mon', 2),
-(3, 3, 1, 12, 'Mon', 3),
-(4, 4, 1, 12, 'Mon', 4),
-(5, 8, 1, 7, 'Mon', 5),
-(6, 1, 2, 13, 'Mon', 1),
-(7, 10, 2, 13, 'Mon', 2),
-(8, 5, 2, 13, 'Mon', 3),
-(9, 6, 2, 13, 'Mon', 4),
-(1, 3, 5, 19, 'Mon', 5),
-(2, 11, 5, 19, 'Tue', 1),
-(3, 3, 5, 19, 'Tue', 2),
-(4, 19, 6, 20, 'Tue', 3),
-(5, 2, 6, 20, 'Tue', 4),
-(6, 18, 7, 21, 'Wed', 1),
-(7, 9, 7, 21, 'Wed', 2),
-(8, 12, 8, 22, 'Wed', 3),
-(9, 3, 8, 22, 'Wed', 4),
-(10, 13, 13, 35, 'Thu', 1),
-(11, 15, 14, 36, 'Thu', 2),
-(12, 17, 15, 37, 'Thu', 3),
-(1, 6, 16, 38, 'Thu', 4),
-(2, 20, 17, 46, 'Fri', 1),
-(3, 7, 18, 45, 'Fri', 2),
-(4, 4, 19, 44, 'Fri', 3),
-(5, 2, 20, 43, 'Fri', 4),
-(6, 1, 21, 52, 'Fri', 5),
-(7, 10, 22, 53, 'Fri', 6),
-(8, 5, 23, 54, 'Fri', 7),
-(9, 3, 24, 55, 'Fri', 8),
-(10, 14, 13, 47, 'Mon', 8),
-(11, 16, 14, 48, 'Tue', 8),
-(12, 11, 15, 39, 'Wed', 8);
+INSERT INTO timetable (teacher_id, subject_id, class_id, room_id, day_of_week, period_id)
+SELECT t.teacher_id, s.subject_id, c.class_id, r.room_id, seed.day_of_week, p.period_id
+FROM (
+  SELECT 'QWE' AS teacher_code, '英國語文' AS subject_name, '1M' AS class_name, '202 1M 課室' AS room_name, 'Mon' AS day_of_week, 'Period 1' AS period_name
+  UNION ALL SELECT 'CWT', '中國語文', '1M', '202 1M 課室', 'Mon', 'Period 2'
+  UNION ALL SELECT 'CWK', '數學', '1M', '202 1M 課室', 'Mon', 'Period 3'
+  UNION ALL SELECT 'MSYS', '公民與社會發展', '1M', '202 1M 課室', 'Mon', 'Period 4'
+  UNION ALL SELECT 'WKY', '視覺藝術', '1M', '101 視覺藝術室', 'Mon', 'Period 5'
+  UNION ALL SELECT 'WLY', '中國語文', '1A', '203 1A 課室', 'Mon', 'Period 1'
+  UNION ALL SELECT 'LCT', '體育', '1A', '203 1A 課室', 'Mon', 'Period 2'
+  UNION ALL SELECT 'HYK', '健康管理與社會關懷', '1A', '203 1A 課室', 'Mon', 'Period 3'
+  UNION ALL SELECT 'SWS', '資訊及通訊科技', '1A', '203 1A 課室', 'Mon', 'Period 4'
+  UNION ALL SELECT 'QWE', '數學', '2M', '302 2M 課室', 'Mon', 'Period 5'
+  UNION ALL SELECT 'CWT', '歷史', '2M', '302 2M 課室', 'Tue', 'Period 1'
+  UNION ALL SELECT 'CWK', '數學', '2M', '302 2M 課室', 'Tue', 'Period 2'
+  UNION ALL SELECT 'MSYS', '倫理與宗教', '2A', '303 2A 課室', 'Tue', 'Period 3'
+  UNION ALL SELECT 'WKY', '英國語文', '2A', '303 2A 課室', 'Tue', 'Period 4'
+  UNION ALL SELECT 'WLY', '中國文學', '2R', '304 2R 課室', 'Wed', 'Period 1'
+  UNION ALL SELECT 'LCT', '音樂', '2R', '304 2R 課室', 'Wed', 'Period 2'
+  UNION ALL SELECT 'HYK', '地理', '2Y', '305 2Y 課室', 'Wed', 'Period 3'
+  UNION ALL SELECT 'SWS', '數學', '2Y', '305 2Y 課室', 'Wed', 'Period 4'
+  UNION ALL SELECT 'T010', '生物', '4M', '502 4M 課室', 'Thu', 'Period 1'
+  UNION ALL SELECT 'T011', '物理', '4A', '503 4A 課室', 'Thu', 'Period 2'
+  UNION ALL SELECT 'T012', '企業、會計與財務概論', '4R', '504 4R 課室', 'Thu', 'Period 3'
+  UNION ALL SELECT 'QWE', '資訊及通訊科技', '4Y', '505 4Y 課室', 'Thu', 'Period 4'
+  UNION ALL SELECT 'CWT', '中國語文', '5M', '605 5M 課室', 'Fri', 'Period 1'
+  UNION ALL SELECT 'CWK', '科技與生活', '5A', '604 5A 課室', 'Fri', 'Period 2'
+  UNION ALL SELECT 'MSYS', '公民與社會發展', '5R', '603 5R 課室', 'Fri', 'Period 3'
+  UNION ALL SELECT 'WKY', '英國語文', '5Y', '602 5Y 課室', 'Fri', 'Period 4'
+  UNION ALL SELECT 'WLY', '中國語文', '6M', '702 6M 課室', 'Fri', 'Period 5'
+  UNION ALL SELECT 'LCT', '體育', '6A', '703 6A 課室', 'Fri', 'Period 6'
+  UNION ALL SELECT 'HYK', '健康管理與社會關懷', '6R', '704 6R 課室', 'Fri', 'Period 7'
+  UNION ALL SELECT 'SWS', '數學', '6Y', '705 6Y 課室', 'Fri', 'Period 8'
+  UNION ALL SELECT 'T010', '化學', '4M', '609 Chm Lab', 'Mon', 'Period 8'
+  UNION ALL SELECT 'T011', '經濟', '4A', '611 Phy Lab', 'Tue', 'Period 8'
+  UNION ALL SELECT 'T012', '歷史', '4R', '509 地理室', 'Wed', 'Period 8'
+) seed
+JOIN teacher t ON t.teacher_code = seed.teacher_code
+JOIN subject s ON s.subject_name = seed.subject_name
+JOIN class c ON c.class_name = seed.class_name
+JOIN room r ON r.room_name = seed.room_name
+JOIN period p ON p.period_name = seed.period_name;
 
 INSERT INTO staging_timetable (teacher_code, subject, class, room, day_of_week, period) VALUES
-('QWE', 'English Language', '1M', '202 1M Classroom', 'Mon', 'Period 6'),
-('CWT', 'Chinese Language', '1A', '203 1A Classroom', 'Tue', 'Period 6');
-
-INSERT INTO nomination (teacher_id, student_id) VALUES
-(1, 1), (1, 2), (2, 1), (3, 5), (4, 10), (5, 31), (6, 32);
-
-INSERT INTO prefect_nomination (teacher_id, student_id) VALUES
-(1, 6), (2, 6), (3, 7), (4, 8), (5, 31), (6, 32);
-
-INSERT INTO BLA (teacher_id, student_id, subject_id) VALUES
-(1, 1, 2), (2, 1, 1), (3, 1, 3), (4, 1, 4),
-(5, 1, 8), (6, 1, 18), (7, 1, 10), (8, 1, 5),
-(1, 2, 2), (2, 2, 1), (3, 2, 3),
-(1, 3, 2), (3, 3, 3), (9, 3, 6),
-(1, 31, 2), (2, 31, 1), (3, 31, 3), (10, 31, 13);
-
-INSERT INTO learning_goal_record (teacher_id, student_id, completed_goals) VALUES
-(1, 1, 2),
-(1, 2, 4),
-(1, 3, 6),
-(1, 4, 8),
-(1, 5, 3),
-(1, 6, 7),
-(1, 7, 1),
-(1, 8, 5),
-(1, 9, 0),
-(1, 10, 9),
-(2, 31, 4),
-(2, 32, 3),
-(2, 33, 6),
-(2, 34, 8);
+('QWE', '英國語文', '1M', '202 1M 課室', 'Mon', 'Period 6'),
+('CWT', '中國語文', '1A', '203 1A 課室', 'Tue', 'Period 6'),
+('CWK', '數學', '1R', '204 1R 課室', 'Wed', 'Period 6'),
+('MSYS', '公民與社會發展', '1Y', '205 1Y 課室', 'Thu', 'Period 6'),
+('WKY', '英國語文', '2M', '302 2M 課室', 'Fri', 'Period 6'),
+('WLY', '中國語文', '2A', '303 2A 課室', 'Mon', 'Period 7'),
+('LCT', '體育', '2R', '304 2R 課室', 'Tue', 'Period 7'),
+('HYK', '健康管理與社會關懷', '2Y', '305 2Y 課室', 'Wed', 'Period 7'),
+('SWS', '資訊及通訊科技', '3M', '402 3M 課室', 'Thu', 'Period 7'),
+('T010', '生物', '4M', '511 Bio Lab', 'Fri', 'Period 7'),
+('T011', '物理', '4A', '611 Phy Lab', 'Mon', 'Period 9'),
+('T012', '企業、會計與財務概論', '4R', '413 CAL 室', 'Tue', 'Period 9'),
+('QWE', '科技與生活', '5A', '604 5A 課室', 'Wed', 'Period 9'),
+('CWT', '歷史', '5R', '603 5R 課室', 'Thu', 'Period 9'),
+('CWK', '數學', '6Y', '705 6Y 課室', 'Fri', 'Period 10'),
+('MSYS', '倫理與宗教', '3A', '403 3A 課室', 'Mon', 'Period 11'),
+('WKY', '視覺藝術', '3R', '404 3R 課室', 'Tue', 'Period 11'),
+('SWS', '地理', '3Y', '405 3Y 課室', 'Wed', 'Period 12');
 
 INSERT INTO import_schedule (file_name) VALUES
 ('sample-timetable.xlsx');
-

@@ -13,30 +13,49 @@ const Roles = {
 
 const router = express.Router();
 
+function checkAnyRole(...roles) {
+  return (req, res, next) => {
+    const userRole = req.user?.role ? req.user.role.trim().toLowerCase() : '';
+    if (roles.includes(userRole)) return next();
+    return res.status(403).json({ error: 'Permission denied' });
+  };
+}
+
 // 所有路由都需登入 + 身份為 manager
 router.use(ensureJWT);
 //router.use(checkRole(Roles.MANAGER));
 
 // 只對管理功能要求 manager
 // 取得所有老師資料 
-router.get('/getAllTeachers', checkRole(Roles.MANAGER), getAllTeachers); 
+router.get('/getAllTeachers', checkAnyRole(Roles.MANAGER, Roles.STAFF), getAllTeachers); 
 
 // 新增老師
-router.post('/', checkRole(Roles.MANAGER), createTeacher);
+router.post('/', checkAnyRole(Roles.MANAGER, Roles.STAFF), createTeacher);
 
 // 查詢多位老師課表
 router.post('/schedule', getTeachersSchedule);
 
 // 更新老師
-router.put('/:id', checkRole(Roles.MANAGER), updateTeacher);
+router.put('/:id', checkAnyRole(Roles.MANAGER, Roles.STAFF), updateTeacher);
 
 // 刪除老師
-router.delete('/:id', checkRole(Roles.MANAGER), deleteTeacher);
+router.delete('/:id', checkAnyRole(Roles.MANAGER, Roles.STAFF), deleteTeacher);
 
 // 取得 teacher 表中老師名單
 router.get('/list', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT teacher_id, teacher_name FROM teacher');
+    const [rows] = await db.query(`
+      SELECT
+        t.teacher_id,
+        t.teacher_name,
+        COUNT(tt.timetable_id) AS lesson_count
+      FROM teacher t
+      LEFT JOIN timetable tt ON tt.teacher_id = t.teacher_id
+      GROUP BY t.teacher_id, t.teacher_name
+      ORDER BY
+        CASE WHEN COUNT(tt.timetable_id) > 0 THEN 0 ELSE 1 END,
+        t.teacher_name
+    `);
     res.json(rows);
   } catch (err) {
     console.error('取得老師失敗:', err);

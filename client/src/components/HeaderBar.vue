@@ -2,7 +2,7 @@
   <header class="header">
     <div class="top-row">
       <h1>
-        <router-link to="/home">聖公會聖馬利亞堂莫慶堯中學行政管理系統</router-link>
+        <router-link to="/home">時間表及學生管理系統</router-link>
       </h1>
 
       <div class="account-info">
@@ -26,14 +26,14 @@
         時間表應用
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu1" class="sub-menu" style="display: none;">
-          <li><router-link to="/TeacherTimetable">老師上課與空堂時間表</router-link></li>
-          <li><router-link to="/ClassObservation">觀課課堂</router-link></li>
-          <li><router-link to="/SwapLesson">調課搜尋</router-link></li>
-          <li><router-link to="/FreeTeacher">空堂老師 / 課堂總表</router-link></li>
-          <li><router-link to="/ClassTimetable">各班上課時間表</router-link></li>
+          <li><router-link to="/TeacherTimetable">老師上課時間表</router-link></li>
+          <li><router-link to="/ClassObservation">觀課選堂</router-link></li>
+          <li><router-link to="/SwapLesson">調課搜找</router-link></li>
+          <li><router-link to="/FreeTeacher">搜尋空堂老師</router-link></li>
+          <li><router-link to="/ClassTimetable">班別時間表</router-link></li>
           <li><router-link to="/RoomTimetable">各房間上課時間表</router-link></li>
           <li><router-link to="/Electives">高中選修名單</router-link></li>
-          <li><router-link to="/StdTimetable">學生上課時間表</router-link></li>
+          <li><router-link to="/StdTimetable">學生時間表</router-link></li>
         </ul>
       </span>
 
@@ -42,10 +42,10 @@
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu2" class="sub-menu" style="display: none;">
           <li><router-link to="/BLA">最佳學習態度提名</router-link></li>
-          <li><router-link to="/BLAResult">最佳學習態度提名結果</router-link></li>
+          <li><router-link to="/BLAResult">最佳學習態度學生提名結果</router-link></li>
           <li><router-link to="/ConductAward">操行獎提名</router-link></li>
           <li><router-link to="/ConductAwardResult">操行獎提名統計結果</router-link></li>
-          <li><router-link to="/LearningGoalEntry">輸入完成學習目標數目</router-link></li>
+          <li><router-link to="/LearningGoalEntry">輸入學生完成目標總數</router-link></li>
           <li><router-link to="/LearningGoalResult">學習目標獎勵計劃結果</router-link></li>
           <li><router-link to="/PrefectNomination">紀律領袖生提名</router-link></li>
           <li><router-link to="/PrefectNominationResult">紀律領袖生提名統計結果</router-link></li>
@@ -53,16 +53,16 @@
       </span>
 
       <span
-        v-if="userRole === 'manager'"
+        v-if="canManageUsers"
         class="main-menu"
         @mouseover="switchMenu('SubMenu3', $event)"
         @mouseout="hideMenu"
       >
-        使用者管理
+        系統管理
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu3" class="sub-menu" style="display: none;">
-          <li><router-link to="/editTeacher">管理用戶</router-link></li>
-          <li><router-link to="/ImportTeacher">導入時間表</router-link></li>
+          <li><router-link to="/editTeacher">使用者管理</router-link></li>
+          <li v-if="canImportTimetable"><router-link to="/ImportTeacher">導入時間表</router-link></li>
         </ul>
       </span>
     </div>
@@ -91,6 +91,12 @@ export default {
     displayRole() {
       if (!this.userRole) return '';
       return this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1);
+    },
+    canManageUsers() {
+      return this.userRole === 'manager' || this.userRole === 'staff';
+    },
+    canImportTimetable() {
+      return this.userRole === 'manager';
     }
   },
   mounted() {

@@ -123,7 +123,11 @@ export const getLearningGoalResults = async (req, res) => {
       LEFT JOIN learning_goal_record lgr ON s.student_id = lgr.student_id
       GROUP BY s.student_id, c.class_name, s.class_number, s.student_ch_name
       HAVING completed_goals > 0
-      ORDER BY c.class_name, CAST(s.class_number AS UNSIGNED), s.student_ch_name
+      ORDER BY
+        CAST(LEFT(c.class_name, 1) AS UNSIGNED),
+        FIELD(SUBSTRING(c.class_name, 2, 1), 'M', 'A', 'R', 'Y'),
+        CAST(s.class_number AS UNSIGNED),
+        s.student_ch_name
       `
     );
 
