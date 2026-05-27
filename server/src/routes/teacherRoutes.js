@@ -114,9 +114,9 @@ router.post('/free-teachers-day', async (req, res) => {
         c.class_name
       FROM teacher t
       LEFT JOIN timetable tt
-        ON tt.teacher_id = t.teacher_id
+       ON tt.teacher_id = t.teacher_id
        AND tt.day_of_week = ?
-       AND tt.period_id BETWEEN 1 AND 10
+       AND tt.period_id BETWEEN 1 AND 12
       LEFT JOIN class c ON tt.class_id = c.class_id
       ORDER BY t.teacher_name, tt.period_id
       `,

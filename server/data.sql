@@ -37,7 +37,8 @@ INSERT INTO user (user_name, email, password, role) VALUES
 ('sws', 'sws@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
 ('teacher10', 'teacher10@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
 ('teacher11', 'teacher11@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('teacher12', 'teacher12@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher');
+('teacher12', 'teacher12@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
+('SING', 'singsing894@gmail.com', '123', 'teacher');
 
 INSERT INTO teacher (user_id, teacher_name, teacher_code, status) VALUES
 (3, 'QWE', 'QWE', 'active'),
@@ -51,7 +52,8 @@ INSERT INTO teacher (user_id, teacher_name, teacher_code, status) VALUES
 (11, 'SWS', 'SWS', 'active'),
 (12, 'T010', 'T010', 'active'),
 (13, 'T011', 'T011', 'active'),
-(14, 'T012', 'T012', 'active');
+(14, 'T012', 'T012', 'active'),
+(15, 'SING', 'SING', 'active');
 
 INSERT INTO staging_teacher (teacher_code, teacher_name, email) VALUES
 ('QWE', 'QWE', 'qwe@gmail.com'),
@@ -62,7 +64,8 @@ INSERT INTO staging_teacher (teacher_code, teacher_name, email) VALUES
 ('WLY', 'WLY', 'wly@school.com'),
 ('LCT', 'LCT', 'lct@school.com'),
 ('HYK', 'HYK', 'hyk@school.com'),
-('SWS', 'SWS', 'sws@school.com');
+('SWS', 'SWS', 'sws@school.com'),
+('SING', 'SING', 'singsing894@gmail.com');
 
 INSERT INTO class (class_name, grade_level) VALUES
 ('1M', 'F1'), ('1A', 'F1'), ('1R', 'F1'), ('1Y', 'F1'),
@@ -146,7 +149,9 @@ INSERT INTO student (student_ch_name, student_eng_name, class_id, class_number, 
 ('Tang Ka Hei', 'TANG KA HEI', 5, '05', 'M'),
 ('Tse Wing Lam', 'TSE WING LAM', 9, '01', 'F'),
 ('Tsui Long Hei', 'TSUI LONG HEI', 9, '02', 'M'),
-('Yuen Ching Man', 'YUEN CHING MAN', 9, '03', 'F');
+('Yuen Ching Man', 'YUEN CHING MAN', 9, '03', 'F'),
+('BBC', 'BBC', 23, '01', 'F'),
+('ABC', 'ABC', 24, '01', 'F');
 
 INSERT INTO room (room_name) VALUES
 ('G01C 會見室(一)'),
@@ -245,6 +250,7 @@ INSERT INTO student_subject (student_id, subject_id) VALUES
 (37, 13), (38, 14), (39, 15), (40, 16), (41, 17), (42, 18),
 (43, 13), (44, 14), (45, 15), (46, 16),
 (31, 17), (32, 18), (33, 13), (34, 14), (35, 15), (36, 16),
+(47, 9),(48, 9),
 (37, 17), (38, 18), (39, 13), (40, 14), (41, 15), (42, 16);
 
 INSERT INTO timetable (teacher_id, subject_id, class_id, room_id, day_of_week, period_id)
@@ -283,6 +289,8 @@ FROM (
   UNION ALL SELECT 'T010', '化學', '4M', '609 Chm Lab', 'Mon', 'Period 8'
   UNION ALL SELECT 'T011', '經濟', '4A', '611 Phy Lab', 'Tue', 'Period 8'
   UNION ALL SELECT 'T012', '歷史', '4R', '509 地理室', 'Wed', 'Period 8'
+  UNION ALL SELECT 'T012', '化學', '6R', '609 Chm Lab', 'Wed', 'Period 11'
+  UNION ALL SELECT 'T012', '化學', '6Y', '609 Chm Lab', 'Wed', 'Period 12'
 ) seed
 JOIN teacher t ON t.teacher_code = seed.teacher_code
 JOIN subject s ON s.subject_name = seed.subject_name
