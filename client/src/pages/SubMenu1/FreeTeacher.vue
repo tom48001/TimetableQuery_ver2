@@ -15,7 +15,6 @@
 
         <p v-if="selectedDate" class="date-preview">
           {{ selectedDate }} <strong>({{ weekdayLabel }})</strong>
-          <small>(yyyy-mm-dd)</small>
         </p>
 
         <label>

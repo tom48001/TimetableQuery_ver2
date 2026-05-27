@@ -5,7 +5,6 @@
         <div>
           <h1>選擇學生</h1>
         </div>
-        <span class="count-badge">{{ selectedCount }} 位已選</span>
       </header>
 
       <div v-if="selectedSubject.subject_name" class="context-row">
@@ -102,6 +101,7 @@ export default {
         this.teacher_id = res.data.teacher_id;
       } catch (error) {
         console.error('Failed to load teacher id:', error);
+        alert('此帳號未連結老師資料，不能提交提名。請在 teacher 表加入對應 user_id。');
       }
     },
     async loadStudents() {
@@ -154,7 +154,10 @@ export default {
     },
     async submitNomination() {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token || !this.teacher_id) {
+        alert('未能取得老師資料，不能提交提名。');
+        return;
+      }
 
       const teacherId = this.teacher_id;
       const subjectId = this.selectedSubject.subject_id;

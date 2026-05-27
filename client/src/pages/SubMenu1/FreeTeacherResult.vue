@@ -2,7 +2,6 @@
   <main class="result-page">
     <section class="result-panel">
       <header class="result-header">
-        <p>Free Teacher</p>
         <h1>{{ date }}（{{ weekdayLabel }}）</h1>
         <h2>第{{ period }}節空堂老師</h2>
       </header>

@@ -3,10 +3,9 @@
     <section class="teacher-panel">
       <header class="page-header">
         <div>
-          <p>Teacher Timetable</p>
           <h1>老師上課時間表</h1>
         </div>
-        <span class="count-badge">{{ selectedTeacherId.length }} selected</span>
+        <span class="count-badge">{{ selectedTeacherId.length }} 老師</span>
       </header>
 
       <div class="toolbar">
@@ -63,7 +62,6 @@
       <p v-else class="empty-message">找不到老師</p>
 
       <footer class="footer-actions">
-        <span>有課表老師：{{ teachersWithLessons.length }} / {{ teachers.length }}</span>
         <button type="button" class="primary-btn" @click="goNext">
           查看時間表
         </button>

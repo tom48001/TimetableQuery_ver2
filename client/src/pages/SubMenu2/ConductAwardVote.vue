@@ -35,7 +35,9 @@ export default {
       selectedClass: JSON.parse(this.$route.query.selectedClass || '[]'),
       studentsByClass: {},
       selectedStudents: {},
-      previousSelectedStudents: {}
+      previousSelectedStudents: {},
+      teacher_id: null,
+      loading: true
     }
   },
   created() {
@@ -44,35 +46,6 @@ export default {
       return
     }
     console.log('已選擇班級:', this.selectedClass)
-  },
-  watch: {
-    selectedClass: {
-      immediate: true,
-      handler(newClassList) {
-        if (!Array.isArray(newClassList)) return
-
-        const token = localStorage.getItem('token')
-        if (!token) {
-          console.error('未找到 token，請重新登入')
-          return
-        }
-
-        for (const classid of newClassList) {
-          console.log(`載入班級 ${classid} 的學生`)
-          this.$set(this.selectedStudents, classid, [])
-          axios.get(`http://localhost:3000/api/students/by-class/${classid}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-            .then(res => {
-              this.$set(this.studentsByClass, classid, res.data)
-            })
-            .catch(err => {
-              console.error(`載入 ${classid} 的學生失敗:`, err)
-              this.$set(this.studentsByClass, classid, [])
-            })
-        }
-      }
-    }
   },
   methods: {
     async getTeacherId() {
@@ -92,7 +65,26 @@ export default {
         console.log('老師 ID:', this.teacher_id);
       } catch (error) {
         console.error('取得 teacher_id 失敗:', error);
+        alert('此帳號未連結老師資料，不能提交提名。請在 teacher 表加入對應 user_id。');
       }
+    },
+    async fetchStudentsForClasses() {
+      const token = localStorage.getItem('token');
+      if (!token || !Array.isArray(this.selectedClass)) return;
+
+      await Promise.all(this.selectedClass.map(async classid => {
+        this.$set(this.selectedStudents, classid, []);
+
+        try {
+          const res = await axios.get(`http://localhost:3000/api/students/by-class/${classid}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          this.$set(this.studentsByClass, classid, res.data);
+        } catch (err) {
+          console.error(`載入 ${classid} 的學生失敗:`, err);
+          this.$set(this.studentsByClass, classid, []);
+        }
+      }));
     },
     async loadSelectedStudents() {
       try {
@@ -154,8 +146,9 @@ export default {
     },
     submitNomination() {
       const token = localStorage.getItem('token');
-      if (!token) {
+      if (!token || !this.teacher_id) {
         console.error('未登入');
+        alert('未能取得老師資料，不能提交提名。');
         return;
       }
       const teacherId = this.teacher_id
@@ -197,7 +190,9 @@ export default {
   },
   async mounted() {
     await this.getTeacherId();
+    await this.fetchStudentsForClasses();
     await this.loadSelectedStudents();
+    this.loading = false;
   }
 }
 </script>

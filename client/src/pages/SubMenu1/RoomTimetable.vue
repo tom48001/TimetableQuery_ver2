@@ -5,7 +5,6 @@
         <div>
           <h1>各房間上課時間表</h1>
         </div>
-        <span class="count-badge">{{ filteredRooms.length }} / {{ roomList.length }} rooms</span>
       </header>
 
       <div class="toolbar">

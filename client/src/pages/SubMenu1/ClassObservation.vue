@@ -67,7 +67,6 @@
       </section>
 
       <footer class="footer-actions">
-        <span>{{ teachers.length }} teachers loaded</span>
         <button type="button" class="primary-btn" @click="searchSchedule">
           Submit
         </button>

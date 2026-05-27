@@ -37,7 +37,6 @@
       <p v-else class="empty-message">找不到老師</p>
 
       <footer class="footer-actions">
-        <span>顯示 {{ filteredTeachers.length }} / {{ teachers.length }} 位老師</span>
         <button type="button" class="primary-btn" @click="goNext">
           下一步
         </button>

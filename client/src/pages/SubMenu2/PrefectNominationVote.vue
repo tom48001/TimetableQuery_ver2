@@ -55,12 +55,17 @@ export default {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const decoded = jwtDecode(token);
-      const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${decoded.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      try {
+        const decoded = jwtDecode(token);
+        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${decoded.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
-      this.teacher_id = res.data.teacher_id;
+        this.teacher_id = res.data.teacher_id;
+      } catch (err) {
+        console.error('Failed to load teacher id:', err);
+        alert('此帳號未連結老師資料，不能提交提名。請在 teacher 表加入對應 user_id。');
+      }
     },
     async fetchStudentsForClasses() {
       const token = localStorage.getItem('token');
@@ -108,7 +113,10 @@ export default {
     },
     submitNomination() {
       const token = localStorage.getItem('token');
-      if (!token || !this.teacher_id) return;
+      if (!token || !this.teacher_id) {
+        alert('未能取得老師資料，不能提交提名。');
+        return;
+      }
 
       const teacherId = this.teacher_id;
       const selectedStudentIds = Object.values(this.selectedStudents).flat();
