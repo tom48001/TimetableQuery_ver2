@@ -3,23 +3,23 @@
     <section class="pick-panel">
       <header class="page-header">
         <div>
-          <p>{{ teacherName || 'Swap Lesson' }}</p>
-          <h1>調課選堂</h1>
+          <p>{{ teacherName || tr('Teacher', '老師') }}</p>
+          <h1>{{ tr('Choose Lesson to Swap', '調課選堂') }}</h1>
         </div>
-        <span class="count-badge">不包括分組課堂或高中選修科</span>
+        <span class="count-badge">{{ tr('Grouped lessons and senior electives are excluded', '不包括分組課堂或高中選修科') }}</span>
       </header>
 
       <div class="table-wrap">
         <table class="lesson-table">
           <thead>
             <tr>
-              <th class="period-col">課節</th>
+              <th class="period-col">{{ tr('Period / Day', '課節 / 星期') }}</th>
               <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="period in periodNumbers" :key="period">
-              <th class="period-col">第{{ period }}節</th>
+              <th class="period-col">{{ periodText(period) }}</th>
               <td
                 v-for="day in days"
                 :key="`${day}-${period}`"
@@ -27,8 +27,8 @@
               >
                 <label
                   v-if="getLesson(day, period)"
-                  class="lesson-cell"
-                  :class="{ selected: selectedLessonId === getLesson(day, period).timetable_id }"
+                  class="lesson-card"
+                  :class="{ selected: Number(selectedLessonId) === Number(getLesson(day, period).timetable_id) }"
                 >
                   <input
                     type="radio"
@@ -36,8 +36,10 @@
                     :value="getLesson(day, period).timetable_id"
                     v-model="selectedLessonId"
                   />
-                  <span class="class-pill">{{ getLesson(day, period).class_name }}</span>
-                  <span class="subject-name">{{ getLesson(day, period).subject }}</span>
+                  <span class="lesson-info">
+                    <span class="class-pill">{{ getLesson(day, period).class_name }}</span>
+                    <span class="subject-name">{{ subjectLabel(getLesson(day, period)) }}</span>
+                  </span>
                 </label>
               </td>
             </tr>
@@ -46,7 +48,7 @@
       </div>
 
       <button type="button" class="primary-btn" :disabled="!selectedLesson" @click="goNext">
-        下一步
+        {{ tr('Next', '下一頁') }}
       </button>
     </section>
   </main>
@@ -54,6 +56,7 @@
 
 <script>
 import axios from 'axios';
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 
 const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 const DAY_LABELS = {
@@ -63,9 +66,6 @@ const DAY_LABELS = {
   Thu: '\u661f\u671f\u56db',
   Fri: '\u661f\u671f\u4e94',
   Sat: '\u661f\u671f\u516d'
-};
-const TEXT = {
-  chooseLesson: '\u8acb\u9078\u64c7\u8981\u8abf\u7684\u8ab2\u5802\u3002'
 };
 
 export default {
@@ -94,7 +94,7 @@ export default {
       return Array.from({ length: maxPeriod }, (value, index) => index + 1);
     },
     selectedLesson() {
-      return this.lessons.find(lesson => lesson.timetable_id === this.selectedLessonId);
+      return this.lessons.find(lesson => Number(lesson.timetable_id) === Number(this.selectedLessonId));
     }
   },
   async mounted() {
@@ -111,21 +111,27 @@ export default {
     }
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    periodText(period) {
+      return this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
+    },
     dayLabel(day) {
-      return DAY_LABELS[day] || day;
+      const en = { Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat' }[day] || day;
+      return this.$lang.locale === 'en' ? en : (DAY_LABELS[day] || day);
     },
     getLesson(day, period) {
       return this.lessons.find(lesson =>
         lesson.day === day && Number(lesson.period) === Number(period)
       );
     },
-    formatLessonLabel(lesson) {
-      const dayLabel = DAY_LABELS[lesson.day] || lesson.day;
-      return `${dayLabel} \u7b2c${lesson.period}\u7bc0 ${lesson.class_name} ${lesson.subject}`;
+    subjectLabel(lesson) {
+      return formatSubjectLabel({ subject_id: lesson.subject_id, subject_name: lesson.subject_name || lesson.subject }, this.$lang.locale);
     },
     goNext() {
       if (!this.selectedLesson) {
-        alert(TEXT.chooseLesson);
+        alert(this.tr('Please select a lesson.', '請選擇課堂。'));
         return;
       }
 
@@ -136,7 +142,9 @@ export default {
           teacherName: this.$route.query.teacherName,
           day: this.selectedLesson.day,
           period: this.selectedLesson.period,
-          lessonLabel: this.formatLessonLabel(this.selectedLesson),
+          classId: this.selectedLesson.class_id,
+          className: this.selectedLesson.class_name,
+          subject: this.selectedLesson.subject || this.selectedLesson.subject_name,
           subjectId: this.selectedLesson.subject_id
         }
       });
@@ -215,7 +223,7 @@ h1 {
 .lesson-table td {
   border-bottom: 1px solid var(--border);
   border-left: 1px solid var(--border);
-  height: 54px;
+  height: 64px;
   padding: 8px;
   text-align: left;
   vertical-align: middle;
@@ -256,40 +264,49 @@ h1 {
   background: #fbfdfd;
 }
 
-.lesson-cell {
-  min-height: 38px;
-  display: flex;
+.lesson-card {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: center;
-  gap: 7px;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  gap: 9px;
+  border: 1px solid #c7dbe3;
+  border-radius: 7px;
+  background: #f6fbfd;
   color: var(--text);
   cursor: pointer;
   font-size: 14px;
   font-weight: 700;
-  line-height: 1.2;
-  padding: 4px 6px;
+  line-height: 1.25;
+  padding: 7px 9px;
 }
 
-.lesson-cell:hover,
-.lesson-cell.selected {
+.lesson-card:hover,
+.lesson-card.selected {
   border-color: var(--primary);
   background: var(--primary-soft);
+  box-shadow: 0 4px 10px rgba(11, 114, 133, 0.12);
 }
 
-.lesson-cell input {
-  flex: 0 0 auto;
+.lesson-card input {
   margin: 0;
   accent-color: var(--primary);
+}
+
+.lesson-info {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .class-pill {
   flex: 0 0 auto;
   border-radius: 999px;
-  background: #e7f4f6;
+  background: #dff3f6;
   color: #0a5260;
   font-size: 12px;
-  padding: 4px 7px;
+  padding: 4px 8px;
 }
 
 .subject-name {

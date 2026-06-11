@@ -3,29 +3,31 @@
     <section class="page-panel">
       <header class="page-header">
         <div>
-          <h1>最佳學習態度學生提名結果</h1>
+          <h1>{{ tr('Best Learning Attitude Results', '最佳學習態度學生提名結果') }}</h1>
         </div>
-        <span class="summary-pill">{{ BLAResults.length }} 名學生</span>
+        <span class="summary-pill">{{ BLAResults.length }} {{ tr('records', '項記錄') }}</span>
       </header>
 
       <div class="table-wrap">
         <table v-if="BLAResults.length" class="result-table">
           <thead>
             <tr>
-              <th class="code-col">編號</th>
-              <th class="name-col">姓名</th>
-              <th>獲提名科目</th>
-              <th class="count-col">科數</th>
-              <th class="award-col">獲獎</th>
+              <th class="class-col">{{ tr('Class', '班別') }}</th>
+              <th class="code-col">{{ tr('No.', '編號') }}</th>
+              <th class="name-col">{{ tr('Name', '姓名') }}</th>
+              <th>{{ tr('Nominated Subjects', '獲提名科目') }}</th>
+              <th class="count-col">{{ tr('Subject Count', '科目數') }}</th>
+              <th class="award-col">{{ tr('Award', '獲獎') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in BLAResults" :key="row.student_id">
+              <td class="center">{{ row.class_name }}</td>
               <td>{{ row.student_id }}</td>
               <td class="name">{{ row.student_ch_name || row.student_id }}</td>
-              <td>{{ row.subject_names }}</td>
+              <td>{{ subjectNames(row) }}</td>
               <td class="center">
-                <span class="count-badge">{{ row.subject_count }} 科</span>
+                <span class="count-badge">{{ row.subject_count }} {{ tr('subjects', '\u79d1') }}</span>
               </td>
               <td class="center">
                 <span v-if="row.award" class="award-badge">{{ row.award }}</span>
@@ -35,7 +37,7 @@
         </table>
 
         <p v-if="searched && BLAResults.length === 0" class="empty-state">
-          沒有提名結果
+          {{ tr('No nomination records.', '沒有提名記錄。') }}
         </p>
       </div>
     </section>
@@ -44,6 +46,7 @@
 
 <script>
 import axios from 'axios';
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 
 export default {
   data() {
@@ -53,6 +56,25 @@ export default {
     };
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    subjectLabel(subject) {
+      return formatSubjectLabel(subject, this.$lang.locale);
+    },
+    subjectNames(row) {
+      if (!row) return '';
+
+      const ids = String(row.subject_ids || '').split(',').map(id => id.trim()).filter(Boolean);
+      const names = String(row.subject_names || '').split(/[\u3001,]/);
+      const subjects = names.map((name, index) => ({
+        subject_id: ids[index],
+        subject_name: name
+      }));
+
+      if (subjects.length === 0) return '';
+      return subjects.map(subject => this.subjectLabel(subject)).join(this.$lang.locale === 'en' ? ', ' : '\u3001');
+    },
     async fetchBLA() {
       const token = localStorage.getItem('token');
 

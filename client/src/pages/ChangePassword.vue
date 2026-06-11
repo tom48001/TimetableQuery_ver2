@@ -2,11 +2,11 @@
   <main class="password-page">
     <form class="password-form" @submit.prevent="changePassword">
       <header>
-        <h1>&#x66F4;&#x6539;&#x5BC6;&#x78BC;</h1>
+        <h1>{{ tr('Change Password', '更改密碼') }}</h1>
       </header>
 
       <label>
-        <span>&#x539F;&#x5BC6;&#x78BC;</span>
+        <span>{{ tr('Current Password', '原密碼') }}</span>
         <input
           v-model="currentPassword"
           type="password"
@@ -16,7 +16,7 @@
       </label>
 
       <label>
-        <span>&#x65B0;&#x5BC6;&#x78BC;</span>
+        <span>{{ tr('New Password', '新密碼') }}</span>
         <input
           v-model="newPassword"
           type="password"
@@ -26,7 +26,7 @@
       </label>
 
       <label>
-        <span>&#x518D;&#x6B21;&#x8F38;&#x5165;&#x65B0;&#x5BC6;&#x78BC;</span>
+        <span>{{ tr('Confirm New Password', '再次輸入新密碼') }}</span>
         <input
           v-model="confirmPassword"
           type="password"
@@ -38,7 +38,7 @@
       <p v-if="message" class="message" :class="messageType">{{ message }}</p>
 
       <button type="submit" :disabled="submitting">
-        {{ submitting ? text.saving : text.save }}
+        {{ submitting ? tr('Updating...', text.saving) : tr('Update Password', text.save) }}
       </button>
     </form>
   </main>
@@ -70,6 +70,9 @@ export default {
     };
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
     showMessage(message, type) {
       this.message = message;
       this.messageType = type;
@@ -77,12 +80,12 @@ export default {
     async changePassword() {
       const token = localStorage.getItem('token');
       if (!token) {
-        this.showMessage(TEXT.loginFirst, 'error');
+        this.showMessage(this.tr('Please login first.', TEXT.loginFirst), 'error');
         return;
       }
 
       if (this.newPassword !== this.confirmPassword) {
-        this.showMessage(TEXT.mismatch, 'error');
+        this.showMessage(this.tr('The new passwords do not match.', TEXT.mismatch), 'error');
         return;
       }
 
@@ -102,11 +105,11 @@ export default {
         this.currentPassword = '';
         this.newPassword = '';
         this.confirmPassword = '';
-        this.showMessage(res.data.message || TEXT.saved, 'success');
+        this.showMessage(res.data.message || this.tr('Password updated.', TEXT.saved), 'success');
       } catch (err) {
         console.error('Password change failed:', err);
         const data = err.response && err.response.data ? err.response.data : {};
-        this.showMessage(data.error || TEXT.failed, 'error');
+        this.showMessage(data.error || this.tr('Failed to update password.', TEXT.failed), 'error');
       } finally {
         this.submitting = false;
       }

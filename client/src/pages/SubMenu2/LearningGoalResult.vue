@@ -3,21 +3,21 @@
     <section class="page-panel">
       <header class="page-header">
         <div>
-          <h1>學習目標獎勵計劃結果（上學期）</h1>
+          <h1>{{ tr('Learning Goal Award Scheme Results (First Term)', '學習目標獎勵計劃結果（上學期）') }}</h1>
         </div>
-        <span class="summary-pill">{{ results.length }} 名學生</span>
+        <span class="summary-pill">{{ results.length }} {{ tr('records', '項記錄') }}</span>
       </header>
 
       <div class="table-wrap">
         <table v-if="results.length" class="result-table">
           <thead>
             <tr>
-              <th class="class-col">班別</th>
-              <th class="number-col">學號</th>
-              <th class="name-col">姓名</th>
-              <th class="goals-col">完成目標總數</th>
-              <th class="award-col">獲獎</th>
-              <th class="offset-col">功過相抵數目</th>
+              <th class="class-col">{{ tr('Class', '班別') }}</th>
+              <th class="number-col">{{ tr('No.', '學號') }}</th>
+              <th class="name-col">{{ tr('Name', '姓名') }}</th>
+              <th class="goals-col">{{ tr('Completed Goals', '完成目標總數') }}</th>
+              <th class="award-col">{{ tr('Award', '獲獎') }}</th>
+              <th class="offset-col">{{ tr('Merit Offset Count', '功過相抵數目') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -29,7 +29,7 @@
                 <span class="count-badge">{{ row.completed_goals }}</span>
               </td>
               <td class="center">
-                <span v-if="row.award" class="award-badge">{{ row.award }}</span>
+                <span v-if="row.award" class="award-badge">{{ awardLabel(row.award) }}</span>
               </td>
               <td class="center">{{ row.merit_offset_count }}</td>
             </tr>
@@ -37,7 +37,7 @@
         </table>
 
         <p v-if="searched && results.length === 0" class="empty-state">
-          沒有學習目標獎勵計劃結果
+          {{ tr('No records found.', '沒有記錄。') }}
         </p>
       </div>
     </section>
@@ -47,6 +47,13 @@
 <script>
 import axios from 'axios';
 
+const AWARD_LABELS = {
+  '紀念品': 'Souvenir',
+  '銅章獎': 'Bronze Award',
+  '銀章獎': 'Silver Award',
+  '金章獎': 'Gold Award'
+};
+
 export default {
   data() {
     return {
@@ -55,6 +62,13 @@ export default {
     };
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    awardLabel(award) {
+      if (this.$lang.locale !== 'en') return award;
+      return AWARD_LABELS[award] || award;
+    },
     async fetchResults() {
       const token = localStorage.getItem('token');
 

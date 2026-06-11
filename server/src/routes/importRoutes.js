@@ -3,7 +3,8 @@ import multer from "multer";
 import xlsx from "xlsx";
 import fs from "fs";
 import pool from "../db.js";
-import { ensureJWT, checkRole } from "../auth/auth.js";
+import { ensureJWT } from "../auth/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -72,7 +73,7 @@ function formatMissing(rows, key) {
 router.post(
   "/excel",
   ensureJWT,
-  checkRole("manager"),
+  requirePermission("importTimetable"),
   upload.single("file"),
   async (req, res) => {
     const conn = await pool.getConnection();

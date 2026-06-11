@@ -1,53 +1,24 @@
 <template>
   <main class="selector-page">
     <section class="selector-panel">
-      <header class="page-header">
-        <div>
-          <h1>各房間上課時間表</h1>
-        </div>
-      </header>
-
+      <header class="page-header"><div><h1>{{ tr('Room Timetable', '房間時間表') }}</h1></div></header>
       <div class="toolbar">
-        <input
-          v-model.trim="searchText"
-          class="search-input"
-          type="text"
-          placeholder="搜尋房間，例如 301、音樂室、操場"
-        />
-
+        <input v-model.trim="searchText" class="search-input" type="text" :placeholder="tr('Search room, e.g. 301 or Room...', '搜尋房間，例如 301 或課室...')" />
         <div class="floor-tabs" aria-label="room filters">
-          <button
-            v-for="filter in roomFilters"
-            :key="filter.value"
-            type="button"
-            :class="{ active: selectedFilter === filter.value }"
-            @click="selectedFilter = filter.value"
-          >
-            {{ filter.label }}
-          </button>
+          <button v-for="filter in roomFilters" :key="filter.value" type="button" :class="{ active: selectedFilter === filter.value }" @click="selectedFilter = filter.value">{{ filter.label }}</button>
         </div>
       </div>
-
       <div class="room-list" v-if="filteredRooms.length">
-        <label
-          v-for="room in filteredRooms"
-          :key="room.room_id"
-          class="room-card"
-          :class="{ selected: selectedRoom === room.room_id }"
-        >
+        <label v-for="room in filteredRooms" :key="room.room_id" class="room-card" :class="{ selected: selectedRoom === room.room_id }">
           <input type="radio" :value="room.room_id" v-model="selectedRoom" />
           <span class="room-code">{{ roomCode(room.room_name) }}</span>
           <span class="room-name">{{ roomLabel(room.room_name) }}</span>
         </label>
       </div>
-
-      <p v-else class="empty-message">找不到房間</p>
-
+      <p v-else class="empty-message">{{ tr('No rooms found', '找不到房間') }}</p>
       <footer class="footer-actions">
-        <span>{{ selectedRoomName || '請先選擇一個房間' }}</span>
-        <button type="button" class="primary-btn" :disabled="!selectedRoom" @click="searchSchedule">
-          查看時間表
-        </button>
+        <span>{{ selectedRoomName || tr('Please select a room', '請選擇房間') }}</span>
+        <button type="button" class="primary-btn" :disabled="!selectedRoom" @click="searchSchedule">{{ tr('View Timetable', '查看時間表') }}</button>
       </footer>
     </section>
   </main>
@@ -55,95 +26,49 @@
 
 <script>
 import axios from 'axios';
-
-const ROOM_FILTERS = [
-  { label: '全部', value: 'all' },
-  { label: '1/F', value: '1' },
-  { label: '2/F', value: '2' },
-  { label: '3/F', value: '3' },
-  { label: '4/F', value: '4' },
-  { label: '5/F', value: '5' },
-  { label: '6/F+', value: '6plus' },
-  { label: '7/F+', value: '7plus' },
-  { label: '特別室', value: 'special' }
-];
+import { roomLabel as formatRoomLabel } from '../../utils/timetableLabels';
 
 export default {
-  data() {
-    return {
-      roomList: [],
-      selectedRoom: '',
-      searchText: '',
-      selectedFilter: 'all',
-      roomFilters: ROOM_FILTERS
-    };
-  },
+  data() { return { roomList: [], selectedRoom: '', searchText: '', selectedFilter: 'all' }; },
   computed: {
+    roomFilters() {
+      return [
+        { label: this.tr('All', '全部'), value: 'all' },
+        { label: '1/F', value: '1' }, { label: '2/F', value: '2' }, { label: '3/F', value: '3' },
+        { label: '4/F', value: '4' }, { label: '5/F', value: '5' }, { label: '6/F+', value: '6plus' },
+        { label: '7/F+', value: '7plus' }, { label: this.tr('Special', '特別室'), value: 'special' }
+      ];
+    },
     filteredRooms() {
       const keyword = this.searchText.toLowerCase();
-
       return this.roomList.filter(room => {
         const roomName = String(room.room_name || '');
-        const lowerName = roomName.toLowerCase();
-        const matchesSearch = !keyword || lowerName.includes(keyword);
-        const matchesFilter = this.matchesFilter(roomName);
-        return matchesSearch && matchesFilter;
+        const translatedName = this.roomLabel(roomName);
+        const lowerName = (roomName + ' ' + translatedName).toLowerCase();
+        return (!keyword || lowerName.includes(keyword)) && this.matchesFilter(roomName);
       });
     },
-    selectedRoomName() {
-      const selected = this.roomList.find(room => room.room_id === this.selectedRoom);
-      return selected ? selected.room_name : '';
-    }
+    selectedRoomName() { const selected = this.roomList.find(room => room.room_id === this.selectedRoom); return selected ? this.roomLabel(selected.room_name) : ''; }
   },
-  mounted() {
-    this.loadRooms();
-  },
+  mounted() { this.loadRooms(); },
   methods: {
-    roomCode(roomName) {
-      const match = String(roomName || '').match(/^(\S+)/);
-      return match ? match[1] : roomName;
-    },
-    roomLabel(roomName) {
-      const code = this.roomCode(roomName);
-      return String(roomName || '').replace(code, '').trim() || '課室';
-    },
+    tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    roomCode(roomName) { const match = String(roomName || '').match(/^(\S+)/); return match ? match[1] : roomName; },
+    roomLabel(roomName) { const code = this.roomCode(roomName); const label = String(roomName || '').replace(code, '').trim() || this.tr('Room', '房間'); return formatRoomLabel(label, this.$lang.locale); },
     matchesFilter(roomName) {
       if (this.selectedFilter === 'all') return true;
-
       const code = this.roomCode(roomName);
       const firstDigit = code.match(/^\d/) ? code.charAt(0) : '';
-
-      if (this.selectedFilter === '6plus') {
-        return ['6'].includes(firstDigit);
-      }
-
-      if (this.selectedFilter === '7plus') {
-        return ['7'].includes(firstDigit);
-      }
-
-      if (this.selectedFilter === 'special') {
-        return !firstDigit;
-      }
-
+      if (this.selectedFilter === '6plus') return ['6'].includes(firstDigit);
+      if (this.selectedFilter === '7plus') return ['7'].includes(firstDigit);
+      if (this.selectedFilter === 'special') return !firstDigit;
       return firstDigit === this.selectedFilter;
     },
-    async loadRooms() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/rooms', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      this.roomList = res.data;
-    },
-    searchSchedule() {
-      this.$router.push({
-        name: 'RoomTimetableResult',
-        query: { roomId: this.selectedRoom }
-      });
-    }
+    async loadRooms() { const token = localStorage.getItem('token'); const res = await axios.get('http://localhost:3000/api/rooms', { headers: { Authorization: `Bearer ${token}` } }); this.roomList = res.data; },
+    searchSchedule() { this.$router.push({ name: 'RoomTimetableResult', query: { roomId: this.selectedRoom } }); }
   }
 };
 </script>
-
 <style scoped>
 .selector-page {
   min-height: calc(100vh - 126px);

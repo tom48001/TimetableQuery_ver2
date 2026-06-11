@@ -3,13 +3,13 @@
     <section class="student-panel">
       <header class="page-header">
         <div>
-          <h1>選擇學生</h1>
+          <h1>{{ tr('Select Students', '\u9078\u64c7\u5b78\u751f') }}</h1>
         </div>
       </header>
 
       <div v-if="selectedSubject.subject_name" class="context-row">
-        <span>科目</span>
-        <strong>{{ selectedSubject.subject_name }}</strong>
+        <span>{{ tr('Selected subject', '\u5df2\u9078\u79d1\u76ee') }}</span>
+        <strong>{{ subjectLabel(selectedSubject) }}</strong>
       </div>
 
       <div v-if="allStudents.length" class="class-sections">
@@ -38,10 +38,12 @@
         </section>
       </div>
 
-      <p v-else class="state-text">載入中...</p>
+      <p v-else-if="loading" class="state-text">{{ tr('Loading students...', '\u8f09\u5165\u5b78\u751f\u4e2d...') }}</p>
+      <p v-else-if="loadError" class="state-text error-text">{{ loadError }}</p>
+      <p v-else class="state-text">{{ tr('No students found.', '\u6c92\u6709\u7b26\u5408\u7684\u5b78\u751f\u3002') }}</p>
 
       <button type="button" class="primary-btn" @click="submitNomination">
-        提交
+        {{ tr('Submit', '\u63d0\u4ea4') }}
       </button>
     </section>
   </main>
@@ -50,6 +52,29 @@
 <script>
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+
+const SUBJECT_LABELS = {
+  1: 'Chinese Language',
+  2: 'English Language',
+  3: 'Mathematics',
+  4: 'Citizenship and Social Development',
+  5: 'Chinese Literature',
+  6: 'Biology',
+  7: 'Health Management and Social Care',
+  8: 'Chinese History',
+  9: 'Chemistry',
+  10: 'Integrated Science',
+  11: 'Visual Arts',
+  12: 'Physics',
+  13: 'Citizenship, Economics and Society',
+  14: 'Economics',
+  15: 'Information and Communication Technology',
+  16: 'Technology and Living',
+  17: 'History',
+  18: 'Geography',
+  19: 'Music',
+  20: 'Physical Education'
+};
 
 function parseJson(value, fallback) {
   try {
@@ -79,12 +104,20 @@ export default {
     }
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    subjectLabel(subject) {
+      return this.$lang.locale === 'en'
+        ? (SUBJECT_LABELS[Number(subject.subject_id)] || subject.subject_name)
+        : subject.subject_name;
+    },
     studentNumber(student) {
       return String(student.class_number || '').padStart(2, '0');
     },
     className(classId) {
       const students = this.studentsByClass[classId] || [];
-      return students[0] && students[0].class_name ? students[0].class_name : `班別 ${classId}`;
+      return students[0] && students[0].class_name ? students[0].class_name : `${this.tr('Class', '\u73ed\u5225')} ${classId}`;
     },
     isSelected(classId, studentId) {
       return (this.selectedStudents[classId] || []).includes(studentId);
@@ -101,27 +134,46 @@ export default {
         this.teacher_id = res.data.teacher_id;
       } catch (error) {
         console.error('Failed to load teacher id:', error);
-        alert('此帳號未連結老師資料，不能提交提名。請在 teacher 表加入對應 user_id。');
+        alert(this.tr('Please login again.', '\u8acb\u91cd\u65b0\u767b\u5165\u3002'));
       }
+    },
+    async fetchStudentsForClass(classId, token) {
+      const headers = { Authorization: `Bearer ${token}` };
+      const subjectUrl = `http://localhost:3000/api/students/by-class/${classId}/subject/${this.selectedSubject.subject_id}`;
+      const classUrl = `http://localhost:3000/api/students/by-class/${classId}`;
+
+      try {
+        const res = await axios.get(subjectUrl, { headers });
+        if (Array.isArray(res.data) && res.data.length > 0) return res.data;
+      } catch (err) {
+        console.warn(`Subject student lookup failed for class ${classId}; falling back to full class.`, err);
+      }
+
+      const fallbackRes = await axios.get(classUrl, { headers });
+      return Array.isArray(fallbackRes.data) ? fallbackRes.data : [];
     },
     async loadStudents() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      await Promise.all(this.selectedClass.map(async classId => {
-        this.$set(this.selectedStudents, classId, []);
+      this.loading = true;
+      this.loadError = '';
 
-        try {
-          const res = await axios.get(
-            `http://localhost:3000/api/students/by-class/${classId}/subject/${this.selectedSubject.subject_id}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          this.$set(this.studentsByClass, classId, res.data);
-        } catch (err) {
-          console.error(`Failed to load students for class ${classId}:`, err);
-          this.$set(this.studentsByClass, classId, []);
-        }
-      }));
+      try {
+        await Promise.all(this.selectedClass.map(async classId => {
+          this.$set(this.selectedStudents, classId, []);
+          const students = await this.fetchStudentsForClass(classId, token);
+          this.$set(this.studentsByClass, classId, students);
+        }));
+      } catch (err) {
+        console.error('Failed to load students:', err);
+        this.loadError = this.tr('Failed to load students.', '\u8f09\u5165\u5b78\u751f\u5931\u6557\u3002');
+        this.selectedClass.forEach(classId => {
+          if (!this.studentsByClass[classId]) this.$set(this.studentsByClass, classId, []);
+        });
+      } finally {
+        this.loading = false;
+      }
     },
     async loadSelectedStudents() {
       const token = localStorage.getItem('token');
@@ -155,7 +207,7 @@ export default {
     async submitNomination() {
       const token = localStorage.getItem('token');
       if (!token || !this.teacher_id) {
-        alert('未能取得老師資料，不能提交提名。');
+        alert(this.tr('Failed to load students.', '\u8f09\u5165\u5b78\u751f\u5931\u6557\u3002'));
         return;
       }
 
@@ -193,7 +245,7 @@ export default {
         this.$router.push({ name: 'BLA' });
       } catch (err) {
         console.error('Failed to submit BLA nomination:', err);
-        alert('\u63d0\u4ea4\u5931\u6557\u3002');
+        alert(this.tr('Failed to submit nomination.', '\u63d0\u4ea4\u63d0\u540d\u5931\u6557\u3002'));
       }
     }
   },
@@ -348,6 +400,10 @@ h2 {
   margin: 0;
   padding: 28px;
   text-align: center;
+}
+
+.error-text {
+  color: var(--danger);
 }
 
 .primary-btn {

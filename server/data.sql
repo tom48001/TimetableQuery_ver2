@@ -23,22 +23,22 @@ TRUNCATE TABLE user;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- All seeded accounts use password: password123
-INSERT INTO user (user_name, email, password, role) VALUES
-('manager', 'manager@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'manager'),
-('staff', 'staff@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'staff'),
-('qwe', 'qwe@gmail.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('cwt', 'cwt@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('cwk', 'cwk@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('msys', 'msys@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('wky', 'wky@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('wly', 'wly@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('lct', 'lct@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('hyk', 'hyk@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('sws', 'sws@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('teacher10', 'teacher10@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('teacher11', 'teacher11@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('teacher12', 'teacher12@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher'),
-('SING', 'singsing894@gmail.com', '123', 'teacher');
+INSERT INTO user (user_name, email, password, role, permissions) VALUES
+('manager', 'manager@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'manager', '{"timetable":true,"nominations":true,"changePassword":false,"manageUsers":true,"manageStudents":true,"importTimetable":true}'),
+('staff', 'staff@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'staff', '{"timetable":true,"nominations":true,"changePassword":false,"manageUsers":true,"manageStudents":false,"importTimetable":false}'),
+('qwe', 'qwe@gmail.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('cwt', 'cwt@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('cwk', 'cwk@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('msys', 'msys@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('wky', 'wky@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('wly', 'wly@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('lct', 'lct@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('hyk', 'hyk@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('sws', 'sws@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('teacher10', 'teacher10@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('teacher11', 'teacher11@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('teacher12', 'teacher12@school.com', '$2b$10$1KqbZ.jJ1BFkWvTEpT.AJ.Olsd8Ljs28zvCpBx/73A1g.Jn04KVjq', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}'),
+('SING', 'singsing894@gmail.com', '123', 'teacher', '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}');
 
 INSERT INTO teacher (user_id, teacher_name, teacher_code, status) VALUES
 (3, 'QWE', 'QWE', 'active'),

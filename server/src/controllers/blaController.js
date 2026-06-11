@@ -75,8 +75,10 @@ export const getBLAResults = async (req, res) => {
       `
       SELECT 
         b.student_id,
+        c.class_name,
         s.student_ch_name,
-        GROUP_CONCAT(DISTINCT sub.subject_name ORDER BY sub.subject_name SEPARATOR '、') AS subject_names,
+        GROUP_CONCAT(DISTINCT sub.subject_name ORDER BY sub.subject_id SEPARATOR '、') AS subject_names,
+        GROUP_CONCAT(DISTINCT sub.subject_id ORDER BY sub.subject_id SEPARATOR ',') AS subject_ids,
         COUNT(DISTINCT b.subject_id) AS subject_count,
         CASE
           WHEN COUNT(DISTINCT b.subject_id) >= 8 THEN '獲獎'
@@ -84,9 +86,10 @@ export const getBLAResults = async (req, res) => {
         END AS award
       FROM BLA b
       JOIN student s ON b.student_id = s.student_id
+      JOIN class c ON s.class_id = c.class_id
       JOIN subject sub ON b.subject_id = sub.subject_id
-      GROUP BY b.student_id, s.student_ch_name
-      ORDER BY s.student_id
+      GROUP BY b.student_id, c.class_name, s.student_ch_name
+      ORDER BY c.class_name, CAST(s.class_number AS UNSIGNED), s.student_id
       `
     );
 

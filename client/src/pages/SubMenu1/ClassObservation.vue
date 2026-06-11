@@ -1,167 +1,38 @@
 <template>
   <main class="observation-page">
     <section class="observation-panel">
-      <header class="page-header">
-        <div>
-          <h1>觀課老師 (可選多人)</h1>
-        </div>
-        <span class="count-badge">{{ observerIds.length }} 觀課老師</span>
-      </header>
-
+      <header class="page-header"><div><h1>{{ tr('Class Observation Timetable', '可觀課課表') }}</h1></div><span class="count-badge">{{ observerIds.length }} {{ tr('selected', '已選') }}</span></header>
       <section class="selector-card">
-        <div class="section-title">
-          <h2>觀課老師</h2>
-          <button type="button" class="secondary-btn" @click="clearObservers">清除</button>
-        </div>
-        <input
-          v-model.trim="observerSearch"
-          class="search-input"
-          type="text"
-          placeholder="Search observing teachers..."
-        />
-        <div class="selected-strip" v-if="observerTeachers.length">
-          <button
-            v-for="teacher in observerTeachers"
-            :key="teacher.teacher_id"
-            type="button"
-            class="selected-chip"
-            @click="toggleObserver(teacher.teacher_id)"
-          >
-            {{ teacher.teacher_name }} <span aria-hidden="true">x</span>
-          </button>
-        </div>
-        <div class="teacher-list">
-          <label
-            v-for="teacher in filteredObservers"
-            :key="teacher.teacher_id"
-            class="teacher-row"
-            :class="{ selected: observerIds.includes(teacher.teacher_id) }"
-          >
-            <input type="checkbox" :value="teacher.teacher_id" v-model="observerIds" />
-            <span>{{ teacher.teacher_name }}</span>
-          </label>
-        </div>
+        <div class="section-title"><h2>{{ tr('Observer teachers', '觀課老師') }}</h2><button type="button" class="secondary-btn" @click="clearObservers">{{ tr('Clear', '清除') }}</button></div>
+        <input v-model.trim="observerSearch" class="search-input" type="text" :placeholder="tr('Search observer...', '搜尋觀課老師...')" />
+        <div class="selected-strip" v-if="observerTeachers.length"><button v-for="teacher in observerTeachers" :key="teacher.teacher_id" type="button" class="selected-chip" @click="toggleObserver(teacher.teacher_id)">{{ teacher.teacher_name }} <span aria-hidden="true">x</span></button></div>
+        <div class="teacher-list"><label v-for="teacher in filteredObservers" :key="teacher.teacher_id" class="teacher-row" :class="{ selected: observerIds.includes(teacher.teacher_id) }"><input type="checkbox" :value="teacher.teacher_id" v-model="observerIds" /><span>{{ teacher.teacher_name }}</span></label></div>
       </section>
-
       <section class="selector-card">
-        <div class="section-title">
-          <h2>被觀課老師 (只選一人)</h2>
-        </div>
-        <input
-          v-model.trim="targetSearch"
-          class="search-input"
-          type="text"
-          placeholder="Search target teacher..."
-        />
-        <div class="teacher-list target-list">
-          <label
-            v-for="teacher in filteredTargets"
-            :key="teacher.teacher_id"
-            class="teacher-row"
-            :class="{ selected: targetId === teacher.teacher_id }"
-          >
-            <input type="radio" name="targetTeacher" :value="teacher.teacher_id" v-model="targetId" />
-            <span>{{ teacher.teacher_name }}</span>
-          </label>
-        </div>
+        <div class="section-title"><h2>{{ tr('Target teacher', '被觀課老師') }}</h2></div>
+        <input v-model.trim="targetSearch" class="search-input" type="text" :placeholder="tr('Search target teacher...', '搜尋被觀課老師...')" />
+        <div class="teacher-list target-list"><label v-for="teacher in filteredTargets" :key="teacher.teacher_id" class="teacher-row" :class="{ selected: targetId === teacher.teacher_id }"><input type="radio" name="targetTeacher" :value="teacher.teacher_id" v-model="targetId" /><span>{{ teacher.teacher_name }}</span></label></div>
       </section>
-
-      <footer class="footer-actions">
-        <button type="button" class="primary-btn" @click="searchSchedule">
-          Submit
-        </button>
-      </footer>
+      <footer class="footer-actions"><button type="button" class="primary-btn" @click="searchSchedule">{{ tr('Search Timetable', '搜尋課表') }}</button></footer>
     </section>
   </main>
 </template>
-
 <script>
 import axios from 'axios';
-
-const TEXT = {
-  loadFailed: '\u8f09\u5165\u8001\u5e2b\u5217\u8868\u5931\u6557\u3002',
-  chooseObservers: '\u8acb\u9078\u64c7\u81f3\u5c11\u4e00\u4f4d\u89c0\u8ab2\u8001\u5e2b\u3002',
-  chooseTarget: '\u8acb\u9078\u64c7\u4e00\u4f4d\u88ab\u89c0\u8ab2\u8001\u5e2b\u3002'
-};
-
 export default {
-  data() {
-    return {
-      teachers: [],
-      observerIds: [],
-      targetId: null,
-      observerSearch: '',
-      targetSearch: ''
-    };
-  },
-  computed: {
-    filteredObservers() {
-      return this.filterTeachers(this.observerSearch);
-    },
-    filteredTargets() {
-      return this.filterTeachers(this.targetSearch);
-    },
-    observerTeachers() {
-      return this.teachers.filter(teacher => this.observerIds.includes(teacher.teacher_id));
-    }
-  },
+  data() { return { teachers: [], observerIds: [], targetId: null, observerSearch: '', targetSearch: '' }; },
+  computed: { filteredObservers() { return this.filterTeachers(this.observerSearch); }, filteredTargets() { return this.filterTeachers(this.targetSearch); }, observerTeachers() { return this.teachers.filter(teacher => this.observerIds.includes(teacher.teacher_id)); } },
   methods: {
-    filterTeachers(keyword) {
-      const text = keyword.toLowerCase();
-      if (!text) return this.teachers;
-      return this.teachers.filter(teacher =>
-        String(teacher.teacher_name || '').toLowerCase().includes(text)
-      );
-    },
-    async fetchTeachers() {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:3000/api/teachers/list', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        this.teachers = res.data;
-      } catch (err) {
-        console.error('Failed to load teachers:', err);
-        alert(TEXT.loadFailed);
-      }
-    },
-    toggleObserver(teacherId) {
-      const index = this.observerIds.indexOf(teacherId);
-      if (index >= 0) {
-        this.observerIds.splice(index, 1);
-      } else {
-        this.observerIds.push(teacherId);
-      }
-    },
-    clearObservers() {
-      this.observerIds = [];
-    },
-    searchSchedule() {
-      if (this.observerIds.length === 0) {
-        alert(TEXT.chooseObservers);
-        return;
-      }
-
-      if (!this.targetId) {
-        alert(TEXT.chooseTarget);
-        return;
-      }
-
-      this.$router.push({
-        name: 'ClassObservationResult',
-        query: {
-          observers: this.observerIds,
-          target: this.targetId
-        }
-      });
-    }
+    tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    filterTeachers(keyword) { const text = keyword.toLowerCase(); if (!text) return this.teachers; return this.teachers.filter(teacher => String(teacher.teacher_name || '').toLowerCase().includes(text)); },
+    async fetchTeachers() { try { const token = localStorage.getItem('token'); const res = await axios.get('http://localhost:3000/api/teachers/list', { headers: { Authorization: `Bearer ${token}` } }); this.teachers = res.data; } catch (err) { console.error('Failed to load teachers:', err); alert(this.tr('Failed to load teachers.', '載入老師列表失敗。')); } },
+    toggleObserver(teacherId) { const index = this.observerIds.indexOf(teacherId); if (index >= 0) this.observerIds.splice(index, 1); else this.observerIds.push(teacherId); },
+    clearObservers() { this.observerIds = []; },
+    searchSchedule() { if (this.observerIds.length === 0) { alert(this.tr('Please select observer teachers.', '請選擇觀課老師。')); return; } if (!this.targetId) { alert(this.tr('Please select a target teacher.', '請選擇被觀課老師。')); return; } this.$router.push({ name: 'ClassObservationResult', query: { observers: this.observerIds, target: this.targetId } }); }
   },
-  mounted() {
-    this.fetchTeachers();
-  }
+  mounted() { this.fetchTeachers(); }
 };
 </script>
-
 <style scoped>
 .observation-page {
   min-height: calc(100vh - 126px);

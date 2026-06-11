@@ -1,47 +1,19 @@
 import express from 'express';
 import db from '../db.js';
-import { ensureJWT, checkRole } from '../auth/auth.js';
-import {getAllTeachers, createTeacher, updateTeacher, deleteTeacher} from '../controllers/manageTeacherRoutes.js';
+import { ensureJWT } from '../auth/auth.js';
+import { requirePermission } from '../auth/permissions.js';
+import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher } from '../controllers/manageTeacherRoutes.js';
 import { getTeachersSchedule } from '../controllers/teacherScheduleController.js';
 import pool from '../db.js';
 
-const Roles = {
-  MANAGER:'manager',
-  TEACHER:'teacher',
-  STAFF:'staff',
-};
-
 const router = express.Router();
 
-function checkAnyRole(...roles) {
-  return (req, res, next) => {
-    const userRole = req.user?.role ? req.user.role.trim().toLowerCase() : '';
-    if (roles.includes(userRole)) return next();
-    return res.status(403).json({ error: 'Permission denied' });
-  };
-}
-
-// 所有路由都需登入 + 身份為 manager
 router.use(ensureJWT);
-//router.use(checkRole(Roles.MANAGER));
 
-// 只對管理功能要求 manager
-// 取得所有老師資料 
-router.get('/getAllTeachers', checkAnyRole(Roles.MANAGER, Roles.STAFF), getAllTeachers); 
-
-// 新增老師
-router.post('/', checkAnyRole(Roles.MANAGER, Roles.STAFF), createTeacher);
-
-// 查詢多位老師課表
+router.get('/getAllTeachers', requirePermission('manageUsers'), getAllTeachers);
+router.post('/', requirePermission('manageUsers'), createTeacher);
 router.post('/schedule', getTeachersSchedule);
 
-// 更新老師
-router.put('/:id', checkAnyRole(Roles.MANAGER, Roles.STAFF), updateTeacher);
-
-// 刪除老師
-router.delete('/:id', checkAnyRole(Roles.MANAGER, Roles.STAFF), deleteTeacher);
-
-// 取得 teacher 表中老師名單
 router.get('/list', async (req, res) => {
   try {
     const [rows] = await db.query(`
@@ -58,24 +30,20 @@ router.get('/list', async (req, res) => {
     `);
     res.json(rows);
   } catch (err) {
-    console.error('取得老師失敗:', err);
-    res.status(500).json({ error: '無法取得老師資料' });
+    console.error('Failed to load teachers:', err);
+    res.status(500).json({ error: 'Failed to load teachers' });
   }
 });
 
-// 根據老師 ID 查詢課表
 router.post('/free-teachers', async (req, res) => {
   const { weekday, period } = req.body;
 
-  // 檢查 period 是否為非空陣列
   if (!Array.isArray(period) || period.length === 0) {
-    return res.status(400).json({ error: 'period 必須是非空陣列' });
+    return res.status(400).json({ error: 'period must be a non-empty array' });
   }
 
   try {
-    // 動態生成 SQL 佔位符 (?, ?, ...)
     const placeholders = period.map(() => '?').join(', ');
-
     const [rows] = await db.query(
       `
       SELECT t.teacher_id, t.teacher_name
@@ -87,13 +55,13 @@ router.post('/free-teachers', async (req, res) => {
       )
       ORDER BY t.teacher_name
       `,
-      [weekday, ...period]  // 展開陣列進入佔位符
+      [weekday, ...period]
     );
 
     res.json(rows);
   } catch (error) {
-    console.error('查詢空堂失敗:', error);
-    res.status(500).json({ error: '資料庫錯誤' });
+    console.error('Failed to load free teachers:', error);
+    res.status(500).json({ error: 'Failed to load free teachers' });
   }
 });
 
@@ -143,8 +111,8 @@ router.post('/free-teachers-day', async (req, res) => {
 
     res.json(Array.from(teacherMap.values()));
   } catch (error) {
-    console.error('查詢全日空堂資料失敗:', error);
-    res.status(500).json({ error: '資料庫錯誤' });
+    console.error('Failed to load free teacher day schedule:', error);
+    res.status(500).json({ error: 'Failed to load free teacher day schedule' });
   }
 });
 
@@ -156,13 +124,16 @@ router.get('/from-user/:userId', async (req, res) => {
       [userId]
     );
     if (rows.length === 0) {
-      return res.status(404).json({ error: '找不到對應的 teacher' });
+      return res.status(404).json({ error: 'Teacher account not found' });
     }
     res.json({ teacher_id: rows[0].teacher_id });
   } catch (err) {
-    console.error('查詢 teacher_id 失敗:', err);
-    res.status(500).json({ error: '資料庫錯誤' });
+    console.error('Failed to load teacher_id:', err);
+    res.status(500).json({ error: 'Failed to load teacher_id' });
   }
 });
+
+router.put('/:id', requirePermission('manageUsers'), updateTeacher);
+router.delete('/:id', requirePermission('manageUsers'), deleteTeacher);
 
 export default router;

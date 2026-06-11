@@ -1,114 +1,34 @@
 <template>
   <main class="swap-page">
     <section class="swap-panel">
-      <header class="page-header">
-        <div>
-          <h1>需要調課老師</h1>
-        </div>
-        <span class="count-badge">{{ teachers.length }} 位老師</span>
-      </header>
-
-      <label class="search-box">
-        <span>搜尋老師</span>
-        <input
-          v-model.trim="searchText"
-          type="text"
-          placeholder="輸入老師名稱..."
-        />
-      </label>
-
+      <header class="page-header"><div><h1>{{ tr('Teacher to Swap', '需要調課老師') }}</h1></div><span class="count-badge">{{ teachers.length }} {{ tr('teachers', '老師') }}</span></header>
+      <label class="search-box"><span>{{ tr('Search teacher', '搜尋老師') }}</span><input v-model.trim="searchText" type="text" :placeholder="tr('Enter teacher name...', '輸入老師名稱...')" /></label>
       <div class="teacher-list" v-if="filteredTeachers.length">
-        <label
-          v-for="teacher in filteredTeachers"
-          :key="teacher.teacher_id"
-          class="teacher-row"
-          :class="{ selected: selectedTeacherId === teacher.teacher_id }"
-        >
-          <input
-            type="radio"
-            name="teacher"
-            :value="teacher.teacher_id"
-            v-model="selectedTeacherId"
-          />
-          <span>{{ teacher.teacher_name }}</span>
+        <label v-for="teacher in filteredTeachers" :key="teacher.teacher_id" class="teacher-row" :class="{ selected: selectedTeacherId === teacher.teacher_id }">
+          <input type="radio" name="teacher" :value="teacher.teacher_id" v-model="selectedTeacherId" /><span>{{ teacher.teacher_name }}</span>
         </label>
       </div>
-
-      <p v-else class="empty-message">找不到老師</p>
-
-      <footer class="footer-actions">
-        <button type="button" class="primary-btn" @click="goNext">
-          下一步
-        </button>
-      </footer>
+      <p v-else class="empty-message">{{ tr('No teachers found', '找不到老師') }}</p>
+      <footer class="footer-actions"><button type="button" class="primary-btn" @click="goNext">{{ tr('Next', '下一頁') }}</button></footer>
     </section>
   </main>
 </template>
-
 <script>
 import axios from 'axios';
-
-const TEXT = {
-  chooseTeacher: '\u8acb\u9078\u64c7\u4e00\u4f4d\u8001\u5e2b\u3002',
-  loadFailed: '\u8f09\u5165\u8001\u5e2b\u5217\u8868\u5931\u6557\u3002'
-};
-
 export default {
-  data() {
-    return {
-      teachers: [],
-      selectedTeacherId: null,
-      searchText: ''
-    };
-  },
+  data() { return { teachers: [], selectedTeacherId: null, searchText: '' }; },
   computed: {
-    filteredTeachers() {
-      const keyword = this.searchText.toLowerCase();
-      if (!keyword) return this.teachers;
-
-      return this.teachers.filter(teacher =>
-        String(teacher.teacher_name || '').toLowerCase().includes(keyword)
-      );
-    },
-    selectedTeacherName() {
-      const selected = this.teachers.find(teacher => teacher.teacher_id === this.selectedTeacherId);
-      return selected ? selected.teacher_name : '';
-    }
+    filteredTeachers() { const keyword = this.searchText.toLowerCase(); if (!keyword) return this.teachers; return this.teachers.filter(teacher => String(teacher.teacher_name || '').toLowerCase().includes(keyword)); },
+    selectedTeacherName() { const selected = this.teachers.find(teacher => teacher.teacher_id === this.selectedTeacherId); return selected ? selected.teacher_name : ''; }
   },
   methods: {
-    async fetchTeachers() {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:3000/api/teachers/list', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        this.teachers = res.data;
-      } catch (err) {
-        console.error('Failed to load teachers:', err);
-        alert(TEXT.loadFailed);
-      }
-    },
-    goNext() {
-      if (!this.selectedTeacherId) {
-        alert(TEXT.chooseTeacher);
-        return;
-      }
-
-      this.$router.push({
-        name: 'SwapLessonPick',
-        query: {
-          teacherId: this.selectedTeacherId,
-          teacherName: this.selectedTeacherName
-        }
-      });
-    }
+    tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    async fetchTeachers() { try { const token = localStorage.getItem('token'); const res = await axios.get('http://localhost:3000/api/teachers/list', { headers: { Authorization: `Bearer ${token}` } }); this.teachers = res.data; } catch (err) { console.error('Failed to load teachers:', err); alert(this.tr('Failed to load teachers.', '載入老師列表失敗。')); } },
+    goNext() { if (!this.selectedTeacherId) { alert(this.tr('Please select a teacher.', '請選擇老師。')); return; } this.$router.push({ name: 'SwapLessonPick', query: { teacherId: this.selectedTeacherId, teacherName: this.selectedTeacherName } }); }
   },
-  mounted() {
-    this.fetchTeachers();
-  }
+  mounted() { this.fetchTeachers(); }
 };
 </script>
-
 <style scoped>
 .swap-page {
   min-height: calc(100vh - 126px);

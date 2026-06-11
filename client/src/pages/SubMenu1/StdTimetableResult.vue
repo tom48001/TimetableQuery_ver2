@@ -1,91 +1,134 @@
 <template>
   <div class="schedule-container">
-    <h1>學生上課時間表</h1>
+    <h1>{{ tr('Student Timetable', '學生上課時間表') }}</h1>
     <table class="timetable">
       <thead>
         <tr>
-          <th>節次 / 星期</th>
-          <th v-for="day in days" :key="day">{{ day }}</th>
+          <th>{{ tr('Period / Day', '課節 / 星期') }}</th>
+          <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="(label, index) in periodLabels" :key="index">
           <th v-html="label"></th>
-            <td v-for="day in days" :key="day">
-              <div
-                v-for="item in getCell(day, index + 1)"
-                :key="item.teacher_id + '-' + item.period"
-                class="cell-entry"
-                :class="{ 'red-entry': item.period === 'Period 11' || item.period === 'Period 12' }"
-              >
-                <strong>教師: {{ item.teacher_name }}</strong><br />
-                {{ item.class_name }}｜{{ item.subject_name }}<br />
-                {{ item.room_name }}
-              </div>
-            </td>
+          <td v-for="day in days" :key="day">
+            <div
+              v-for="item in getCell(day, index + 1)"
+              :key="cellKey(item)"
+              class="cell-entry"
+              :class="{ 'red-entry': periodName(item) === 'Period 11' || periodName(item) === 'Period 12' }"
+            >
+              <strong>{{ tr('Teacher', '老師') }}: {{ item.teacher_name }}</strong><br />
+              {{ item.class_name }} | {{ subjectLabel(item) }}<br />
+              {{ roomLabel(item.room_name) }}
+            </div>
+          </td>
         </tr>
       </tbody>
     </table>
+
+    <p v-if="loaded && schedule.length === 0" class="empty-message">
+      {{ tr('No timetable data.', '沒有課表資料。') }}
+    </p>
   </div>
 </template>
 
 <script>
 import axios from 'axios';
+import { subjectLabel as formatSubjectLabel, roomLabel as formatRoomLabel } from '../../utils/timetableLabels';
 
 export default {
-  name: 'StdTimetableResult',
   data() {
     return {
+      loaded: false,
       schedule: [],
-      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-      periodLabels: [
-        '第1節<br><small>(08:30-09:05)</small>',
-        '第2節<br><small>(09:05-09:40)</small>',
-        '第3節<br><small>(09:55-10:30)</small>',
-        '第4節<br><small>(10:30-11:05)</small>',
-        '第5節<br><small>(11:20-11:55)</small>',
-        '第6節<br><small>(11:55-12:30)</small>',
-        '第7節<br><small>(13:30-14:05)</small>',
-        '第8節<br><small>(14:05-14:40)</small>',
-        '第9節<br><small>(14:40-15:15)<br>紅(14:50-15:25)</small>',
-        '第10節<br><small>(15:25-16:00)<br>紅(15:25-16:00)</small>'
-      ]
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
     };
   },
+  computed: {
+    periodLabels() {
+      return [
+        this.periodLabel(1, '08:30-09:05'),
+        this.periodLabel(2, '09:05-09:40'),
+        this.periodLabel(3, '09:55-10:30'),
+        this.periodLabel(4, '10:30-11:05'),
+        this.periodLabel(5, '11:20-11:55'),
+        this.periodLabel(6, '11:55-12:30'),
+        this.periodLabel(7, '13:30-14:05'),
+        this.periodLabel(8, '14:05-14:40'),
+        this.periodLabel(9, '14:40-15:15', '14:50-15:25'),
+        this.periodLabel(10, '15:25-16:00', '15:25-16:00')
+      ];
+    }
+  },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    subjectLabel(item) {
+      return formatSubjectLabel(item, this.$lang.locale);
+    },
+    roomLabel(roomName) {
+      return formatRoomLabel(roomName, this.$lang.locale);
+    },
+    dayLabel(day) {
+      const labels = {
+        Mon: this.tr('Mon', '星期一'),
+        Tue: this.tr('Tue', '星期二'),
+        Wed: this.tr('Wed', '星期三'),
+        Thu: this.tr('Thu', '星期四'),
+        Fri: this.tr('Fri', '星期五'),
+        Sat: this.tr('Sat', '星期六')
+      };
+      return labels[day] || day;
+    },
+    periodLabel(period, time, electiveTime) {
+      const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
+      const elective = electiveTime ? '<br><span class="red-time">' + this.tr('Elective', '選修') + ' ' + electiveTime + '</span>' : '';
+      return label + '<br><small>' + time + elective + '</small>';
+    },
+    periodName(item) {
+      return item.period_name || item.period || '';
+    },
+    cellKey(item) {
+      return [item.teacher_id || item.teacher_name, this.periodName(item), item.class_name, item.subject_name || item.subject].join('-');
+    },
+    async fetchSchedule() {
+      try {
+        const token = localStorage.getItem('token');
+        const studentId = this.$route.query.studentId;
+        const res = await axios.get(`http://localhost:3000/api/students/${studentId}/timetable`, { headers: { Authorization: `Bearer ${token}` } });
+        this.schedule = res.data;
+      } catch (err) {
+        alert(this.tr('Failed to load timetable.', '載入課表失敗。'));
+        console.error(err);
+      } finally {
+        this.loaded = true;
+      }
+    },
     getCell(day, periodIndex) {
-      const currentPeriod = `Period ${periodIndex}`;
-      let result = this.schedule.filter(
-        (item) => item.day === day && item.period === currentPeriod
-      );
+      const currentPeriod = 'Period ' + periodIndex;
+      let result = this.schedule.filter(item => {
+        const itemDay = item.day || item.day_of_week;
+        return itemDay === day && this.periodName(item) === currentPeriod;
+      });
 
       if (periodIndex === 9) {
-        const period11 = this.schedule.filter(
-          (item) => item.day === day && item.period === 'Period 11'
-        );
-        result = result.concat(period11);
+        result = result.concat(this.schedule.filter(item => (item.day || item.day_of_week) === day && this.periodName(item) === 'Period 11'));
       }
+
       if (periodIndex === 10) {
-        const period12 = this.schedule.filter(
-          (item) => item.day === day && item.period === 'Period 12'
-        );
-        result = result.concat(period12);
+        result = result.concat(this.schedule.filter(item => (item.day || item.day_of_week) === day && this.periodName(item) === 'Period 12'));
       }
 
       return result;
     }
   },
-  async mounted() {
-    const token = localStorage.getItem('token');
-    const studentId = this.$route.query.studentId;
-    const res = await axios.get(`http://localhost:3000/api/students/${studentId}/timetable`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    this.schedule = res.data;
+  mounted() {
+    this.fetchSchedule();
   }
 };
 </script>
-
 <style scoped>
 .schedule-container {
   padding: 20px;
@@ -128,7 +171,7 @@ export default {
   padding: 1px 4px;
   font-size: 11px;
   color: #fff;
-  background-color: #007bff; /* 藍色標籤 */
+  background-color: #007bff;
   border-radius: 4px;
 }
 </style>

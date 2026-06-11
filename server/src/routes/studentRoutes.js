@@ -1,5 +1,6 @@
 import express from 'express';
 import { ensureJWT } from '../auth/auth.js';
+import { requirePermission } from '../auth/permissions.js';
 import db from '../db.js';
 import {
   getStudents,
@@ -8,50 +9,44 @@ import {
   getStudentsByClassId,
   getStudentsByClassNSubject
 } from '../controllers/studentController.js';
+import {
+  getManagedStudents,
+  createManagedStudent,
+  deleteManagedStudent
+} from '../controllers/manageStudentController.js';
 
 const router = express.Router();
 
-// 所有路由需登入才能查
-router.use(ensureJWT);
+router.get('/admin/list', ensureJWT, requirePermission('manageStudents'), getManagedStudents);
+router.post('/admin', ensureJWT, requirePermission('manageStudents'), createManagedStudent);
+router.delete('/admin/:studentId', ensureJWT, requirePermission('manageStudents'), deleteManagedStudent);
 
-// 根據班級 ID 查學生
+router.get('/by-class/:classId/subject/:subjectId', ensureJWT, getStudentsByClassNSubject);
 router.get('/by-class/:classId', ensureJWT, getStudentsByClassId);
+router.post('/by-subject', ensureJWT, getStudentsBySubject);
 
-// 取得所有學生資料
-router.get('/', getStudents);
-
-// 根據級別與科目查學生
-router.post('/by-subject', getStudentsBySubject);
-
-// 根據學生 ID 查學生課表
-router.get('/:studentId/timetable', getStudentTimetable);
-
-//getStudentsByClassId
-router.get('/:studentId/timetable', getStudentsByClassId);
-
-// 根據班級 ID 查學生的選修科目
-router.get('/elective-subjects', async (req, res) => {
+router.get('/elective-subjects', ensureJWT, async (req, res) => {
   const [rows] = await db.query('SELECT DISTINCT subject_name FROM elective_subjects');
-  res.json(rows.map(r => r.subject_name));
+  res.json(rows.map(row => row.subject_name));
 });
 
-// 根據班級 ID 查學生的選修科目
-router.post('/elective-students', async (req, res) => {
+router.post('/elective-students', ensureJWT, async (req, res) => {
   const { formLevel, subjectName } = req.body;
 
-  // 確保有傳入 formLevel 和 subjectName
   const [rows] = await db.query(
     `SELECT s.name, s.english_name, s.student_id, s.gender,
-           c.class_name, e.subject_name
-    FROM student s
-    JOIN class c ON s.class_id = c.class_id
-    JOIN elective_subjects e ON e.student_id = s.student_id
-    WHERE c.form_level = ? AND e.subject_name = ?`, [formLevel, subjectName]);
+            c.class_name, e.subject_name
+     FROM student s
+     JOIN class c ON s.class_id = c.class_id
+     JOIN elective_subjects e ON e.student_id = s.student_id
+     WHERE c.form_level = ? AND e.subject_name = ?`,
+    [formLevel, subjectName]
+  );
 
   res.json(rows);
 });
 
-// 根據班級ID與科目ID查學生
-router.get('/by-class/:classId/subject/:subjectId', getStudentsByClassNSubject);
+router.get('/:studentId/timetable', ensureJWT, getStudentTimetable);
+router.get('/', ensureJWT, getStudents);
 
 export default router;

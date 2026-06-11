@@ -45,8 +45,10 @@ router.get('/schedule/:classId', async (req, res) => {
     const [rows] = await db.query(
       `SELECT 
     t.teacher_name,
+    s.subject_id,
     s.subject_name,
     c.class_name,
+    r.room_id,
     r.room_name,
     tt.day_of_week,
     p.period_name

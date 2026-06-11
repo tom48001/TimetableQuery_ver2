@@ -3,14 +3,14 @@
     <section class="entry-panel">
       <header class="page-header">
         <div>
-          <h1>輸入學生完成目標總數（上學期）</h1>
+          <h1>{{ tr('Enter Learning Goal Total (First Term)', '輸入學生完成目標總數（上學期）') }}</h1>
         </div>
       </header>
 
       <section class="class-picker">
-        <label for="classSelect">選擇班別</label>
+        <label for="classSelect">{{ tr('Class', '班別') }}</label>
         <select id="classSelect" v-model="selectedClassId" @change="fetchSelectedClassStudents">
-          <option value="">請選擇班別</option>
+          <option value="">{{ tr('Select class', '選擇班別') }}</option>
           <option v-for="cls in classList" :key="cls.class_id" :value="cls.class_id">
             {{ cls.class_name }}
           </option>
@@ -39,11 +39,11 @@
           </label>
         </div>
 
-        <p v-else-if="loading" class="state-text">載入中...</p>
-        <p v-else class="state-text">沒有學生資料</p>
+        <p v-else-if="loading" class="state-text">{{ tr('Loading students...', '載入學生中...') }}</p>
+        <p v-else class="state-text">{{ tr('Please select a class.', '請選擇班別。') }}</p>
 
         <button type="submit" class="primary-btn" :disabled="saving || loading || !students.length">
-          {{ saving ? '提交中...' : '提交' }}
+          {{ saving ? tr('Saving...', '儲存中...') : tr('Submit', '提交') }}
         </button>
       </form>
     </section>
@@ -53,6 +53,10 @@
 <script>
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+
+function trText(vm, en, zh) {
+  return vm.$lang.locale === 'en' ? en : zh;
+}
 
 const TEXT = {
   loginFirst: '\u8acb\u5148\u767b\u5165\u3002',
@@ -74,6 +78,9 @@ export default {
     };
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
     studentCode(student) {
       const className = student.class_name || '';
       const classNumber = String(student.class_number || '').padStart(2, '0');
@@ -82,7 +89,7 @@ export default {
     async fetchClasses() {
       const token = localStorage.getItem('token');
       if (!token) {
-        alert(TEXT.loginFirst);
+        alert(trText(this, 'Please login first.', TEXT.loginFirst));
         return;
       }
 
@@ -155,12 +162,12 @@ export default {
     async saveGoals() {
       const token = localStorage.getItem('token');
       if (!token) {
-        alert(TEXT.loginFirst);
+        alert(trText(this, 'Please login first.', TEXT.loginFirst));
         return;
       }
 
       if (!this.selectedClassId || this.students.length === 0) {
-        alert(TEXT.chooseStudents);
+        alert(trText(this, 'Please select a class first.', TEXT.chooseStudents));
         return;
       }
 
@@ -178,11 +185,11 @@ export default {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        alert(TEXT.saved);
+        alert(trText(this, 'Learning goal data saved.', TEXT.saved));
       } catch (err) {
         console.error('Failed to save learning goals:', err);
         const responseData = err.response && err.response.data ? err.response.data : {};
-        const error = responseData.error || TEXT.saveFailed;
+        const error = responseData.error || trText(this, 'Save failed.', TEXT.saveFailed);
         const detail = responseData.detail;
         alert(detail ? `${error}\n${detail}` : error);
       } finally {

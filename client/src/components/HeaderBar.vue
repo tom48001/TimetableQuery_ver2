@@ -2,67 +2,85 @@
   <header class="header">
     <div class="top-row">
       <h1>
-        <router-link to="/home">時間表及學生管理系統</router-link>
+        <router-link to="/home">{{ $t('app.title') }}</router-link>
       </h1>
 
       <div class="account-info">
-        <span v-if="displayUserName" class="user-badge">用戶名稱: {{ displayUserName }}</span>
-        <span v-if="showRoleBadge" class="role-badge">Role: {{ displayRole }}</span>
+        <div class="language-switch" :aria-label="$t('common.languageEn')">
+          <button
+            type="button"
+            :class="{ active: $lang.locale === 'zh' }"
+            @click="$setLocale('zh')"
+          >
+            {{ $t('common.languageZh') }}
+          </button>
+          <button
+            type="button"
+            :class="{ active: $lang.locale === 'en' }"
+            @click="$setLocale('en')"
+          >
+            EN
+          </button>
+        </div>
+
+        <span v-if="displayUserName" class="user-badge">{{ $t('common.username') }}: {{ displayUserName }}</span>
+        <span v-if="showRoleBadge" class="role-badge">{{ $t('common.role') }}: {{ displayRole }}</span>
         <router-link
-          v-if="userRole === 'teacher'"
+          v-if="hasPermission('changePassword')"
           to="/change-password"
           class="account-link"
         >
-          更改密碼
+          {{ $t('nav.changePassword') }}
         </router-link>
-        <button @click="handleLogout" class="logout-btn">Logout</button>
+        <button @click="handleLogout" class="logout-btn">{{ $t('common.logout') }}</button>
       </div>
     </div>
 
     <hr />
 
     <div class="menu">
-      <span class="main-menu" @mouseover="switchMenu('SubMenu1', $event)" @mouseout="hideMenu">
-        時間表應用
+      <span v-if="hasPermission('timetable')" class="main-menu" @mouseover="switchMenu('SubMenu1', $event)" @mouseout="hideMenu">
+        {{ $t('nav.timetable') }}
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu1" class="sub-menu" style="display: none;">
-          <li><router-link to="/TeacherTimetable">老師上課時間表</router-link></li>
-          <li><router-link to="/ClassObservation">觀課選堂</router-link></li>
-          <li><router-link to="/SwapLesson">調課搜找</router-link></li>
-          <li><router-link to="/FreeTeacher">搜尋空堂老師</router-link></li>
-          <li><router-link to="/ClassTimetable">班別時間表</router-link></li>
-          <li><router-link to="/RoomTimetable">各房間上課時間表</router-link></li>
-          <li><router-link to="/Electives">高中選修名單</router-link></li>
-          <li><router-link to="/StdTimetable">學生時間表</router-link></li>
+          <li><router-link to="/TeacherTimetable">{{ $t('nav.teacherTimetable') }}</router-link></li>
+          <li><router-link to="/ClassObservation">{{ $t('nav.classObservation') }}</router-link></li>
+          <li><router-link to="/SwapLesson">{{ $t('nav.swapLesson') }}</router-link></li>
+          <li><router-link to="/FreeTeacher">{{ $t('nav.freeTeacher') }}</router-link></li>
+          <li><router-link to="/ClassTimetable">{{ $t('nav.classTimetable') }}</router-link></li>
+          <li><router-link to="/RoomTimetable">{{ $t('nav.roomTimetable') }}</router-link></li>
+          <li><router-link to="/Electives">{{ $t('nav.electives') }}</router-link></li>
+          <li><router-link to="/StdTimetable">{{ $t('nav.studentTimetable') }}</router-link></li>
         </ul>
       </span>
 
-      <span class="main-menu" @mouseover="switchMenu('SubMenu2', $event)" @mouseout="hideMenu">
-        提名學生
+      <span v-if="hasPermission('nominations')" class="main-menu" @mouseover="switchMenu('SubMenu2', $event)" @mouseout="hideMenu">
+        {{ $t('nav.nominations') }}
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu2" class="sub-menu" style="display: none;">
-          <li><router-link to="/BLA">最佳學習態度提名</router-link></li>
-          <li><router-link to="/BLAResult">最佳學習態度學生提名結果</router-link></li>
-          <li><router-link to="/ConductAward">操行獎提名</router-link></li>
-          <li><router-link to="/ConductAwardResult">操行獎提名統計結果</router-link></li>
-          <li><router-link to="/LearningGoalEntry">輸入學生完成目標總數</router-link></li>
-          <li><router-link to="/LearningGoalResult">學習目標獎勵計劃結果</router-link></li>
-          <li><router-link to="/PrefectNomination">紀律領袖生提名</router-link></li>
-          <li><router-link to="/PrefectNominationResult">紀律領袖生提名統計結果</router-link></li>
+          <li><router-link to="/BLA">{{ $t('nav.bla') }}</router-link></li>
+          <li><router-link to="/BLAResult">{{ $t('nav.blaResult') }}</router-link></li>
+          <li><router-link to="/ConductAward">{{ $t('nav.conductAward') }}</router-link></li>
+          <li><router-link to="/ConductAwardResult">{{ $t('nav.conductAwardResult') }}</router-link></li>
+          <li><router-link to="/LearningGoalEntry">{{ $t('nav.learningGoalEntry') }}</router-link></li>
+          <li><router-link to="/LearningGoalResult">{{ $t('nav.learningGoalResult') }}</router-link></li>
+          <li><router-link to="/PrefectNomination">{{ $t('nav.prefectNomination') }}</router-link></li>
+          <li><router-link to="/PrefectNominationResult">{{ $t('nav.prefectNominationResult') }}</router-link></li>
         </ul>
       </span>
 
       <span
-        v-if="canManageUsers"
+        v-if="canShowManagementMenu"
         class="main-menu"
         @mouseover="switchMenu('SubMenu3', $event)"
         @mouseout="hideMenu"
       >
-        系統管理
+        {{ $t('nav.userManagement') }}
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu3" class="sub-menu" style="display: none;">
-          <li><router-link to="/editTeacher">使用者管理</router-link></li>
-          <li v-if="canImportTimetable"><router-link to="/ImportTeacher">導入時間表</router-link></li>
+          <li><router-link to="/editTeacher">{{ $t('nav.editTeacher') }}</router-link></li>
+          <li v-if="canManageStudents"><router-link to="/StudentManagement">{{ $t('nav.studentManagement') }}</router-link></li>
+          <li v-if="canImportTimetable"><router-link to="/ImportTeacher">{{ $t('nav.importTeacher') }}</router-link></li>
         </ul>
       </span>
     </div>
@@ -76,6 +94,7 @@ export default {
       userRole: null,
       userName: '',
       userEmail: '',
+      permissions: {},
       visibleMenu: ''
     };
   },
@@ -90,13 +109,19 @@ export default {
     },
     displayRole() {
       if (!this.userRole) return '';
-      return this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1);
+      return this.$t(`roles.${this.userRole}`);
+    },
+    canShowManagementMenu() {
+      return this.canManageUsers || this.canManageStudents || this.canImportTimetable;
     },
     canManageUsers() {
-      return this.userRole === 'manager' || this.userRole === 'staff';
+      return this.hasPermission('manageUsers');
+    },
+    canManageStudents() {
+      return this.hasPermission('manageStudents');
     },
     canImportTimetable() {
-      return this.userRole === 'manager';
+      return this.hasPermission('importTimetable');
     }
   },
   mounted() {
@@ -107,12 +132,17 @@ export default {
         this.userRole = parsedUser.role ? parsedUser.role.trim().toLowerCase() : 'teacher';
         this.userName = parsedUser.user_name || parsedUser.userName || '';
         this.userEmail = parsedUser.email || '';
+        this.permissions = parsedUser.permissions || {};
       } catch (error) {
         console.error('Error parsing user data:', error);
       }
     }
   },
   methods: {
+    hasPermission(permission) {
+      if (this.userRole === 'manager') return true;
+      return Boolean(this.permissions && this.permissions[permission]);
+    },
     switchMenu(subMenuId, event) {
       this.hideMenu();
 
@@ -159,20 +189,25 @@ export default {
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 8px 22px rgba(23, 48, 64, 0.08);
   backdrop-filter: blur(10px);
-  padding: 12px 24px 0;
+  padding: 10px 18px 0;
 }
 
 .top-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 h1 {
   color: var(--text);
-  font-size: 24px;
+  flex: 0 0 auto;
+  font-size: 21px;
+  line-height: 1.2;
   margin: 0;
+  white-space: nowrap;
 }
 
 h1 a {
@@ -182,17 +217,55 @@ h1 a {
 .account-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.language-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.language-switch button {
+  min-width: 42px;
+  height: 32px;
+  border: none;
+  border-radius: 0 !important;
+  background: #fff !important;
+  color: var(--text) !important;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 10px;
+}
+
+.language-switch button.active {
+  background: var(--primary) !important;
+  color: #fff !important;
 }
 
 .role-badge,
 .user-badge {
   border: 1px solid var(--border);
   border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  min-height: 32px;
+  padding: 9px 10px;
+  white-space: nowrap;
+}
+
+.role-badge {
   color: var(--primary-dark);
   background: var(--primary-soft);
-  padding: 6px 10px;
-  font-weight: 600;
 }
 
 .user-badge {
@@ -205,8 +278,13 @@ h1 a {
   border-radius: 6px;
   color: var(--text);
   background: #fff;
-  padding: 8px 12px;
-  font-weight: 600;
+  box-sizing: border-box;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  min-height: 32px;
+  padding: 9px 12px;
+  white-space: nowrap;
 }
 
 .account-link:hover {
@@ -218,6 +296,8 @@ h1 a {
   display: flex;
   justify-content: center;
   gap: 12px;
+  max-width: 1440px;
+  margin: 0 auto;
   background: transparent;
   padding: 8px 0 10px;
 }
@@ -284,10 +364,15 @@ h1 a {
 .logout-btn {
   background: var(--danger);
   color: white;
-  padding: 8px 16px;
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 8px 14px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .logout-btn:hover {
@@ -302,5 +387,22 @@ h1 a {
 a {
   text-decoration: none;
   color: black;
+}
+
+@media (max-width: 900px) {
+  .top-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .account-info,
+  .menu {
+    justify-content: flex-start;
+  }
+
+  .account-info,
+  .menu {
+    flex-wrap: wrap;
+  }
 }
 </style>

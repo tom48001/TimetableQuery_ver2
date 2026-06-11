@@ -24,6 +24,7 @@ router.get('/schedule/:roomId', ensureJWT, async (req, res) => {
       `SELECT 
           t.teacher_name AS teacher_name,
           c.class_name AS class_name,
+          s.subject_id,
           s.subject_name AS subject_name,
           p.period_name,
           p.start_time,

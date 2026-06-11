@@ -1,6 +1,6 @@
 <template>
   <div class="nomination-page">
-    <h1>風紀提名</h1>
+    <h1>{{ tr('Select Students', '選擇學生') }}</h1>
 
     <div v-for="classItem in selectedClass" :key="classItem" class="class-section">
       <h3>{{ className(classItem) }}</h3>
@@ -17,13 +17,14 @@
             :value="student.student_id"
             v-model="selectedStudents[classItem]"
           />
-          {{ student.student_name }}
+          <span class="student-number">{{ studentNumber(student) }}</span>
+          <span class="student-name">{{ student.student_name }}</span>
         </label>
       </div>
-      <div v-else class="loading">載入中...</div>
+      <div v-else class="loading">??舫??..</div>
     </div>
 
-    <button @click="submitNomination">提交</button>
+    <button @click="submitNomination">{{ tr('Submit', '提交') }}</button>
   </div>
 </template>
 
@@ -48,6 +49,12 @@ export default {
     }
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    studentNumber(student) {
+      return String(student.class_number || '').padStart(2, '0');
+    },
     className(classId) {
       return this.classTable[classId - 1] || `Class ${classId}`;
     },
@@ -64,7 +71,7 @@ export default {
         this.teacher_id = res.data.teacher_id;
       } catch (err) {
         console.error('Failed to load teacher id:', err);
-        alert('此帳號未連結老師資料，不能提交提名。請在 teacher 表加入對應 user_id。');
+        alert(this.tr('Failed to load teacher account.', '載入老師帳戶失敗。'));
       }
     },
     async fetchStudentsForClasses() {
@@ -114,7 +121,7 @@ export default {
     submitNomination() {
       const token = localStorage.getItem('token');
       if (!token || !this.teacher_id) {
-        alert('未能取得老師資料，不能提交提名。');
+        alert(this.tr('Please login again.', '請重新登入。'));
         return;
       }
 
@@ -205,6 +212,19 @@ h3 {
   background-color: #007bff;
   color: white;
   border-color: #0056b3;
+}
+
+.student-number {
+  color: #007bff;
+  font-weight: 800;
+  min-width: 2ch;
+}
+
+.student-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .student-option input[type="checkbox"] {

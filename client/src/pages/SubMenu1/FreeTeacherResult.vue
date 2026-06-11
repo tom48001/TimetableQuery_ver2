@@ -2,17 +2,17 @@
   <main class="result-page">
     <section class="result-panel">
       <header class="result-header">
-        <h1>{{ date }}（{{ weekdayLabel }}）</h1>
-        <h2>第{{ period }}節空堂老師</h2>
+        <h1>{{ date }} ({{ displayWeekday }})</h1>
+        <h2>{{ periodLabel }} {{ tr('Free Teachers', '空堂老師') }}</h2>
       </header>
 
       <div class="table-wrap">
         <table v-if="freeTeachers.length" class="free-table">
           <thead>
             <tr>
-              <th class="teacher-col">老師</th>
+              <th class="teacher-col">{{ tr('Teacher', '老師') }}</th>
               <th v-for="periodNumber in periodNumbers" :key="periodNumber">
-                第{{ periodNumber }}節
+                {{ periodText(periodNumber) }}
               </th>
             </tr>
           </thead>
@@ -28,12 +28,8 @@
           </tbody>
         </table>
 
-        <p v-else-if="loaded" class="empty-message">
-          這一節沒有空堂老師
-        </p>
-        <p v-else class="empty-message">
-          載入中...
-        </p>
+        <p v-else-if="loaded" class="empty-message">{{ tr('No free teachers found.', '找不到空堂老師。') }}</p>
+        <p v-else class="empty-message">{{ tr('Loading...', '載入中...') }}</p>
       </div>
     </section>
   </main>
@@ -42,8 +38,10 @@
 <script>
 import axios from 'axios';
 
-const TEXT = {
-  loadFailed: '\u8f09\u5165\u7a7a\u5802\u8001\u5e2b\u5931\u6557\u3002'
+const WEEKDAY_KEYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_LABELS = {
+  zh: ['\u661f\u671f\u65e5', '\u661f\u671f\u4e00', '\u661f\u671f\u4e8c', '\u661f\u671f\u4e09', '\u661f\u671f\u56db', '\u661f\u671f\u4e94', '\u661f\u671f\u516d'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 };
 
 export default {
@@ -64,14 +62,44 @@ export default {
     weekdayLabel() {
       return this.$route.query.weekdayLabel || '';
     },
-    period() {
-      return Number(this.$route.query.period) || 0;
+    displayWeekday() {
+      const locale = this.$lang.locale === 'en' ? 'en' : 'zh';
+      const fromDate = this.weekdayFromDate();
+      const keyIndex = WEEKDAY_KEYS.indexOf(this.weekday);
+      if (fromDate !== '') return fromDate;
+      if (keyIndex >= 0) return WEEKDAY_LABELS[locale][keyIndex];
+      return this.weekdayLabel || this.weekday || '';
+    },
+    periods() {
+      return String(this.$route.query.period || '')
+        .split(',')
+        .map(value => Number(value))
+        .filter(Boolean);
+    },
+    periodLabel() {
+      return this.periods.map(period => this.periodText(period)).join(this.$lang.locale === 'en' ? ', ' : '\u3001');
     },
     freeTeachers() {
-      return this.teachers.filter(teacher => !this.classAt(teacher, this.period));
+      return this.teachers.filter(teacher => (
+        this.periods.length > 0 &&
+        this.periods.every(periodNumber => !this.classAt(teacher, periodNumber))
+      ));
     }
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    weekdayFromDate() {
+      if (!this.date) return '';
+      const parsed = new Date(this.date + 'T00:00:00');
+      if (Number.isNaN(parsed.getTime())) return '';
+      const locale = this.$lang.locale === 'en' ? 'en' : 'zh';
+      return WEEKDAY_LABELS[locale][parsed.getDay()];
+    },
+    periodText(periodNumber) {
+      return this.$lang.locale === 'en' ? 'Period ' + periodNumber : '\u7b2c' + periodNumber + '\u7bc0';
+    },
     classAt(teacher, periodNumber) {
       const lesson = (teacher.lessons || []).find(item => Number(item.period_id) === Number(periodNumber));
       return lesson ? lesson.class_name : '';
@@ -89,14 +117,14 @@ export default {
         this.teachers = res.data;
       } catch (err) {
         console.error('Failed to load free teacher day schedule:', err);
-        alert(TEXT.loadFailed);
+        alert(this.tr('Failed to load free teachers.', '載入空堂老師失敗。'));
       } finally {
         this.loaded = true;
       }
     }
   },
   mounted() {
-    if (!this.date || !this.weekday || !this.period) {
+    if (!this.date || !this.weekday || this.periods.length === 0) {
       this.$router.push({ name: 'FreeTeacher' });
       return;
     }

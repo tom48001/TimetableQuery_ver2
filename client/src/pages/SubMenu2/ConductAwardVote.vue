@@ -1,31 +1,35 @@
-<template lang="">
+<template>
   <div class="nomination-page">
+    <h1>{{ tr('Select Students', '選擇學生') }}</h1>
+
     <div v-for="classItem in selectedClass" :key="classItem" class="class-section">
-      <h3>{{ classTable[classItem - 1] }} 班</h3>
+      <h3>{{ className(classItem) }}</h3>
 
       <div v-if="studentsByClass[classItem]" class="student-grid">
         <label
           v-for="student in studentsByClass[classItem]"
           :key="student.student_id"
-          :value="student.student_id"
           class="student-option"
+          :class="{ selected: selectedStudents[classItem].includes(student.student_id) }"
         >
           <input
             type="checkbox"
             :value="student.student_id"
             v-model="selectedStudents[classItem]"
           />
-          {{ student.student_name }}
+          <span class="student-number">{{ studentNumber(student) }}</span>
+          <span class="student-name">{{ student.student_name }}</span>
         </label>
       </div>
-      <div v-else>載入中...</div>
+      <div v-else class="loading">{{ tr('Loading students...', '載入學生中...') }}</div>
     </div>
 
-    <button @click="submitNomination">送出提名</button>
+    <button @click="submitNomination">{{ tr('Submit', '提交') }}</button>
   </div>
 </template>
+
 <script>
-import axios from 'axios'
+import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
 export default {
@@ -36,174 +40,145 @@ export default {
       studentsByClass: {},
       selectedStudents: {},
       previousSelectedStudents: {},
-      teacher_id: null,
-      loading: true
-    }
+      teacher_id: null
+    };
   },
   created() {
     if (!this.selectedClass.length) {
-      this.$router.push({ name: 'ConductAward' })
-      return
+      this.$router.push({ name: 'ConductAward' });
     }
-    console.log('已選擇班級:', this.selectedClass)
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    studentNumber(student) {
+      return String(student.class_number || '').padStart(2, '0');
+    },
+    className(classId) {
+      return this.classTable[classId - 1] || `Class ${classId}`;
+    },
     async getTeacherId() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
       try {
         const decoded = jwtDecode(token);
-        const userId = decoded.id;
-
-        // 呼叫後端，用 user_id 換 teacher_id
-        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${userId}`, {
+        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${decoded.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
         this.teacher_id = res.data.teacher_id;
-        console.log('老師 ID:', this.teacher_id);
-      } catch (error) {
-        console.error('取得 teacher_id 失敗:', error);
-        alert('此帳號未連結老師資料，不能提交提名。請在 teacher 表加入對應 user_id。');
+      } catch (err) {
+        console.error('Failed to load teacher id:', err);
+        alert(this.tr('Failed to load teacher account.', '載入老師帳戶失敗。'));
       }
     },
     async fetchStudentsForClasses() {
       const token = localStorage.getItem('token');
-      if (!token || !Array.isArray(this.selectedClass)) return;
+      if (!token) return;
 
-      await Promise.all(this.selectedClass.map(async classid => {
-        this.$set(this.selectedStudents, classid, []);
+      await Promise.all(this.selectedClass.map(async classId => {
+        this.$set(this.selectedStudents, classId, []);
 
         try {
-          const res = await axios.get(`http://localhost:3000/api/students/by-class/${classid}`, {
+          const res = await axios.get(`http://localhost:3000/api/students/by-class/${classId}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          this.$set(this.studentsByClass, classid, res.data);
+          this.$set(this.studentsByClass, classId, res.data);
         } catch (err) {
-          console.error(`載入 ${classid} 的學生失敗:`, err);
-          this.$set(this.studentsByClass, classid, []);
+          console.error(`Failed to load students for class ${classId}:`, err);
+          this.$set(this.studentsByClass, classId, []);
         }
       }));
     },
     async loadSelectedStudents() {
+      const token = localStorage.getItem('token');
+      if (!token || !this.teacher_id) return;
+
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.error('未登入，缺少 token');
-          return;
-        }
-        try {
-          const decoded = jwtDecode(token);
-          const userId = decoded.id;
+        const res = await axios.get('http://localhost:3000/api/conduct/students', {
+          params: { teacher_id: this.teacher_id },
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
-          // 呼叫後端，用 user_id 換 teacher_id
-          const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${userId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-
-          this.teacher_id = res.data.teacher_id;
-          console.log('老師 ID:', this.teacher_id);
-        } catch (error) {
-          console.error('取得 teacher_id 失敗:', error);
-        }
-        if (!this.teacher_id) {
-          console.warn('teacher_id 尚未載入，跳過請求');
-          return;
-        }
-
-        const teacherId = this.teacher_id;
-
-        // 發送請求
-        const res = await axios.get(
-          `http://localhost:3000/api/conduct/students`,
-          {
-            params: {
-              teacher_id: teacherId
-            },
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
-
-        // 後端返回的已選擇學生 id
         const selectedIds = res.data.map(stu => stu.student_id);
-        console.log('後端已選擇學生 ID:', selectedIds);
-
-        // 用 Vue.set / this.$set 或深拷貝方式更新，避免響應式問題
         const updatedSelected = { ...this.selectedStudents };
+
         for (const classId in this.studentsByClass) {
           const stuList = this.studentsByClass[classId] || [];
           updatedSelected[classId] = stuList
             .filter(stu => selectedIds.includes(stu.student_id))
             .map(stu => stu.student_id);
         }
+
         this.selectedStudents = updatedSelected;
         this.previousSelectedStudents = JSON.parse(JSON.stringify(updatedSelected));
-        console.log('更新後的 selectedStudents:', this.selectedStudents);
       } catch (err) {
-        console.error('取得已選擇學生失敗:', err);
+        console.error('Failed to load selected conduct nominations:', err);
       }
     },
     submitNomination() {
       const token = localStorage.getItem('token');
       if (!token || !this.teacher_id) {
-        console.error('未登入');
-        alert('未能取得老師資料，不能提交提名。');
+        alert(this.tr('Please login again.', '請重新登入。'));
         return;
       }
-      const teacherId = this.teacher_id
-      const selectedStudentIds = Object.values(this.selectedStudents).flat()
+
+      const teacherId = this.teacher_id;
+      const selectedStudentIds = Object.values(this.selectedStudents).flat();
 
       axios.post('http://localhost:3000/api/conduct/insert', {
         teacher_id: teacherId,
         student_ids: selectedStudentIds
       }, {
         headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
-        console.log('投票成功', res.data);
-
-        // 投票成功後再刪除
+      }).then(() => {
         for (const classId in this.previousSelectedStudents) {
           const removed = this.previousSelectedStudents[classId].filter(
             id => !this.selectedStudents[classId].includes(id)
           );
+
           if (removed.length > 0) {
-            axios.delete(`http://localhost:3000/api/conduct/delete`, {
+            axios.delete('http://localhost:3000/api/conduct/delete', {
               data: {
-                teacherId: teacherId,
-                removed: Array.isArray(removed) ? removed : [removed]
+                teacherId,
+                removed
               },
               headers: { Authorization: `Bearer ${token}` }
-            }).then(() => {
-              console.log('刪除成功:', removed);
             }).catch(err => {
-              console.error('刪除失敗:', err);
+              console.error('Failed to delete conduct nominations:', err);
             });
           }
         }
+
         this.$router.push({ name: 'ConductAward' });
       }).catch(err => {
-        console.error('投票失敗', err);
+        console.error('Failed to submit conduct nominations:', err);
         this.$router.push({ name: 'ConductAward' });
       });
     }
   },
   async mounted() {
-    await this.getTeacherId();
-    await this.fetchStudentsForClasses();
-    await this.loadSelectedStudents();
-    this.loading = false;
+    try {
+      await this.getTeacherId();
+      await this.fetchStudentsForClasses();
+      await this.loadSelectedStudents();
+    } catch (err) {
+      console.error('Failed to prepare conduct nomination page:', err);
+    }
   }
-}
+};
 </script>
+
 <style scoped>
-.class-section {
-  margin-bottom: 20px;
+h1,
+h3 {
+  text-align: center;
 }
 
-.student-checkbox {
-  display: block;
-  margin-left: 10px;
+.class-section {
+  margin-bottom: 20px;
 }
 
 .student-grid {
@@ -233,15 +208,32 @@ export default {
   border-color: #7ab8f5;
 }
 
-.student-option::selection {
+.student-option.selected {
   background-color: #007bff;
   color: white;
   border-color: #0056b3;
 }
 
+.student-number {
+  color: #007bff;
+  font-weight: 800;
+  min-width: 2ch;
+}
+
+.student-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .student-option input[type="checkbox"] {
   margin-right: 8px;
   accent-color: #007bff;
+}
+
+.loading {
+  text-align: center;
 }
 
 button {

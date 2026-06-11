@@ -44,20 +44,19 @@ app.use(bodyParser.json());
 app.use('/auth', authRoutes);
 
 // Routes
-app.use('/api/teachers', teacherRoutes);        // 教師帳號管理
-app.use('/api/timetable', timetableRoutes);     // 課表查詢
-app.use('/api/students', studentRoutes);      // 學生查詢
-app.use('/api/classes', classRoutes);         // 班級查詢
-app.use('/api/rooms', roomRoutes);        // 教室查詢
-app.use('/api/rooms/schedule/:roomId', roomRoutes); 
-app.use('/api/observation', observationRoutes); // 課堂觀察
+app.use('/api/teachers', teacherRoutes);
+app.use('/api/timetable', timetableRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/classes', classRoutes);
+app.use('/api/rooms', roomRoutes);
+app.use('/api/observation', observationRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/swap', swapRoutes);
 app.use('/api/bla', blaRoutes);
 app.use('/api/conduct', conductRoutes);
 app.use('/api/prefect', prefectRoutes);
 app.use('/api/learning-goals', learningGoalRoutes);
-app.use("/api/import", importRoutes);
+app.use('/api/import', importRoutes);
 
 // Server
 app.listen(3000, () => console.log('Server running on port 3000'));

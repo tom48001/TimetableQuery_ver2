@@ -1,20 +1,58 @@
-import db from '../db.js';
+﻿import db from '../db.js';
 import bcrypt from 'bcrypt';
+import {
+  ensurePermissionsColumn,
+  permissionsForUser,
+  stringifyPermissions,
+  hasPermission
+} from '../auth/permissions.js';
 
-const MANAGED_ROLES = ['teacher', 'staff'];
+const ALL_ROLES = ['teacher', 'staff', 'manager'];
+const STAFF_MANAGED_ROLES = ['teacher', 'staff'];
 
-function normalizeRole(role) {
+function actorRole(req) {
+  return req.user?.role ? req.user.role.trim().toLowerCase() : '';
+}
+
+function actorCanManageAll(req) {
+  return actorRole(req) === 'manager';
+}
+
+function allowedRolesFor(req) {
+  return actorCanManageAll(req) ? ALL_ROLES : STAFF_MANAGED_ROLES;
+}
+
+function normalizeRole(role, req) {
   const normalizedRole = role ? role.trim().toLowerCase() : 'teacher';
-  return MANAGED_ROLES.includes(normalizedRole) ? normalizedRole : null;
+  return allowedRolesFor(req).includes(normalizedRole) ? normalizedRole : null;
+}
+
+function canManageUsers(req) {
+  return actorCanManageAll(req) || hasPermission(req.user, 'manageUsers');
+}
+
+function sanitizePermissions(permissions, role, req) {
+  if (!actorCanManageAll(req)) {
+    return stringifyPermissions(null, role);
+  }
+  return stringifyPermissions(permissions, role);
 }
 
 export const getAllTeachers = async (req, res) => {
+  if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission denied.' });
+
   try {
+    await ensurePermissionsColumn();
+    const roles = allowedRolesFor(req);
+    const placeholders = roles.map(() => '?').join(', ');
     const [teachers] = await db.query(
-      'SELECT user_id, user_name, email, role FROM user WHERE role IN (?, ?) ORDER BY user_name',
-      MANAGED_ROLES
+      `SELECT user_id, user_name, email, role, permissions FROM user WHERE role IN (${placeholders}) ORDER BY user_name`,
+      roles
     );
-    res.json(teachers);
+    res.json(teachers.map(user => ({
+      ...user,
+      permissions: permissionsForUser(user)
+    })));
   } catch (error) {
     console.error('Failed to load users:', error);
     res.status(500).json({ error: 'Failed to load users.' });
@@ -22,18 +60,21 @@ export const getAllTeachers = async (req, res) => {
 };
 
 export const createTeacher = async (req, res) => {
+  if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission denied.' });
+
   try {
-    const { user_name, email, password, role } = req.body;
-    const normalizedRole = normalizeRole(role);
+    await ensurePermissionsColumn();
+    const { user_name, email, password, role, permissions } = req.body;
+    const normalizedRole = normalizeRole(role, req);
 
     if (!user_name || !email || !password || !normalizedRole) {
-      return res.status(400).json({ error: 'Invalid user data.' });
+      return res.status(400).json({ error: 'Invalid user data or role.' });
     }
 
     const hashed = await bcrypt.hash(password, 10);
     await db.query(
-      'INSERT INTO user (user_name, email, password, role) VALUES (?, ?, ?, ?)',
-      [user_name, email, hashed, normalizedRole]
+      'INSERT INTO user (user_name, email, password, role, permissions) VALUES (?, ?, ?, ?, ?)',
+      [user_name, email, hashed, normalizedRole, sanitizePermissions(permissions, normalizedRole, req)]
     );
     res.json({ message: 'User created successfully.' });
   } catch (error) {
@@ -43,25 +84,37 @@ export const createTeacher = async (req, res) => {
 };
 
 export const updateTeacher = async (req, res) => {
+  if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission denied.' });
+
   const { id } = req.params;
-  const { user_name, email, role, newPassword } = req.body;
-  const normalizedRole = normalizeRole(role);
+  const { user_name, email, role, newPassword, permissions } = req.body;
+  const normalizedRole = normalizeRole(role, req);
 
   if (!user_name || !email || !normalizedRole) {
-    return res.status(400).json({ error: 'Invalid user data.' });
+    return res.status(400).json({ error: 'Invalid user data or role.' });
   }
 
   try {
+    await ensurePermissionsColumn();
+    const [existingRows] = await db.query('SELECT role FROM user WHERE user_id = ?', [id]);
+    if (!existingRows.length) return res.status(404).json({ error: 'User not found.' });
+
+    const currentRole = existingRows[0].role ? existingRows[0].role.trim().toLowerCase() : '';
+    if (!actorCanManageAll(req) && currentRole === 'manager') {
+      return res.status(403).json({ error: 'Only manager can edit manager accounts.' });
+    }
+
+    const permissionText = sanitizePermissions(permissions, normalizedRole, req);
     let query;
     let params;
 
     if (newPassword) {
       const hashed = await bcrypt.hash(newPassword, 10);
-      query = 'UPDATE user SET user_name = ?, email = ?, role = ?, password = ? WHERE user_id = ?';
-      params = [user_name, email, normalizedRole, hashed, id];
+      query = 'UPDATE user SET user_name = ?, email = ?, role = ?, permissions = ?, password = ? WHERE user_id = ?';
+      params = [user_name, email, normalizedRole, permissionText, hashed, id];
     } else {
-      query = 'UPDATE user SET user_name = ?, email = ?, role = ? WHERE user_id = ?';
-      params = [user_name, email, normalizedRole, id];
+      query = 'UPDATE user SET user_name = ?, email = ?, role = ?, permissions = ? WHERE user_id = ?';
+      params = [user_name, email, normalizedRole, permissionText, id];
     }
 
     await db.query(query, params);
@@ -73,9 +126,20 @@ export const updateTeacher = async (req, res) => {
 };
 
 export const deleteTeacher = async (req, res) => {
+  if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission denied.' });
+
   const { id } = req.params;
 
   try {
+    await ensurePermissionsColumn();
+    const [existingRows] = await db.query('SELECT role FROM user WHERE user_id = ?', [id]);
+    if (!existingRows.length) return res.status(404).json({ error: 'User not found.' });
+
+    const currentRole = existingRows[0].role ? existingRows[0].role.trim().toLowerCase() : '';
+    if (!actorCanManageAll(req) && currentRole === 'manager') {
+      return res.status(403).json({ error: 'Only manager can delete manager accounts.' });
+    }
+
     await db.query('DELETE FROM user WHERE user_id = ?', [id]);
     res.json({ message: 'User deleted successfully.' });
   } catch (error) {
@@ -88,12 +152,14 @@ export const getTeacherById = async (req, res) => {
   const { id } = req.params;
 
   try {
+    await ensurePermissionsColumn();
     const [rows] = await db.query(
-      'SELECT user_id, user_name, email, role FROM user WHERE user_id = ?',
+      'SELECT user_id, user_name, email, role, permissions FROM user WHERE user_id = ?',
       [id]
     );
     if (!rows.length) return res.status(404).json({ error: 'User not found.' });
-    res.json(rows[0]);
+    const user = rows[0];
+    res.json({ ...user, permissions: permissionsForUser(user) });
   } catch (error) {
     console.error('Failed to load user:', error);
     res.status(500).json({ error: 'Failed to load user.' });

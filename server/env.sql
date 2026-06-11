@@ -22,7 +22,8 @@ CREATE TABLE user (
     user_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255),
-    role ENUM('teacher', 'staff', 'manager') DEFAULT 'teacher'
+    role ENUM('teacher', 'staff', 'manager') DEFAULT 'teacher',
+    permissions TEXT NULL
 );
 
 -- 老師表（可直接用user_id）

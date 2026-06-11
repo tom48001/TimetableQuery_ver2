@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import db from '../db.js';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
-import { ensureJWT, checkRole } from '../auth/auth.js';
+import { ensureJWT } from '../auth/auth.js';
+import { ensurePermissionsColumn, permissionsForUser, requirePermission } from '../auth/permissions.js';
 
 dotenv.config();
 const router = express.Router();
@@ -35,6 +36,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: MESSAGES.needCredentials });
     }
 
+    await ensurePermissionsColumn();
     const [users] = await db.query('SELECT * FROM user WHERE email = ?', [email]);
     if (!users.length) {
       return res.status(401).json({ error: MESSAGES.invalidCredentials });
@@ -51,12 +53,14 @@ router.post('/login', async (req, res) => {
     }
 
     const role = user.role ? user.role.trim().toLowerCase() : 'teacher';
+    const permissions = permissionsForUser(user);
     const token = jwt.sign(
-      { id: user.user_id, role, user_name: user.user_name, email: user.email },
+      { id: user.user_id, role, user_name: user.user_name, email: user.email, permissions },
       process.env.JWT_SECRET,
       { expiresIn: '2h' }
     );
     const { password: passwordHash, ...safeUser } = user;
+    safeUser.permissions = permissions;
 
     return res.json({ message: MESSAGES.loginOk, user: safeUser, token });
   } catch (error) {
@@ -69,14 +73,16 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: `${CLIENT_ORIGIN}/login?error=google` }),
-  (req, res) => {
+  async (req, res) => {
     if (!req.user) {
       return res.redirect(`${CLIENT_ORIGIN}/login?error=unauthorized`);
     }
 
+    await ensurePermissionsColumn();
     const role = req.user.role ? req.user.role.trim().toLowerCase() : 'teacher';
+    const permissions = permissionsForUser(req.user);
     const token = jwt.sign(
-      { id: req.user.user_id, role, user_name: req.user.user_name, email: req.user.email },
+      { id: req.user.user_id, role, user_name: req.user.user_name, email: req.user.email, permissions },
       process.env.JWT_SECRET,
       { expiresIn: '2h' }
     );
@@ -90,7 +96,7 @@ router.get('/me', (req, res) => {
   return res.json(req.user);
 });
 
-router.put('/change-password', ensureJWT, checkRole('teacher'), async (req, res) => {
+router.put('/change-password', ensureJWT, requirePermission('changePassword'), async (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
 
   if (!currentPassword || !newPassword || !confirmPassword) {

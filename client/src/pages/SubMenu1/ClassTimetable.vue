@@ -3,7 +3,7 @@
     <section class="selector-panel">
       <header class="page-header">
         <div>
-          <h1>各班上課時間表</h1>
+          <h1>{{ tr('Class Timetable', '各班上課時間表') }}</h1>
         </div>
       </header>
 
@@ -11,7 +11,7 @@
         v-model.trim="searchText"
         class="search-input"
         type="text"
-        placeholder="Search class..."
+        :placeholder="tr('Search class...', '搜尋班別...')"
       />
 
       <div class="option-grid">
@@ -27,7 +27,7 @@
       </div>
 
       <button type="button" class="primary-btn" :disabled="!selectedClass" @click="goToResult">
-        Submit
+        {{ tr('View Timetable', '查看時間表') }}
       </button>
     </section>
   </main>
@@ -38,42 +38,27 @@ import axios from 'axios';
 
 export default {
   data() {
-    return {
-      classList: [],
-      selectedClass: '',
-      searchText: ''
-    };
+    return { classList: [], selectedClass: '', searchText: '' };
   },
   computed: {
     filteredClasses() {
       const keyword = this.searchText.toLowerCase();
       if (!keyword) return this.classList;
-      return this.classList.filter(cls =>
-        String(cls.class_name || '').toLowerCase().includes(keyword)
-      );
+      return this.classList.filter(cls => String(cls.class_name || '').toLowerCase().includes(keyword));
     }
   },
-  mounted() {
-    this.loadClassList();
-  },
+  mounted() { this.loadClassList(); },
   methods: {
+    tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     async loadClassList() {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/classes', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get('http://localhost:3000/api/classes', { headers: { Authorization: `Bearer ${token}` } });
       this.classList = res.data;
     },
-    goToResult() {
-      this.$router.push({
-        name: 'ClassTimetableResult',
-        query: { classId: this.selectedClass }
-      });
-    }
+    goToResult() { this.$router.push({ name: 'ClassTimetableResult', query: { classId: this.selectedClass } }); }
   }
 };
 </script>
-
 <style scoped>
 .selector-page {
   min-height: calc(100vh - 126px);

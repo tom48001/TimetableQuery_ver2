@@ -3,19 +3,14 @@
     <section class="student-panel">
       <header class="page-header">
         <div>
-          <h1>查閱學生上課時間表</h1>
+          <h1>{{ tr('Student Timetable', '學生上課時間表') }}</h1>
         </div>
       </header>
 
       <section class="selector-section">
-        <h2>Class</h2>
+        <h2>{{ tr('Class', '班別') }}</h2>
         <div class="class-grid">
-          <label
-            v-for="cls in classes"
-            :key="cls.class_id"
-            class="option-card"
-            :class="{ selected: selectedClass === cls.class_id }"
-          >
+          <label v-for="cls in classes" :key="cls.class_id" class="option-card" :class="{ selected: selectedClass === cls.class_id }">
             <input type="radio" :value="cls.class_id" v-model="selectedClass" @change="fetchStudents" />
             {{ cls.class_name }}
           </label>
@@ -23,29 +18,20 @@
       </section>
 
       <section v-if="students.length > 0" class="selector-section">
-        <h2>查閱學生上課時間表 (請選擇學生)</h2>
-        <input
-          v-model.trim="studentSearch"
-          class="search-input"
-          type="text"
-          placeholder="Search student..."
-        />
+        <h2>{{ tr('Student', '學生') }}</h2>
+        <input v-model.trim="studentSearch" class="search-input" type="text" :placeholder="tr('Search student...', '搜尋學生...')" />
 
         <div class="student-list">
-          <label
-            v-for="student in filteredStudents"
-            :key="student.student_id"
-            class="student-row"
-            :class="{ selected: selectedStudent === student.student_id }"
-          >
+          <label v-for="student in filteredStudents" :key="student.student_id" class="student-row" :class="{ selected: selectedStudent === student.student_id }">
             <input type="radio" :value="student.student_id" v-model="selectedStudent" />
-            <span>{{ student.student_name || student.student_ch_name }}</span>
+            <span class="student-number">{{ studentNumber(student) }}</span>
+            <span class="student-name">{{ student.student_name || student.student_ch_name }}</span>
           </label>
         </div>
       </section>
 
       <button type="button" class="primary-btn" :disabled="!selectedStudent" @click="goToResult">
-        Submit
+        {{ tr('View Timetable', '查看時間表') }}
       </button>
     </section>
   </main>
@@ -56,52 +42,38 @@ import axios from 'axios';
 
 export default {
   name: 'StudentTimetable',
-  data() {
-    return {
-      classes: [],
-      selectedClass: '',
-      students: [],
-      selectedStudent: '',
-      studentSearch: ''
-    };
-  },
+  data() { return { classes: [], selectedClass: '', students: [], selectedStudent: '', studentSearch: '' }; },
   computed: {
     filteredStudents() {
       const keyword = this.studentSearch.toLowerCase();
       if (!keyword) return this.students;
-      return this.students.filter(student =>
-        String(student.student_name || student.student_ch_name || '').toLowerCase().includes(keyword)
-      );
+      return this.students.filter(student => {
+        const name = String(student.student_name || student.student_ch_name || '').toLowerCase();
+        const number = String(student.class_number || '').toLowerCase();
+        return name.includes(keyword) || number.includes(keyword);
+      });
     }
   },
   async mounted() {
     const token = localStorage.getItem('token');
-    const res = await axios.get('http://localhost:3000/api/classes', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await axios.get('http://localhost:3000/api/classes', { headers: { Authorization: `Bearer ${token}` } });
     this.classes = res.data;
   },
   methods: {
+    tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    studentNumber(student) { return String(student.class_number || '').padStart(2, '0'); },
     async fetchStudents() {
       if (!this.selectedClass) return;
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:3000/api/students/by-class/${this.selectedClass}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(`http://localhost:3000/api/students/by-class/${this.selectedClass}`, { headers: { Authorization: `Bearer ${token}` } });
       this.students = res.data;
       this.selectedStudent = '';
       this.studentSearch = '';
     },
-    goToResult() {
-      this.$router.push({
-        name: 'StdTimetableResult',
-        query: { studentId: this.selectedStudent }
-      });
-    }
+    goToResult() { this.$router.push({ name: 'StdTimetableResult', query: { studentId: this.selectedStudent } }); }
   }
 };
 </script>
-
 <style scoped>
 .student-page {
   min-height: calc(100vh - 126px);
@@ -193,7 +165,14 @@ h2 {
   color: #0a5260;
 }
 
-.student-row span {
+.student-number {
+  color: #0b7285;
+  font-weight: 800;
+  min-width: 2ch;
+}
+
+.student-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -1,115 +1,28 @@
 <template>
   <main class="elective-page">
     <section class="elective-panel">
-      <header class="page-header">
-        <div>
-          <h1>高中選修名單</h1>
-        </div>
-      </header>
-
-      <section class="selector-section">
-        <h2>級別</h2>
-        <div class="form-grid">
-          <label
-            v-for="formLevel in ['F4', 'F5', 'F6']"
-            :key="formLevel"
-            class="option-card"
-            :class="{ selected: form === formLevel }"
-          >
-            <input type="radio" :value="formLevel" v-model="form" />
-            {{ formLevel }}
-          </label>
-        </div>
-      </section>
-
-      <section class="selector-section">
-        <h2>科目</h2>
-        <input
-          v-model.trim="searchText"
-          class="search-input"
-          type="text"
-          placeholder="Search subject..."
-        />
-        <div class="subject-list">
-          <label
-            v-for="subject in filteredSubjects"
-            :key="subject.subject_id"
-            class="subject-row"
-            :class="{ selected: selectedSubject === subject.subject_id }"
-          >
-            <input type="radio" :value="subject.subject_id" v-model="selectedSubject" />
-            <span>{{ subject.subject_name }}</span>
-          </label>
-        </div>
-      </section>
-
-      <button type="button" class="primary-btn" @click="goNext">
-        Submit
-      </button>
+      <header class="page-header"><div><h1>{{ tr('Elective Timetable', '選修科時間表') }}</h1></div></header>
+      <section class="selector-section"><h2>{{ tr('Form', '級別') }}</h2><div class="form-grid"><label v-for="formLevel in ['F4', 'F5', 'F6']" :key="formLevel" class="option-card" :class="{ selected: form === formLevel }"><input type="radio" :value="formLevel" v-model="form" />{{ formLevel }}</label></div></section>
+      <section class="selector-section"><h2>{{ tr('Subject', '科目') }}</h2><input v-model.trim="searchText" class="search-input" type="text" :placeholder="tr('Search subject...', '搜尋科目...')" /><div class="subject-list"><label v-for="subject in filteredSubjects" :key="subject.subject_id" class="subject-row" :class="{ selected: selectedSubject === subject.subject_id }"><input type="radio" :value="subject.subject_id" v-model="selectedSubject" /><span>{{ subjectLabel(subject) }}</span></label></div></section>
+      <button type="button" class="primary-btn" @click="goNext">{{ tr('Submit', '提交') }}</button>
     </section>
   </main>
 </template>
-
 <script>
 import axios from 'axios';
-
-const TEXT = {
-  chooseForm: '\u8acb\u9078\u64c7\u7d1a\u5225\u3002',
-  chooseSubject: '\u8acb\u9078\u64c7\u79d1\u76ee\u3002'
-};
-
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 export default {
-  data() {
-    return {
-      subjects: [],
-      selectedSubject: '',
-      form: '',
-      searchText: ''
-    };
-  },
-  computed: {
-    filteredSubjects() {
-      const keyword = this.searchText.toLowerCase();
-      if (!keyword) return this.subjects;
-      return this.subjects.filter(subject =>
-        String(subject.subject_name || '').toLowerCase().includes(keyword)
-      );
-    }
-  },
+  data() { return { subjects: [], selectedSubject: '', form: '', searchText: '' }; },
+  computed: { filteredSubjects() { const keyword = this.searchText.toLowerCase(); if (!keyword) return this.subjects; return this.subjects.filter(subject => (String(subject.subject_name || '') + ' ' + this.subjectLabel(subject)).toLowerCase().includes(keyword)); } },
   methods: {
-    async fetchSubjects() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/subjects/findElective', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      this.subjects = res.data;
-    },
-    goNext() {
-      if (!this.form) {
-        alert(TEXT.chooseForm);
-        return;
-      }
-
-      if (!this.selectedSubject) {
-        alert(TEXT.chooseSubject);
-        return;
-      }
-
-      this.$router.push({
-        name: 'ElectivesResult',
-        query: {
-          form: this.form,
-          subject: this.selectedSubject
-        }
-      });
-    }
+    tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    subjectLabel(subject) { return formatSubjectLabel(subject, this.$lang.locale); },
+    async fetchSubjects() { const token = localStorage.getItem('token'); const res = await axios.get('http://localhost:3000/api/subjects/findElective', { headers: { Authorization: `Bearer ${token}` } }); this.subjects = res.data; },
+    goNext() { if (!this.form) { alert(this.tr('Please select a form.', '請選擇級別。')); return; } if (!this.selectedSubject) { alert(this.tr('Please select a subject.', '請選擇科目。')); return; } this.$router.push({ name: 'ElectivesResult', query: { form: this.form, subject: this.selectedSubject } }); }
   },
-  mounted() {
-    this.fetchSubjects();
-  }
+  mounted() { this.fetchSubjects(); }
 };
 </script>
-
 <style scoped>
 .elective-page {
   min-height: calc(100vh - 126px);

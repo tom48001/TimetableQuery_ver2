@@ -1,28 +1,45 @@
 <template>
   <div class="wrapper">
+    <div class="login-language-switch">
+      <button
+        type="button"
+        :class="{ active: $lang.locale === 'zh' }"
+        @click="$setLocale('zh')"
+      >
+        {{ $t('common.languageZh') }}
+      </button>
+      <button
+        type="button"
+        :class="{ active: $lang.locale === 'en' }"
+        @click="$setLocale('en')"
+      >
+        EN
+      </button>
+    </div>
+
     <div class="inner">
       <div class="image-holder">
         <img src="../assets/smcc1.jpg" alt="">
       </div>
 
       <div class="login">
-        <h2>行政管理系統</h2>
+        <h2>{{ $t('login.title') }}</h2>
 
         <form @submit.prevent="handleLogin">
           <div>
-            <label for="email">帳號</label>
-            <input v-model="email" type="text" id="email" placeholder="帳號">
+            <label for="email">{{ $t('login.email') }}</label>
+            <input v-model="email" type="text" id="email" :placeholder="$t('login.email')">
           </div>
           <div>
-            <label for="password">密碼</label>
-            <input v-model="password" type="password" id="password" placeholder="密碼">
+            <label for="password">{{ $t('login.password') }}</label>
+            <input v-model="password" type="password" id="password" :placeholder="$t('login.password')">
           </div>
-          <button type="submit">登入</button>
+          <button type="submit">{{ $t('login.submit') }}</button>
         </form>
 
         <a href="http://localhost:3000/auth/google" class="google-login-link">
           <img :src="require('@/assets/google-icon.png')" alt="Google Icon" class="google-icon" />
-          <span>使用 Google 登入</span>
+          <span>{{ $t('login.google') }}</span>
         </a>
       </div>
     </div>
@@ -31,12 +48,6 @@
 
 <script>
 import axios from 'axios';
-
-const TEXT = {
-  noUser: '\u767b\u5165\u5931\u6557\uff0c\u7121\u6cd5\u7372\u53d6\u4f7f\u7528\u8005\u8cc7\u8a0a\u3002',
-  invalidCredentials: '\u767b\u5165\u5931\u6557\uff0c\u8acb\u6aa2\u67e5\u5e33\u865f\u5bc6\u78bc\u3002',
-  serverUnavailable: '\u767b\u5165\u5931\u6557\uff0c\u8acb\u6aa2\u67e5\u5f8c\u7aef\u4f3a\u670d\u5668\u662f\u5426\u5df2\u555f\u52d5\u3002'
-};
 
 export default {
   data() {
@@ -56,7 +67,8 @@ export default {
         if (res.data.user) {
           const cleanedUser = {
             ...res.data.user,
-            role: res.data.user.role ? res.data.user.role.trim().toLowerCase() : 'teacher'
+            role: res.data.user.role ? res.data.user.role.trim().toLowerCase() : 'teacher',
+            permissions: res.data.user.permissions || {}
           };
           localStorage.setItem('token', res.data.token);
           localStorage.setItem('user', JSON.stringify(cleanedUser));
@@ -64,15 +76,15 @@ export default {
           this.$router.push('/home');
           window.location.reload();
         } else {
-          alert(TEXT.noUser);
+          alert(this.$t('login.noUser'));
         }
       } catch (err) {
         console.error('Login failed:', err);
         const data = err.response && err.response.data ? err.response.data : {};
         const status = err.response ? err.response.status : 0;
         const fallback = status === 400 || status === 401
-          ? TEXT.invalidCredentials
-          : TEXT.serverUnavailable;
+          ? this.$t('login.invalidCredentials')
+          : this.$t('login.serverUnavailable');
         alert(data.error || fallback);
       }
     }
@@ -89,6 +101,36 @@ export default {
   padding: 24px;
   background:
     linear-gradient(180deg, var(--app-bg-soft) 0%, var(--app-bg) 100%);
+  position: relative;
+}
+
+.login-language-switch {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.login-language-switch button {
+  min-width: 56px;
+  height: 36px;
+  border: none;
+  border-radius: 0 !important;
+  background: #fff !important;
+  color: var(--text) !important;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 10px;
+}
+
+.login-language-switch button.active {
+  background: var(--primary) !important;
+  color: #fff !important;
 }
 
 .inner {
@@ -178,6 +220,11 @@ button {
 }
 
 @media (max-width: 760px) {
+  .wrapper {
+    align-items: flex-start;
+    padding-top: 78px;
+  }
+
   .inner {
     display: block;
   }

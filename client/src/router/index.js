@@ -39,6 +39,7 @@ import LearningGoalResult from '@/pages/SubMenu2/LearningGoalResult.vue'
 
 import editTeacher from '@/pages/SubMenu3/editTeacher.vue'
 import ImportTeacher from '@/pages/SubMenu3/ImportTeacher.vue'
+import StudentManagement from '@/pages/SubMenu3/StudentManagement.vue'
 
 Vue.use(Router)
 
@@ -66,7 +67,7 @@ const router = new Router({
       path: '/change-password',
       name: 'ChangePassword',
       component: ChangePassword,
-      meta: { show: true, requiredRole: 'teacher' }
+      meta: { show: true, requiredPermission: 'changePassword' }
     },
     {
       path: '/TeacherTimetable',
@@ -246,13 +247,19 @@ const router = new Router({
       path: '/editTeacher',
       name: 'editTeacher',
       component: editTeacher,
-      meta: { show: true, allowedRoles: ['manager', 'staff'] }
+      meta: { show: true, requiredPermission: 'manageUsers' }
     },
     {
       path: '/ImportTeacher',
       name: 'ImportTeacher',
       component: ImportTeacher,
-      meta: { show: true, requiredRole: 'manager' }
+      meta: { show: true, requiredPermission: 'importTimetable' }
+    },
+    {
+      path: '/StudentManagement',
+      name: 'StudentManagement',
+      component: StudentManagement,
+      meta: { show: true, requiredPermission: 'manageStudents' }
     },
     {
       path: '/*',
@@ -261,12 +268,37 @@ const router = new Router({
   ]
 })
 
+const timetableRouteNames = new Set([
+  'TeacherTimetable', 'TeacherTimetableResult', 'ClassObservation', 'ClassObservationResult',
+  'ClassTimetable', 'ClassTimetableResult', 'Electives', 'ElectivesResult', 'FreeTeacher',
+  'FreeTeacherResult', 'RoomTimetable', 'RoomTimetableResult', 'StdTimetable', 'StdTimetableResult',
+  'SwapLesson', 'SwapLessonPick', 'SwapLessonResult', 'StudentSelector'
+])
+
+const nominationRouteNames = new Set([
+  'BLA', 'BLAvote', 'BLAResult', 'ConductAward', 'ConductAwardVote', 'ConductAwardResult',
+  'PrefectNomination', 'PrefectNominationVote', 'PrefectNominationResult',
+  'LearningGoalEntry', 'LearningGoalResult'
+])
+
 router.beforeEach((to, from, next) => {
   const rawUser = localStorage.getItem('user')
   const user = rawUser ? JSON.parse(rawUser) : null
 
+  const routePermission = to.meta.requiredPermission ||
+    (timetableRouteNames.has(to.name) ? 'timetable' : null) ||
+    (nominationRouteNames.has(to.name) ? 'nominations' : null)
+
   if (to.meta.requiredRole && (!user || user.role !== to.meta.requiredRole)) {
     return next('/login')
+  }
+
+  if (routePermission) {
+    const permissions = user && user.permissions ? user.permissions : {}
+    const isManager = user && user.role === 'manager'
+    if (!user || (!isManager && !permissions[routePermission])) {
+      return next('/login')
+    }
   }
 
   if (to.meta.allowedRoles && (!user || !to.meta.allowedRoles.includes(user.role))) {

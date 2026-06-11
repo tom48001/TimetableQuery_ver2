@@ -3,8 +3,8 @@
     <section class="schedule-panel">
       <header class="page-header">
         <div>
-          <p>Room Timetable</p>
-          <h1>各房間上課時間表</h1>
+          <p>{{ tr('Room', '房間') }}</p>
+          <h1>{{ tr('Room Timetable', '房間時間表') }}</h1>
         </div>
       </header>
 
@@ -12,7 +12,7 @@
         <table class="timetable">
           <thead>
             <tr>
-              <th class="period-col">課節</th>
+              <th class="period-col">{{ tr('Period / Day', '課節 / 星期') }}</th>
               <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
             </tr>
           </thead>
@@ -26,7 +26,7 @@
                   class="cell-entry"
                 >
                   <span class="class-pill">{{ item.class_name }}</span>
-                  <strong>{{ item.subject_name }}</strong>
+                  <strong>{{ subjectLabel(item) }}</strong>
                   <small>{{ item.teacher_name }}</small>
                 </div>
               </td>
@@ -40,6 +40,7 @@
 
 <script>
 import axios from 'axios';
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 
 const DAY_LABELS = {
   Mon: '\u661f\u671f\u4e00',
@@ -54,27 +55,32 @@ export default {
   data() {
     return {
       schedule: [],
-      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-      periodLabels: [
-        '\u7b2c1\u7bc0<br><small>08:30-09:05</small>',
-        '\u7b2c2\u7bc0<br><small>09:05-09:40</small>',
-        '\u7b2c3\u7bc0<br><small>09:55-10:30</small>',
-        '\u7b2c4\u7bc0<br><small>10:30-11:05</small>',
-        '\u7b2c5\u7bc0<br><small>11:20-11:55</small>',
-        '\u7b2c6\u7bc0<br><small>11:55-12:30</small>',
-        '\u7b2c7\u7bc0<br><small>13:30-14:05</small>',
-        '\u7b2c8\u7bc0<br><small>14:05-14:40</small>',
-        '\u7b2c9\u7bc0<br><small>14:40-15:15</small>',
-        '\u7b2c10\u7bc0<br><small>15:25-16:00</small>'
-      ]
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     };
+  },
+  computed: {
+    periodLabels() {
+      return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(period => {
+        const times = ['08:30-09:05', '09:05-09:40', '09:55-10:30', '10:30-11:05', '11:20-11:55', '11:55-12:30', '13:30-14:05', '14:05-14:40', '14:40-15:15', '15:25-16:00'];
+        const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
+        return label + '<br><small>' + times[period - 1] + '</small>';
+      });
+    }
   },
   mounted() {
     this.fetchSchedule();
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    subjectLabel(item) {
+      return formatSubjectLabel(item, this.$lang.locale);
+    },
     dayLabel(day) {
-      return DAY_LABELS[day] || day;
+      const zh = DAY_LABELS[day] || day;
+      const en = { Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat' }[day] || day;
+      return this.$lang.locale === 'en' ? en : zh;
     },
     async fetchSchedule() {
       try {

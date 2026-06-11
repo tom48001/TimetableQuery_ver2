@@ -3,23 +3,31 @@
     <section class="result-panel">
       <header class="page-header">
         <div>
-          <h1>&#x53EF;&#x4F9B;&#x8ABF;&#x8AB2;&#x7684;&#x8001;&#x5E2B;</h1>
+          <h1>{{ tr('Available Swap Teachers', '可供調課的老師') }}</h1>
         </div>
-        <span class="count-badge">{{ filteredTeachers.length }} 位老師</span>
+        <span class="count-badge">{{ filteredTeachers.length }} {{ tr('teachers', '老師') }}</span>
       </header>
 
       <div class="request-summary">
         <div>
-          <span class="summary-label">&#x9700;&#x8981;&#x8ABF;&#x8AB2;&#x8001;&#x5E2B;&#xFF1A;</span>
+          <span class="summary-label">{{ tr('Teacher to swap', '需要調課老師') }}</span>
           <strong>{{ $route.query.teacherName || '-' }}</strong>
         </div>
         <div>
-          <span class="summary-label">&#x9700;&#x8981;&#x8ABF;&#x8AB2;&#x8AB2;&#x7BC0;&#xFF1A;</span>
-          <strong>{{ $route.query.lessonLabel || fallbackLessonLabel }}</strong>
+          <span class="summary-label">{{ tr('Lesson to swap', '需要調課課節') }}</span>
+          <strong>{{ lessonLabel }}</strong>
+        </div>
+        <div>
+          <span class="summary-label">{{ tr('Class', '班別') }}</span>
+          <strong>{{ $route.query.className || '-' }}</strong>
+        </div>
+        <div>
+          <span class="summary-label">{{ tr('Subject', '科目') }}</span>
+          <strong>{{ subjectLabel }}</strong>
         </div>
       </div>
 
-      <p v-if="loading" class="empty-message">Loading...</p>
+      <p v-if="loading" class="empty-message">{{ tr('Loading...', '載入中...') }}</p>
 
       <template v-else>
         <input
@@ -27,7 +35,7 @@
           v-model.trim="searchText"
           class="search-input"
           type="text"
-          placeholder="Search teacher..."
+          :placeholder="tr('Search teacher...', '搜尋老師...')"
         />
 
         <div v-if="filteredTeachers.length" class="teacher-list">
@@ -36,12 +44,13 @@
             :key="teacher.teacher_id"
             class="teacher-chip"
           >
-            {{ teacher.teacher_name }}
+            <span>{{ teacher.teacher_name }}</span>
+            <small>{{ reasonLabel(teacher.match_reason) }}</small>
           </span>
         </div>
 
         <p v-else class="empty-message">
-          &#x6C92;&#x6709;&#x53EF;&#x4F9B;&#x8ABF;&#x8AB2;&#x7684;&#x8001;&#x5E2B;&#x3002;
+          {{ tr('No teachers found', '找不到老師') }}
         </p>
       </template>
     </section>
@@ -50,6 +59,7 @@
 
 <script>
 import axios from 'axios';
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 
 const DAY_LABELS = {
   Mon: '\u661f\u671f\u4e00',
@@ -78,32 +88,62 @@ export default {
         String(teacher.teacher_name || '').toLowerCase().includes(keyword)
       );
     },
-    fallbackLessonLabel() {
-      const day = DAY_LABELS[this.$route.query.day] || this.$route.query.day || '-';
+    subjectLabel() {
+      return formatSubjectLabel({ subject_id: this.$route.query.subjectId, subject_name: this.$route.query.subject || '-' }, this.$lang.locale);
+    },
+    lessonLabel() {
+      const day = this.dayLabel(this.$route.query.day);
       const period = this.$route.query.period || '-';
-      return `${day} \u7b2c${period}\u7bc0`;
+      const periodLabel = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
+      const className = this.$route.query.className || '-';
+      return day + ' ' + periodLabel + ' ' + className + ' ' + this.subjectLabel;
+    },
+    fallbackLessonLabel() {
+      const zhDay = DAY_LABELS[this.$route.query.day] || this.$route.query.day || '-';
+      const enDay = { Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat' }[this.$route.query.day] || this.$route.query.day || '-';
+      const day = this.$lang.locale === 'en' ? enDay : zhDay;
+      const period = this.$route.query.period || '-';
+      const periodLabel = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
+      return day + ' ' + periodLabel;
     }
   },
   async mounted() {
-    const { day, period } = this.$route.query;
+    const { day, period, classId, subjectId, teacherId } = this.$route.query;
     const token = localStorage.getItem('token');
+
     try {
       const res = await axios.post('http://localhost:3000/api/swap/substitute-candidates',
-        { day, period },
+        { day, period, classId, subjectId, teacherId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      this.availableTeachers = res.data;
+      this.availableTeachers = Array.isArray(res.data) ? res.data : [];
+      console.log('Swap candidates:', this.availableTeachers.length, { day, period, classId, subjectId, teacherId });
     } catch (err) {
       console.error('Failed to load substitute teachers:', err);
-      alert('Failed to load available teachers.');
+      alert(this.tr('Failed to load available teachers.', '載入可供調課老師失敗。'));
     } finally {
       this.loading = false;
+    }
+  },
+  methods: {
+    dayLabel(day) {
+      const en = { Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat' }[day] || day || '-';
+      return this.$lang.locale === 'en' ? en : (DAY_LABELS[day] || day || '-');
+    },
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    reasonLabel(reason) {
+      if (this.$lang.locale !== 'en') return reason;
+      return String(reason || '')
+        .replace('??', 'Same class')
+        .replace('??', 'Same subject')
+        .replace('??', 'Free');
     }
   }
 };
 </script>
-
 <style scoped>
 .result-page {
   min-height: calc(100vh - 126px);
@@ -114,10 +154,10 @@ export default {
 .result-panel {
   max-width: 900px;
   margin: 0 auto;
-  border: 1px solid #ded7c5;
+  border: 1px solid #cfdde3;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 38px rgba(73, 61, 35, 0.12);
+  box-shadow: 0 16px 38px rgba(25, 54, 69, 0.12);
   box-sizing: border-box;
   padding: 26px;
 }
@@ -129,14 +169,6 @@ export default {
   gap: 18px;
 }
 
-.page-header p {
-  color: #6f5d12;
-  font-size: 13px;
-  font-weight: 700;
-  margin: 0 0 8px;
-  text-transform: uppercase;
-}
-
 h1 {
   color: #122635;
   font-size: 32px;
@@ -146,10 +178,10 @@ h1 {
 
 .count-badge,
 .request-summary {
-  border: 1px solid #ded0a1;
+  border: 1px solid #b8cad3;
   border-radius: 6px;
-  background: #fffaf0;
-  color: #4b4637;
+  background: #f3f8fa;
+  color: #27485b;
   font-weight: 700;
 }
 
@@ -165,7 +197,7 @@ h1 {
 }
 
 .summary-label {
-  color: #6f5d12;
+  color: #0b7285;
   margin-right: 6px;
 }
 
@@ -191,18 +223,20 @@ h1 {
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 7px;
   overflow-y: auto;
-  border: 1px solid #ded7c5;
+  border: 1px solid #cfdde3;
   border-radius: 8px;
-  background: #faf7ef;
+  background: #f3f8fa;
   margin-top: 18px;
   padding: 10px;
 }
 
 .teacher-chip {
-  border: 1px solid #ded7c5;
+  display: grid;
+  gap: 3px;
+  border: 1px solid #cfdde3;
   border-radius: 6px;
   background: #fff;
-  color: #2f3e36;
+  color: #183447;
   font-size: 13px;
   font-weight: 700;
   overflow: hidden;
@@ -211,9 +245,15 @@ h1 {
   white-space: nowrap;
 }
 
+.teacher-chip small {
+  color: #0b7285;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .teacher-chip:hover {
-  border-color: #b9a665;
-  background: #fffdf3;
+  border-color: #86adba;
+  background: #eef7f8;
 }
 
 .empty-message {

@@ -1,10 +1,8 @@
 <template>
   <main class="import-page">
     <section class="import-intro">
-      <h1>導入時間表</h1>
-      <p class="intro-copy">
-        上載 Excel 課表後，系統會檢查老師、班別、科目、課室及節數資料。
-      </p>
+      <h1>{{ tr('Import Timetable', '導入時間表') }}</h1>
+      <p class="intro-copy">{{ tr('Upload Excel timetable file.', '上載 Excel 時間表檔案。') }}</p>
     </section>
 
     <section class="import-layout">
@@ -29,10 +27,10 @@
         >
           <span class="file-mark" aria-hidden="true">XLSX</span>
           <strong v-if="file">{{ file.name }}</strong>
-          <strong v-else>選擇 Excel 檔案</strong>
+          <strong v-else>{{ tr('No file selected', '未選擇檔案') }}</strong>
           <span v-if="file" class="file-meta">{{ fileSize }}</span>
-          <span v-else class="file-meta">只接受 .xlsx</span>
-          <span class="pick-file">選擇檔案</span>
+          <span v-else class="file-meta">{{ tr('Selected file', '已選擇檔案') }}</span>
+          <span class="pick-file">{{ tr('Choose file', '選擇檔案') }}</span>
         </label>
 
         <div class="upload-actions">
@@ -42,7 +40,7 @@
             :disabled="!file || uploading"
             @click="uploadFile"
           >
-            {{ uploading ? text.uploading : text.upload }}
+            {{ uploading ? tr('Importing...', '導入中...') : tr('Import', '導入') }}
           </button>
           <button
             v-if="file"
@@ -51,7 +49,7 @@
             :disabled="uploading"
             @click="clearFile"
           >
-            {{ text.clear }}
+            {{ tr('Clear', '清除') }}
           </button>
         </div>
 
@@ -63,9 +61,9 @@
       </div>
 
       <div class="format-panel">
-        <h2>Excel 格式</h2>
+        <h2>{{ tr('Excel Format', 'Excel 格式') }}</h2>
         <div class="format-note">
-          <span>工作表名稱</span>
+          <span>{{ tr('Worksheet name', '工作表名稱') }}</span>
           <strong>Timetable</strong>
         </div>
 
@@ -97,8 +95,10 @@
         <ul>
           <li>day: Mon, Tue, Wed, Thu, Fri</li>
           <li>period: Period 1, P1, or 1</li>
-          <li>檔案第一列要使用上面的欄位名稱</li>
-        </ul>
+          <li>day: Mon, Tue, Wed, Thu, Fri</li>
+          <li>period: Period 1, P1, or 1</li>
+          <li>{{ tr('First row must use the field names above.', '第一列必須使用以上欄位名稱。') }}</li>
+          </ul>
       </div>
     </section>
   </main>
@@ -138,6 +138,9 @@ export default {
     }
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
     setFile(file) {
       this.dragging = false;
       this.message = '';
@@ -146,7 +149,7 @@ export default {
       if (!file) return;
       if (!/\.xlsx$/i.test(file.name)) {
         this.clearFile();
-        this.showMessage(TEXT.xlsxOnly, 'error');
+        this.showMessage(this.tr('Please upload a .xlsx file.', TEXT.xlsxOnly), 'error');
         return;
       }
 
@@ -180,7 +183,7 @@ export default {
     },
     buildErrorMessage(data) {
       const parts = [
-        data.message || TEXT.failed,
+        data.message || this.tr('Upload failed.', TEXT.failed),
         this.formatList('Missing teacher_code', data.missingTeachers),
         this.formatList('Missing subject', data.missingSubjects),
         this.formatList('Missing class', data.missingClasses),
@@ -194,13 +197,13 @@ export default {
     },
     async uploadFile() {
       if (!this.file) {
-        this.showMessage(TEXT.chooseFile, 'error');
+        this.showMessage(this.tr('Please choose an Excel file.', TEXT.chooseFile), 'error');
         return;
       }
 
       const token = localStorage.getItem('token');
       if (!token) {
-        this.showMessage(TEXT.loginFirst, 'error');
+        this.showMessage(this.tr('Please login before uploading.', TEXT.loginFirst), 'error');
         return;
       }
 
@@ -210,7 +213,7 @@ export default {
 
       try {
         const res = await axios.post(
-          'http://localhost:3000/api/import/excel',
+          '/api/import/excel',
           formData,
           {
             headers: {
@@ -231,7 +234,7 @@ export default {
         if (err.response && err.response.data) {
           this.showMessage(this.buildErrorMessage(err.response.data), 'error');
         } else {
-          this.showMessage(TEXT.networkFailed, 'error');
+          this.showMessage(this.tr('Upload failed. Please check the server connection.', TEXT.networkFailed), 'error');
         }
       } finally {
         this.uploading = false;

@@ -3,7 +3,7 @@
     <section class="page-panel">
       <header class="page-header">
         <div>
-          <h1>最佳學習態度提名</h1>
+          <h1>{{ tr('Best Learning Attitude Nomination', '\u6700\u4f73\u5b78\u7fd2\u614b\u5ea6\u63d0\u540d') }}</h1>
         </div>
       </header>
 
@@ -11,31 +11,16 @@
         <table class="choice-table">
           <thead>
             <tr>
-              <th class="subject-col">科目</th>
-              <th v-for="cls in visibleClassList" :key="cls.class_id">
-                {{ cls.class_name }}
-              </th>
+              <th class="subject-col">{{ tr('Subject', '\u79d1\u76ee') }}</th>
+              <th v-for="cls in visibleClassList" :key="cls.class_id">{{ cls.class_name }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="subject in subjects" :key="subject.subject_id">
-              <th class="subject-col">{{ subject.subject_name }}</th>
-              <td
-                v-for="cls in visibleClassList"
-                :key="`${subject.subject_id}-${cls.class_id}`"
-                :class="{ unavailable: !isAvailable(subject.subject_id, cls.class_id) }"
-              >
-                <label
-                  v-if="isAvailable(subject.subject_id, cls.class_id)"
-                  class="choice-cell"
-                  :class="{ selected: selectedChoice === choiceValue(subject, cls) }"
-                >
-                  <input
-                    type="radio"
-                    name="subjectClass"
-                    :value="choiceValue(subject, cls)"
-                    v-model="selectedChoice"
-                  />
+              <th class="subject-col">{{ subjectLabel(subject) }}</th>
+              <td v-for="cls in visibleClassList" :key="`${subject.subject_id}-${cls.class_id}`" :class="{ unavailable: !isAvailable(subject.subject_id, cls.class_id) }">
+                <label v-if="isAvailable(subject.subject_id, cls.class_id)" class="choice-cell" :class="{ selected: selectedChoice === choiceValue(subject, cls) }">
+                  <input type="radio" name="subjectClass" :value="choiceValue(subject, cls)" v-model="selectedChoice" />
                   <span>{{ countFor(subject.subject_id, cls.class_id) }}</span>
                 </label>
               </td>
@@ -45,9 +30,7 @@
       </div>
 
       <footer class="actions">
-        <button type="button" :disabled="!selectedChoice" @click="goNext">
-          Submit
-        </button>
+        <button type="button" :disabled="!selectedChoice" @click="goNext">{{ tr('Next', '\u4e0b\u4e00\u6b65') }}</button>
       </footer>
     </section>
   </main>
@@ -56,100 +39,62 @@
 <script>
 import axios from 'axios';
 
-const TEXT = {
-  choose: '\u8acb\u9078\u64c7\u73ed\u5225\u8207\u79d1\u76ee\u3002'
+const SUBJECT_LABELS = {
+  1: 'Chinese Language',
+  2: 'English Language',
+  3: 'Mathematics',
+  4: 'Citizenship and Social Development',
+  5: 'Chinese Literature',
+  6: 'Biology',
+  7: 'Health Management and Social Care',
+  8: 'Chinese History',
+  9: 'Chemistry',
+  10: 'Integrated Science',
+  11: 'Visual Arts',
+  12: 'Physics',
+  13: 'Citizenship, Economics and Society',
+  14: 'Economics',
+  15: 'Information and Communication Technology',
+  16: 'Technology and Living',
+  17: 'History',
+  18: 'Geography',
+  19: 'Music',
+  20: 'Physical Education'
 };
-
 export default {
-  data() {
-    return {
-      subjects: [],
-      classList: [],
-      counts: {},
-      selectedChoice: ''
-    };
-  },
+  data() { return { subjects: [], classList: [], counts: {}, selectedChoice: '' }; },
   computed: {
     visibleClassList() {
-      const classIds = new Set(
-        Object.keys(this.counts).map(key => Number(key.split('-')[1]))
-      );
-
+      const classIds = new Set(Object.keys(this.counts).map(key => Number(key.split('-')[1])));
       return this.classList.filter(cls => classIds.has(Number(cls.class_id)));
     },
-    selectedSubject() {
-      if (!this.selectedChoice) return null;
-      const subjectId = Number(this.selectedChoice.split('-')[0]);
-      return this.subjects.find(subject => Number(subject.subject_id) === subjectId);
-    },
-    selectedClassId() {
-      if (!this.selectedChoice) return null;
-      return Number(this.selectedChoice.split('-')[1]);
-    }
+    selectedSubject() { if (!this.selectedChoice) return null; const subjectId = Number(this.selectedChoice.split('-')[0]); return this.subjects.find(subject => Number(subject.subject_id) === subjectId); },
+    selectedClassId() { if (!this.selectedChoice) return null; return Number(this.selectedChoice.split('-')[1]); }
   },
   methods: {
-    choiceValue(subject, cls) {
-      return `${subject.subject_id}-${cls.class_id}`;
-    },
-    countKey(subjectId, classId) {
-      return `${subjectId}-${classId}`;
-    },
-    isAvailable(subjectId, classId) {
-      return this.counts[this.countKey(subjectId, classId)] !== undefined;
-    },
-    countFor(subjectId, classId) {
-      const value = this.counts[this.countKey(subjectId, classId)];
-      return value === undefined ? '' : value;
-    },
-    async fetchSubjects() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/subjects', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      this.subjects = res.data;
-    },
-    async fetchClasses() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/classes', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      this.classList = res.data;
-    },
+    tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    subjectLabel(subject) { return this.$lang.locale === 'en' ? (SUBJECT_LABELS[Number(subject.subject_id)] || subject.subject_name) : subject.subject_name; },
+    choiceValue(subject, cls) { return `${subject.subject_id}-${cls.class_id}`; },
+    countKey(subjectId, classId) { return `${subjectId}-${classId}`; },
+    isAvailable(subjectId, classId) { return this.counts[this.countKey(subjectId, classId)] !== undefined; },
+    countFor(subjectId, classId) { const value = this.counts[this.countKey(subjectId, classId)]; return value === undefined ? '' : value; },
+    async fetchSubjects() { const token = localStorage.getItem('token'); const res = await axios.get('http://localhost:3000/api/subjects', { headers: { Authorization: `Bearer ${token}` } }); this.subjects = res.data; },
+    async fetchClasses() { const token = localStorage.getItem('token'); const res = await axios.get('http://localhost:3000/api/classes', { headers: { Authorization: `Bearer ${token}` } }); this.classList = res.data; },
     async fetchCounts() {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/subjects/class-counts', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
+      const res = await axios.get('http://localhost:3000/api/subjects/class-counts', { headers: { Authorization: `Bearer ${token}` } });
       const nextCounts = {};
-      res.data.forEach(row => {
-        nextCounts[this.countKey(row.subject_id, row.class_id)] = Number(row.student_count) || 0;
-      });
+      res.data.forEach(row => { nextCounts[this.countKey(row.subject_id, row.class_id)] = Number(row.student_count) || 0; });
       this.counts = nextCounts;
     },
     goNext() {
-      if (!this.selectedSubject || !this.selectedClassId) {
-        alert(TEXT.choose);
-        return;
-      }
-
-      this.$router.push({
-        name: 'BLAvote',
-        query: {
-          selectedSubject: JSON.stringify(this.selectedSubject),
-          selectedClass: JSON.stringify([this.selectedClassId])
-        }
-      });
+      if (!this.selectedSubject || !this.selectedClassId) { alert(this.tr('Please select a class and subject.', '\u8acb\u9078\u64c7\u73ed\u5225\u8207\u79d1\u76ee\u3002')); return; }
+      this.$router.push({ name: 'BLAvote', query: { selectedSubject: JSON.stringify(this.selectedSubject), selectedClass: JSON.stringify([this.selectedClassId]) } });
     }
   },
-  mounted() {
-    this.fetchSubjects();
-    this.fetchClasses();
-    this.fetchCounts();
-  }
+  mounted() { this.fetchSubjects(); this.fetchClasses(); this.fetchCounts(); }
 };
 </script>
-
 <style scoped>
 .matrix-page {
   min-height: calc(100vh - 126px);

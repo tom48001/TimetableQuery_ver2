@@ -1,5 +1,5 @@
 <template>
-  <div class="redirect-page">正在完成 Google 登入...</div>
+  <div class="redirect-page">甇?摰? Google ?餃...</div>
 </template>
 
 <script>
@@ -26,7 +26,8 @@ export default {
         id: decoded.id,
         role: decoded.role ? decoded.role.trim().toLowerCase() : 'teacher',
         user_name: decoded.user_name || '',
-        email: decoded.email || ''
+        email: decoded.email || '',
+        permissions: decoded.permissions || {}
       };
       localStorage.setItem('user', JSON.stringify(cleanedUser));
 

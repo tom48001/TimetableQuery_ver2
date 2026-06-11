@@ -48,7 +48,23 @@ export const getStudentsBySubject = async (req, res) => {
 
 export const getStudentsByClassNSubject = async (req, res) => {
   const { classId, subjectId } = req.params;
+
   try {
+    const baseSql = `
+      SELECT
+        s.student_id,
+        s.student_ch_name AS student_name,
+        s.student_eng_name AS english_name,
+        s.class_number,
+        s.sex,
+        s.class_id,
+        c.class_name
+      FROM student s
+      JOIN class c ON s.class_id = c.class_id
+      WHERE s.class_id = ?
+      ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name
+    `;
+
     const [subjectRows] = await pool.query(
       'SELECT is_elective FROM subject WHERE subject_id = ?',
       [subjectId]
@@ -59,44 +75,38 @@ export const getStudentsByClassNSubject = async (req, res) => {
     }
 
     if (!subjectRows[0].is_elective) {
-      const [students] = await pool.query(
-        `SELECT 
-          s.student_id, 
-          s.student_ch_name AS student_name,
-          s.student_eng_name AS english_name,
-          s.class_number,
-          s.sex, 
-          s.class_id,
-          c.class_name
-        FROM student s
-        JOIN class c ON s.class_id = c.class_id
-        WHERE s.class_id = ?
-        ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name`,
-        [classId]
-      );
+      const [students] = await pool.query(baseSql, [classId]);
       return res.json(students);
     }
 
-    const [students] = await pool.query(
-      `SELECT 
-        s.student_id, 
+    const [electiveStudents] = await pool.query(
+      `
+      SELECT
+        s.student_id,
         s.student_ch_name AS student_name,
         s.student_eng_name AS english_name,
         s.class_number,
-        s.sex, 
+        s.sex,
         s.class_id,
         c.class_name
       FROM student s
       JOIN class c ON s.class_id = c.class_id
       JOIN student_subject ss ON s.student_id = ss.student_id
       WHERE s.class_id = ? AND ss.subject_id = ?
-      ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name`, 
+      ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name
+      `,
       [classId, subjectId]
     );
-    res.json(students);
+
+    if (electiveStudents.length > 0) {
+      return res.json(electiveStudents);
+    }
+
+    const [classStudents] = await pool.query(baseSql, [classId]);
+    return res.json(classStudents);
   } catch (error) {
-    console.error('查詢班級學生失敗:', error);
-    res.status(500).json({ error: '無法查詢學生' });
+    console.error('Failed to load students by class and subject:', error);
+    res.status(500).json({ error: 'Failed to load students' });
   }
 };
 
@@ -107,8 +117,10 @@ export const getStudentTimetable = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT 
         t.teacher_name,
+        sb.subject_id,
         sb.subject_name AS subject,
         c.class_name,
+        r.room_id,
         r.room_name,
         tt.day_of_week AS day,
         p.period_name AS period

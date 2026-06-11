@@ -70,13 +70,15 @@ export const getConductResults = async (req, res) => {
       `
       SELECT 
         n.student_id,
+        c.class_name,
         s.student_ch_name,
-        GROUP_CONCAT(t.teacher_name ORDER BY t.teacher_name SEPARATOR ', ') AS teacher_names
+        GROUP_CONCAT(DISTINCT t.teacher_name ORDER BY t.teacher_name SEPARATOR ', ') AS teacher_names
       FROM nomination n
       JOIN student s ON n.student_id = s.student_id
+      JOIN class c ON s.class_id = c.class_id
       JOIN teacher t ON n.teacher_id = t.teacher_id
-      GROUP BY n.student_id, s.student_ch_name
-      ORDER BY s.student_id
+      GROUP BY n.student_id, c.class_name, s.student_ch_name
+      ORDER BY c.class_name, CAST(s.class_number AS UNSIGNED), s.student_id
       `
     );
 

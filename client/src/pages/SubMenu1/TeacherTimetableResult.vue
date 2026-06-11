@@ -1,11 +1,11 @@
 <template>
   <div class="schedule-container">
-    <h1>老師課表</h1>
+    <h1>{{ tr('Teacher Timetable', '\u8001\u5e2b\u4e0a\u8ab2\u6642\u9593\u8868') }}</h1>
     <table class="timetable">
       <thead>
         <tr>
-          <th>節次 / 星期</th>
-          <th v-for="day in days" :key="day">{{ day }}</th>
+          <th>{{ tr('Period / Day', '\u8ab2\u7bc0 / \u661f\u671f') }}</th>
+          <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
         </tr>
       </thead>
       <tbody>
@@ -14,13 +14,13 @@
           <td v-for="day in days" :key="day">
             <div
               v-for="item in getCell(day, index + 1)"
-              :key="`${item.teacher_id}-${item.period_name}-${item.class_name}`"
+              :key="cellKey(item)"
               class="cell-entry"
-              :class="{ 'red-entry': item.period_name === 'Period 11' || item.period_name === 'Period 12' }"
+              :class="{ 'red-entry': periodName(item) === 'Period 11' || periodName(item) === 'Period 12' }"
             >
-              <strong>教師: {{ item.teacher_name }}</strong><br />
-              {{ item.class_name }}｜{{ item.subject_name }}<br />
-              {{ item.room_name }}
+              <strong>{{ tr('Teacher', '\u8001\u5e2b') }}: {{ item.teacher_name }}</strong><br />
+              {{ item.class_name }} | {{ subjectLabel(item) }}<br />
+              {{ roomLabel(item.room_name) }}
             </div>
           </td>
         </tr>
@@ -28,77 +28,102 @@
     </table>
 
     <p v-if="loaded && schedule.length === 0" class="empty-message">
-      這些老師暫時沒有課表資料。請確認已成功匯入 timetable。
+      {{ tr('No timetable data.', '\u6c92\u6709\u8ab2\u8868\u8cc7\u6599\u3002') }}
     </p>
   </div>
 </template>
 
 <script>
 import axios from 'axios';
+import { subjectLabel as formatSubjectLabel, roomLabel as formatRoomLabel } from '../../utils/timetableLabels';
 
 export default {
   data() {
     return {
       loaded: false,
       schedule: [],
-      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-      periodLabels: [
-        '\u7b2c1\u7bc0<br><small>08:30-09:05</small>',
-        '\u7b2c2\u7bc0<br><small>09:05-09:40</small>',
-        '\u7b2c3\u7bc0<br><small>09:55-10:30</small>',
-        '\u7b2c4\u7bc0<br><small>10:30-11:05</small>',
-        '\u7b2c5\u7bc0<br><small>11:20-11:55</small>',
-        '\u7b2c6\u7bc0<br><small>11:55-12:30</small>',
-        '\u7b2c7\u7bc0<br><small>13:30-14:05</small>',
-        '\u7b2c8\u7bc0<br><small>14:05-14:40</small>',
-        '\u7b2c9\u7bc0<br><small>14:40-15:15<br>選修 14:50-15:25</small>',
-        '\u7b2c10\u7bc0<br><small>15:25-16:00<br>選修 15:25-16:00</small>'
-      ]
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
     };
   },
+  computed: {
+    periodLabels() {
+      return [
+        this.periodLabel(1, '08:30-09:05'),
+        this.periodLabel(2, '09:05-09:40'),
+        this.periodLabel(3, '09:55-10:30'),
+        this.periodLabel(4, '10:30-11:05'),
+        this.periodLabel(5, '11:20-11:55'),
+        this.periodLabel(6, '11:55-12:30'),
+        this.periodLabel(7, '13:30-14:05'),
+        this.periodLabel(8, '14:05-14:40'),
+        this.periodLabel(9, '14:40-15:15', '14:50-15:25'),
+        this.periodLabel(10, '15:25-16:00', '15:25-16:00')
+      ];
+    }
+  },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    subjectLabel(item) {
+      return formatSubjectLabel(item, this.$lang.locale);
+    },
+    roomLabel(roomName) {
+      return formatRoomLabel(roomName, this.$lang.locale);
+    },
+    dayLabel(day) {
+      const labels = {
+        Mon: this.tr('Mon', '\u661f\u671f\u4e00'),
+        Tue: this.tr('Tue', '\u661f\u671f\u4e8c'),
+        Wed: this.tr('Wed', '\u661f\u671f\u4e09'),
+        Thu: this.tr('Thu', '\u661f\u671f\u56db'),
+        Fri: this.tr('Fri', '\u661f\u671f\u4e94'),
+        Sat: this.tr('Sat', '\u661f\u671f\u516d')
+      };
+      return labels[day] || day;
+    },
+    periodLabel(period, time, electiveTime) {
+      const label = this.$lang.locale === 'en' ? 'Period ' + period : '第' + period + '節';
+      const elective = electiveTime ? '<br><span class="red-time">' + this.tr('Elective', '\u9078\u4fee') + ' ' + electiveTime + '</span>' : '';
+      return label + '<br><small>' + time + elective + '</small>';
+    },
+    periodName(item) {
+      return item.period_name || item.period || '';
+    },
+    cellKey(item) {
+      return [item.teacher_id || item.teacher_name, this.periodName(item), item.class_name, item.subject_name || item.subject].join('-');
+    },
     normalizeTeacherIds(value) {
       const ids = Array.isArray(value) ? value : [value];
-      return ids
-        .flatMap(item => String(item || '').split(','))
-        .map(item => item.trim())
-        .filter(Boolean);
+      return ids.flatMap(item => String(item || '').split(',')).map(item => item.trim()).filter(Boolean);
     },
     async fetchSchedule() {
       try {
         const token = localStorage.getItem('token');
         const ids = this.normalizeTeacherIds(this.$route.query.teacherId);
-
-        const res = await axios.post('http://localhost:3000/api/teachers/schedule', {
-          teacherIds: ids
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
+        const res = await axios.post('http://localhost:3000/api/teachers/schedule', { teacherIds: ids }, { headers: { Authorization: `Bearer ${token}` } });
         this.schedule = res.data;
       } catch (err) {
-        alert('\u8f09\u5165\u8ab2\u8868\u5931\u6557\u3002');
-        console.error(err);
+        const detail = err.response && err.response.data && (err.response.data.detail || err.response.data.error);
+        alert(this.tr('Failed to load timetable.', '\u8f09\u5165\u8ab2\u8868\u5931\u6557\u3002') + (detail ? `\n${detail}` : ''));
+        console.error('Failed to load teacher timetable:', err);
       } finally {
         this.loaded = true;
       }
     },
     getCell(day, periodIndex) {
-      const currentPeriod = `Period ${periodIndex}`;
-      let result = this.schedule.filter(
-        item => item.day === day && item.period_name === currentPeriod
-      );
+      const currentPeriod = 'Period ' + periodIndex;
+      let result = this.schedule.filter(item => {
+        const itemDay = item.day || item.day_of_week;
+        return itemDay === day && this.periodName(item) === currentPeriod;
+      });
 
       if (periodIndex === 9) {
-        result = result.concat(
-          this.schedule.filter(item => item.day === day && item.period_name === 'Period 11')
-        );
+        result = result.concat(this.schedule.filter(item => (item.day || item.day_of_week) === day && this.periodName(item) === 'Period 11'));
       }
 
       if (periodIndex === 10) {
-        result = result.concat(
-          this.schedule.filter(item => item.day === day && item.period_name === 'Period 12')
-        );
+        result = result.concat(this.schedule.filter(item => (item.day || item.day_of_week) === day && this.periodName(item) === 'Period 12'));
       }
 
       return result;
@@ -109,7 +134,6 @@ export default {
   }
 };
 </script>
-
 <style scoped>
 .schedule-container {
   padding: 20px;

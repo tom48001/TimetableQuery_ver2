@@ -1,17 +1,17 @@
 <template>
   <div class="electives-container">
-    <h1>高中選修名單</h1>
+    <h1>{{ tr('Elective Timetable', '選修科時間表') }}</h1>
     <table class=electives-Result>
       <thead>
         <tr>
-          <th>序號</th>
-          <th>班別</th>
-          <th>學號</th>
-          <th>編號</th>
-          <th>姓名</th>
-          <th>英名姓名</th>
-          <th>性別</th>
-          <th>科目</th>
+          <th>{{ tr('Class', '班別') }}</th>
+          <th>{{ tr('No.', '編號') }}</th>
+          <th>{{ tr('Name', '姓名') }}</th>
+          <th>{{ tr('Mon', '星期一') }}</th>
+          <th>{{ tr('Tue', '星期二') }}</th>
+          <th>{{ tr('Wed', '星期三') }}</th>
+          <th>{{ tr('Thu', '星期四') }}</th>
+          <th>{{ tr('Fri', '星期五') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -23,7 +23,7 @@
           <td>{{ data.student_ch_name }}</td>
           <td>{{ data.student_eng_name }}</td>
           <td>{{ data.sex }}</td>
-          <td>{{ electineName }}</td>
+          <td>{{ subjectLabel({ subject_id: $route.query.subject, subject_name: electineName }) }}</td>
         </tr>
       </tbody>
     </table>
@@ -32,6 +32,7 @@
 
 <script>
 import axios from 'axios';
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 export default {
   data() {
     return {
@@ -40,6 +41,12 @@ export default {
     };
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    subjectLabel(subject) {
+      return formatSubjectLabel(subject, this.$lang.locale);
+    },
     async fetchElectives() {
       const token = localStorage.getItem('token');
       const form = this.$route.query.form;
@@ -51,7 +58,7 @@ export default {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      console.log('回傳資料:', res.data);
+      console.log('?豯止齒??:', res.data);
       this.stuedntElectives = await res.data;
     },
     async getElectives() {
@@ -63,7 +70,7 @@ export default {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      console.log('回傳資料:', res.data.subject_name);
+      console.log('?豯止齒??:', res.data.subject_name);
       this.electineName = await res.data.subject_name;
     }
   },

@@ -3,27 +3,27 @@
     <section class="teacher-panel">
       <header class="page-header">
         <div>
-          <h1>老師上課時間表</h1>
+          <h1>{{ tr('Teacher Timetable', '\u8001\u5e2b\u4e0a\u8ab2\u6642\u9593\u8868') }}</h1>
         </div>
-        <span class="count-badge">{{ selectedTeacherId.length }} 老師</span>
+        <span class="count-badge">{{ selectedTeacherId.length }} {{ tr('teachers', '\u8001\u5e2b') }}</span>
       </header>
 
       <div class="toolbar">
         <label class="search-box">
-          <span>搜尋老師</span>
+          <span>{{ tr('Search teacher', '\u641c\u5c0b\u8001\u5e2b') }}</span>
           <input
             v-model.trim="searchText"
             type="text"
-            placeholder="輸入老師名稱..."
+            :placeholder="tr('Enter teacher name...', '\u8f38\u5165\u8001\u5e2b\u540d\u7a31...')"
           />
         </label>
 
         <div class="toolbar-actions">
           <button type="button" class="secondary-btn" @click="selectVisibleTeachers">
-            選擇目前顯示
+            {{ tr('Select visible', '\u9078\u64c7\u76ee\u524d\u986f\u793a') }}
           </button>
           <button type="button" class="secondary-btn" @click="clearSelection">
-            清除
+            {{ tr('Clear', '\u6e05\u9664') }}
           </button>
         </div>
       </div>
@@ -54,16 +54,16 @@
           />
           <span class="teacher-name">{{ teacher.teacher_name }}</span>
           <span class="lesson-badge" :class="{ empty: !lessonCount(teacher) }">
-            {{ lessonCount(teacher) ? `${lessonCount(teacher)}堂` : '未有課表' }}
+            {{ lessonCountLabel(teacher) }}
           </span>
         </label>
       </div>
 
-      <p v-else class="empty-message">找不到老師</p>
+      <p v-else class="empty-message">{{ tr('No teachers found', '\u627e\u4e0d\u5230\u8001\u5e2b') }}</p>
 
       <footer class="footer-actions">
         <button type="button" class="primary-btn" @click="goNext">
-          查看時間表
+          {{ tr('View Timetable', '\u67e5\u770b\u6642\u9593\u8868') }}
         </button>
       </footer>
     </section>
@@ -72,11 +72,6 @@
 
 <script>
 import axios from 'axios';
-
-const TEXT = {
-  chooseTeacher: '\u8acb\u9078\u64c7\u81f3\u5c11\u4e00\u4f4d\u8001\u5e2b\u3002',
-  loadFailed: '\u8f09\u5165\u8001\u5e2b\u5217\u8868\u5931\u6557\u3002'
-};
 
 export default {
   data() {
@@ -105,8 +100,15 @@ export default {
     }
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
     lessonCount(teacher) {
       return Number(teacher.lesson_count) || 0;
+    },
+    lessonCountLabel(teacher) {
+      const count = this.lessonCount(teacher);
+      return count ? `${count} ${this.tr('lessons', '\u5802')}` : this.tr('No timetable', '\u672a\u6709\u8ab2\u8868');
     },
     async fetchTeachers() {
       try {
@@ -117,7 +119,7 @@ export default {
         this.teachers = res.data;
       } catch (err) {
         console.error('Failed to load teachers:', err);
-        alert(TEXT.loadFailed);
+        alert(this.tr('Failed to load teachers.', '\u8f09\u5165\u8001\u5e2b\u5217\u8868\u5931\u6557\u3002'));
       }
     },
     toggleTeacher(teacherId) {
@@ -142,7 +144,7 @@ export default {
     },
     goNext() {
       if (this.selectedTeacherId.length === 0) {
-        alert(TEXT.chooseTeacher);
+        alert(this.tr('Please select at least one teacher.', '\u8acb\u9078\u64c7\u81f3\u5c11\u4e00\u4f4d\u8001\u5e2b\u3002'));
         return;
       }
 
@@ -157,7 +159,6 @@ export default {
   }
 };
 </script>
-
 <style scoped>
 .teacher-page {
   min-height: calc(100vh - 126px);
