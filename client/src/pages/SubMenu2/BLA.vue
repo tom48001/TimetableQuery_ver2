@@ -38,29 +38,8 @@
 
 <script>
 import axios from 'axios';
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 
-const SUBJECT_LABELS = {
-  1: 'Chinese Language',
-  2: 'English Language',
-  3: 'Mathematics',
-  4: 'Citizenship and Social Development',
-  5: 'Chinese Literature',
-  6: 'Biology',
-  7: 'Health Management and Social Care',
-  8: 'Chinese History',
-  9: 'Chemistry',
-  10: 'Integrated Science',
-  11: 'Visual Arts',
-  12: 'Physics',
-  13: 'Citizenship, Economics and Society',
-  14: 'Economics',
-  15: 'Information and Communication Technology',
-  16: 'Technology and Living',
-  17: 'History',
-  18: 'Geography',
-  19: 'Music',
-  20: 'Physical Education'
-};
 export default {
   data() { return { subjects: [], classList: [], counts: {}, selectedChoice: '' }; },
   computed: {
@@ -73,7 +52,7 @@ export default {
   },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
-    subjectLabel(subject) { return this.$lang.locale === 'en' ? (SUBJECT_LABELS[Number(subject.subject_id)] || subject.subject_name) : subject.subject_name; },
+    subjectLabel(subject) { return formatSubjectLabel(subject, this.$lang.locale); },
     choiceValue(subject, cls) { return `${subject.subject_id}-${cls.class_id}`; },
     countKey(subjectId, classId) { return `${subjectId}-${classId}`; },
     isAvailable(subjectId, classId) { return this.counts[this.countKey(subjectId, classId)] !== undefined; },

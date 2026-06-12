@@ -52,29 +52,7 @@
 <script>
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
-
-const SUBJECT_LABELS = {
-  1: 'Chinese Language',
-  2: 'English Language',
-  3: 'Mathematics',
-  4: 'Citizenship and Social Development',
-  5: 'Chinese Literature',
-  6: 'Biology',
-  7: 'Health Management and Social Care',
-  8: 'Chinese History',
-  9: 'Chemistry',
-  10: 'Integrated Science',
-  11: 'Visual Arts',
-  12: 'Physics',
-  13: 'Citizenship, Economics and Society',
-  14: 'Economics',
-  15: 'Information and Communication Technology',
-  16: 'Technology and Living',
-  17: 'History',
-  18: 'Geography',
-  19: 'Music',
-  20: 'Physical Education'
-};
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 
 function parseJson(value, fallback) {
   try {
@@ -108,9 +86,7 @@ export default {
       return this.$lang.locale === 'en' ? en : zh;
     },
     subjectLabel(subject) {
-      return this.$lang.locale === 'en'
-        ? (SUBJECT_LABELS[Number(subject.subject_id)] || subject.subject_name)
-        : subject.subject_name;
+      return formatSubjectLabel(subject, this.$lang.locale);
     },
     studentNumber(student) {
       return String(student.class_number || '').padStart(2, '0');
