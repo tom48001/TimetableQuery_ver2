@@ -10,3 +10,8 @@ outputs/
 client-dev.*.log
 server-dev.*.log
 server/uploads/
+
+client/.env
+client/.env.*
+!client/.env.example
+!server/.env.example

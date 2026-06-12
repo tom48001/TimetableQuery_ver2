@@ -1,62 +1,57 @@
-import express from "express";
-import multer from "multer";
-import xlsx from "xlsx";
-import fs from "fs";
-import pool from "../db.js";
-import { ensureJWT } from "../auth/auth.js";
-import { requirePermission } from "../auth/permissions.js";
+import express from 'express';
+import multer from 'multer';
+import xlsx from 'xlsx';
+import fs from 'fs';
+import pool from '../db.js';
+import { ensureJWT } from '../auth/auth.js';
+import { requirePermission } from '../auth/permissions.js';
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ dest: 'uploads/' });
 
-const REQUIRED_COLUMNS = ["teacher", "subject", "class", "room", "day", "period"];
+const REQUIRED_COLUMNS = ['teacher', 'subject', 'class', 'room', 'day', 'period'];
 
 const dayMap = {
-  "1": "Mon",
-  "2": "Tue",
-  "3": "Wed",
-  "4": "Thu",
-  "5": "Fri",
-  "6": "Sat",
-  monday: "Mon",
-  mon: "Mon",
-  tuesday: "Tue",
-  tue: "Tue",
-  wednesday: "Wed",
-  wed: "Wed",
-  thursday: "Thu",
-  thu: "Thu",
-  friday: "Fri",
-  fri: "Fri",
-  saturday: "Sat",
-  sat: "Sat",
+  '1': 'Mon',
+  '2': 'Tue',
+  '3': 'Wed',
+  '4': 'Thu',
+  '5': 'Fri',
+  '6': 'Sat',
+  monday: 'Mon',
+  mon: 'Mon',
+  tuesday: 'Tue',
+  tue: 'Tue',
+  wednesday: 'Wed',
+  wed: 'Wed',
+  thursday: 'Thu',
+  thu: 'Thu',
+  friday: 'Fri',
+  fri: 'Fri',
+  saturday: 'Sat',
+  sat: 'Sat'
 };
 
 const subjectAliasMap = {
-  ENG: "English",
-  MATH: "Mathematics",
-  MATHS: "Mathematics",
-  BIO: "Biology",
+  ENG: 'English',
+  MATH: 'Mathematics',
+  MATHS: 'Mathematics',
+  BIO: 'Biology'
 };
 
 function normalizeDay(day) {
-  if (day === undefined || day === null || day === "") return null;
+  if (day === undefined || day === null || day === '') return null;
   return dayMap[day.toString().trim().toLowerCase()] || null;
 }
 
 function normalizePeriod(period) {
-  if (period === undefined || period === null || period === "") return null;
+  if (period === undefined || period === null || period === '') return null;
 
   const raw = period.toString().trim();
   const upper = raw.toUpperCase();
 
-  if (/^P\d+$/.test(upper)) {
-    return `Period ${upper.substring(1)}`;
-  }
-
-  if (/^\d+$/.test(upper)) {
-    return `Period ${upper}`;
-  }
+  if (/^P\d+$/.test(upper)) return `Period ${upper.substring(1)}`;
+  if (/^\d+$/.test(upper)) return `Period ${upper}`;
 
   return raw;
 }
@@ -71,43 +66,51 @@ function formatMissing(rows, key) {
 }
 
 router.post(
-  "/excel",
+  '/excel',
   ensureJWT,
-  requirePermission("importTimetable"),
-  upload.single("file"),
+  requirePermission('importTimetable'),
+  upload.single('file'),
   async (req, res) => {
     const conn = await pool.getConnection();
 
     try {
       if (!req.file) {
-        return res.status(400).json({ message: "未收到 Excel 檔案" });
-      }
-
-      const workbook = xlsx.readFile(req.file.path);
-      if (!workbook.SheetNames.includes("Timetable")) {
         return res.status(400).json({
-          message: "Excel 必須包含名為 Timetable 的工作表",
-          expectedSheet: "Timetable",
+          code: 'MISSING_FILE',
+          message: 'Please upload an Excel file.'
         });
       }
 
-      const rows = xlsx.utils.sheet_to_json(workbook.Sheets.Timetable, { defval: "" });
+      const workbook = xlsx.readFile(req.file.path);
+      if (!workbook.SheetNames.includes('Timetable')) {
+        return res.status(400).json({
+          code: 'MISSING_SHEET',
+          message: 'Excel must include a worksheet named Timetable.',
+          expectedSheet: 'Timetable'
+        });
+      }
+
+      const rows = xlsx.utils.sheet_to_json(workbook.Sheets.Timetable, { defval: '' });
       if (rows.length === 0) {
-        return res.status(400).json({ message: "Timetable 工作表沒有資料" });
+        return res.status(400).json({
+          code: 'EMPTY_SHEET',
+          message: 'Timetable worksheet is empty.'
+        });
       }
 
       const columns = Object.keys(rows[0]).map(column => column.trim());
       const missingColumns = REQUIRED_COLUMNS.filter(column => !columns.includes(column));
       if (missingColumns.length) {
         return res.status(400).json({
-          message: "Excel 欄位不完整",
+          code: 'MISSING_COLUMNS',
+          message: 'Excel is missing required columns.',
           requiredColumns: REQUIRED_COLUMNS,
-          missingColumns,
+          missingColumns
         });
       }
 
       await conn.beginTransaction();
-      await conn.query("TRUNCATE TABLE staging_timetable");
+      await conn.query('TRUNCATE TABLE staging_timetable');
 
       const invalidRows = [];
       let insertedStagingRows = 0;
@@ -129,17 +132,15 @@ router.post(
             class: row.class,
             room: row.room,
             day: row.day,
-            period: row.period,
+            period: row.period
           });
           continue;
         }
 
         await conn.query(
-          `
-          INSERT INTO staging_timetable
+          `INSERT INTO staging_timetable
             (teacher_code, subject, class, room, day_of_week, period)
-          VALUES (?, ?, ?, ?, ?, ?)
-          `,
+           VALUES (?, ?, ?, ?, ?, ?)`,
           [teacherCode, subject, className, roomName, day, period]
         );
         insertedStagingRows += 1;
@@ -148,8 +149,9 @@ router.post(
       if (insertedStagingRows === 0) {
         await conn.rollback();
         return res.status(400).json({
-          message: "沒有可匯入的有效資料列",
-          invalidRows,
+          code: 'NO_VALID_ROWS',
+          message: 'No valid timetable rows were found in the Excel file.',
+          invalidRows
         });
       }
 
@@ -189,24 +191,25 @@ router.post(
       `);
 
       const importErrors = {
-        missingTeachers: formatMissing(missingTeachers, "teacher_code"),
-        missingSubjects: formatMissing(missingSubjects, "subject"),
-        missingClasses: formatMissing(missingClasses, "class"),
-        missingRooms: formatMissing(missingRooms, "room"),
-        missingPeriods: formatMissing(missingPeriods, "period"),
-        invalidRows,
+        missingTeachers: formatMissing(missingTeachers, 'teacher_code'),
+        missingSubjects: formatMissing(missingSubjects, 'subject'),
+        missingClasses: formatMissing(missingClasses, 'class'),
+        missingRooms: formatMissing(missingRooms, 'room'),
+        missingPeriods: formatMissing(missingPeriods, 'period'),
+        invalidRows
       };
 
       const hasImportErrors = Object.values(importErrors).some(value => value.length > 0);
       if (hasImportErrors) {
         await conn.rollback();
         return res.status(400).json({
-          message: "匯入失敗，請先修正 Excel 或資料庫資料",
-          ...importErrors,
+          code: 'IMPORT_VALIDATION_FAILED',
+          message: 'Import failed. Please fix the Excel file or database reference data first.',
+          ...importErrors
         });
       }
 
-      await conn.query("TRUNCATE TABLE timetable");
+      await conn.query('TRUNCATE TABLE timetable');
 
       const [insertResult] = await conn.query(`
         INSERT INTO timetable
@@ -226,23 +229,21 @@ router.post(
         JOIN period p ON TRIM(st.period) = TRIM(p.period_name)
       `);
 
-      await conn.query(
-        "INSERT INTO import_schedule (file_name) VALUES (?)",
-        [req.file.originalname]
-      );
-
+      await conn.query('INSERT INTO import_schedule (file_name) VALUES (?)', [req.file.originalname]);
       await conn.commit();
 
-      res.json({
-        message: "匯入成功，timetable 已更新",
+      return res.json({
+        code: 'IMPORT_OK',
+        message: 'Timetable imported successfully.',
         insertedTimetable: insertResult.affectedRows,
-        skippedRows: invalidRows.length,
+        skippedRows: invalidRows.length
       });
     } catch (err) {
       await conn.rollback();
-      console.error("Import error:", err);
-      res.status(500).json({
-        message: err.message || "匯入失敗",
+      console.error('Import error:', err);
+      return res.status(500).json({
+        code: 'DATABASE_ERROR',
+        message: err.message || 'Import failed because of a server or database error.'
       });
     } finally {
       if (req.file) fs.unlink(req.file.path, () => {});
