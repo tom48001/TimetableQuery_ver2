@@ -91,7 +91,7 @@ router.get('/google/callback',
   }
 );
 
-router.get('/me', (req, res) => {
+router.get('/me', ensureJWT, (req, res) => {
   if (!req.user) return res.status(401).json({ error: MESSAGES.unauthorized });
   return res.json(req.user);
 });
@@ -135,7 +135,7 @@ router.put('/change-password', ensureJWT, requirePermission('changePassword'), a
   }
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', ensureJWT, (req, res) => {
   req.logout(err => {
     if (err) return res.status(500).json({ error: MESSAGES.logoutFailed });
     return res.json({ message: MESSAGES.logoutOk });

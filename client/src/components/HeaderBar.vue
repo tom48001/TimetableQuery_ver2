@@ -164,9 +164,11 @@ export default {
     },
     async handleLogout() {
       try {
+        const token = localStorage.getItem('token');
         await fetch('/api/auth/logout', {
           method: 'POST',
-          credentials: 'include'
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
       } catch (error) {
         console.error('Logout failed:', error);

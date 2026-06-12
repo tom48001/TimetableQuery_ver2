@@ -1,11 +1,13 @@
 import express from 'express';
 import { ensureJWT } from '../auth/auth.js';
+import { requireAnyPermission } from '../auth/permissions.js';
 import db from '../db.js';
 import { getStudentElectives, getElectives } from '../controllers/subjectController.js';
 
 const router = express.Router();
+const canReadSchoolData = requireAnyPermission(['timetable', 'nominations']);
 
-router.get('/', ensureJWT, async (req, res) => {
+router.get('/', ensureJWT, canReadSchoolData, async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM subject ORDER BY subject_id');
     res.json(rows);
@@ -15,7 +17,7 @@ router.get('/', ensureJWT, async (req, res) => {
   }
 });
 
-router.get('/class-counts', ensureJWT, async (req, res) => {
+router.get('/class-counts', ensureJWT, canReadSchoolData, async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT
@@ -50,7 +52,7 @@ router.get('/class-counts', ensureJWT, async (req, res) => {
   }
 });
 
-router.get('/findElective', ensureJWT, async (req, res) => {
+router.get('/findElective', ensureJWT, canReadSchoolData, async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM subject WHERE is_elective IS TRUE ORDER BY subject_id');
     res.json(rows);
@@ -60,8 +62,8 @@ router.get('/findElective', ensureJWT, async (req, res) => {
   }
 });
 
-router.post('/list', ensureJWT, getStudentElectives);
+router.post('/list', ensureJWT, canReadSchoolData, getStudentElectives);
 
-router.post('/electiveName', ensureJWT, getElectives);
+router.post('/electiveName', ensureJWT, canReadSchoolData, getElectives);
 
 export default router;

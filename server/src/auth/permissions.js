@@ -1,4 +1,4 @@
-﻿import db from '../db.js';
+import db from '../db.js';
 
 export const ALL_PERMISSION_KEYS = [
   'timetable',
@@ -93,6 +93,19 @@ export function hasPermission(user, permission) {
 export function requirePermission(permission) {
   return (req, res, next) => {
     if (hasPermission(req.user, permission)) return next();
-    return res.status(403).json({ error: 'Permission denied.' });
+    return res.status(403).json({
+      code: 'NO_PERMISSION',
+      error: `No permission: ${permission}.`
+    });
+  };
+}
+
+export function requireAnyPermission(permissions) {
+  return (req, res, next) => {
+    if (permissions.some((permission) => hasPermission(req.user, permission))) return next();
+    return res.status(403).json({
+      code: 'NO_PERMISSION',
+      error: `No permission. Required one of: ${permissions.join(', ')}.`
+    });
   };
 }

@@ -1,7 +1,7 @@
 import express from 'express';
 import db from '../db.js';
 import { ensureJWT } from '../auth/auth.js';
-import { requirePermission } from '../auth/permissions.js';
+import { hasPermission, requireAnyPermission, requirePermission } from '../auth/permissions.js';
 import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher } from '../controllers/manageTeacherRoutes.js';
 import { getTeachersSchedule } from '../controllers/teacherScheduleController.js';
 import pool from '../db.js';
@@ -12,9 +12,9 @@ router.use(ensureJWT);
 
 router.get('/getAllTeachers', requirePermission('manageUsers'), getAllTeachers);
 router.post('/', requirePermission('manageUsers'), createTeacher);
-router.post('/schedule', getTeachersSchedule);
+router.post('/schedule', requirePermission('timetable'), getTeachersSchedule);
 
-router.get('/list', async (req, res) => {
+router.get('/list', requireAnyPermission(['timetable', 'nominations', 'manageUsers']), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT
@@ -31,15 +31,15 @@ router.get('/list', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('Failed to load teachers:', err);
-    res.status(500).json({ error: 'Failed to load teachers' });
+    res.status(500).json({ code: 'DATABASE_ERROR', error: 'Failed to load teachers.' });
   }
 });
 
-router.post('/free-teachers', async (req, res) => {
+router.post('/free-teachers', requirePermission('timetable'), async (req, res) => {
   const { weekday, period } = req.body;
 
   if (!Array.isArray(period) || period.length === 0) {
-    return res.status(400).json({ error: 'period must be a non-empty array' });
+    return res.status(400).json({ code: 'INVALID_PERIOD', error: 'Please select at least one period.' });
   }
 
   try {
@@ -61,15 +61,15 @@ router.post('/free-teachers', async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('Failed to load free teachers:', error);
-    res.status(500).json({ error: 'Failed to load free teachers' });
+    res.status(500).json({ code: 'DATABASE_ERROR', error: 'Failed to load free teachers.' });
   }
 });
 
-router.post('/free-teachers-day', async (req, res) => {
+router.post('/free-teachers-day', requirePermission('timetable'), async (req, res) => {
   const { weekday } = req.body;
 
   if (!weekday) {
-    return res.status(400).json({ error: 'weekday is required' });
+    return res.status(400).json({ code: 'MISSING_WEEKDAY', error: 'Please select a date or weekday.' });
   }
 
   try {
@@ -112,24 +112,27 @@ router.post('/free-teachers-day', async (req, res) => {
     res.json(Array.from(teacherMap.values()));
   } catch (error) {
     console.error('Failed to load free teacher day schedule:', error);
-    res.status(500).json({ error: 'Failed to load free teacher day schedule' });
+    res.status(500).json({ code: 'DATABASE_ERROR', error: 'Failed to load free teacher day schedule.' });
   }
 });
 
-router.get('/from-user/:userId', async (req, res) => {
+router.get('/from-user/:userId', requireAnyPermission(['timetable', 'nominations', 'changePassword', 'manageUsers']), async (req, res) => {
   const { userId } = req.params;
+  if (String(req.user.id) !== String(userId) && !hasPermission(req.user, 'manageUsers')) {
+    return res.status(403).json({ code: 'NO_PERMISSION', error: 'No permission to view another user teacher account.' });
+  }
   try {
     const [rows] = await pool.query(
       'SELECT teacher_id FROM teacher WHERE user_id = ?',
       [userId]
     );
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'Teacher account not found' });
+      return res.status(404).json({ code: 'TEACHER_NOT_FOUND', error: 'Teacher account not found.' });
     }
     res.json({ teacher_id: rows[0].teacher_id });
   } catch (err) {
     console.error('Failed to load teacher_id:', err);
-    res.status(500).json({ error: 'Failed to load teacher_id' });
+    res.status(500).json({ code: 'DATABASE_ERROR', error: 'Failed to load teacher account.' });
   }
 });
 

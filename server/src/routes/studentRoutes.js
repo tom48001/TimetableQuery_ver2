@@ -1,6 +1,6 @@
 import express from 'express';
 import { ensureJWT } from '../auth/auth.js';
-import { requirePermission } from '../auth/permissions.js';
+import { requireAnyPermission, requirePermission } from '../auth/permissions.js';
 import db from '../db.js';
 import {
   getStudents,
@@ -16,21 +16,22 @@ import {
 } from '../controllers/manageStudentController.js';
 
 const router = express.Router();
+const canReadStudentData = requireAnyPermission(['timetable', 'nominations', 'manageStudents']);
 
 router.get('/admin/list', ensureJWT, requirePermission('manageStudents'), getManagedStudents);
 router.post('/admin', ensureJWT, requirePermission('manageStudents'), createManagedStudent);
 router.delete('/admin/:studentId', ensureJWT, requirePermission('manageStudents'), deleteManagedStudent);
 
-router.get('/by-class/:classId/subject/:subjectId', ensureJWT, getStudentsByClassNSubject);
-router.get('/by-class/:classId', ensureJWT, getStudentsByClassId);
-router.post('/by-subject', ensureJWT, getStudentsBySubject);
+router.get('/by-class/:classId/subject/:subjectId', ensureJWT, canReadStudentData, getStudentsByClassNSubject);
+router.get('/by-class/:classId', ensureJWT, canReadStudentData, getStudentsByClassId);
+router.post('/by-subject', ensureJWT, canReadStudentData, getStudentsBySubject);
 
-router.get('/elective-subjects', ensureJWT, async (req, res) => {
+router.get('/elective-subjects', ensureJWT, canReadStudentData, async (req, res) => {
   const [rows] = await db.query('SELECT DISTINCT subject_name FROM elective_subjects');
   res.json(rows.map(row => row.subject_name));
 });
 
-router.post('/elective-students', ensureJWT, async (req, res) => {
+router.post('/elective-students', ensureJWT, canReadStudentData, async (req, res) => {
   const { formLevel, subjectName } = req.body;
 
   const [rows] = await db.query(
@@ -46,7 +47,7 @@ router.post('/elective-students', ensureJWT, async (req, res) => {
   res.json(rows);
 });
 
-router.get('/:studentId/timetable', ensureJWT, getStudentTimetable);
-router.get('/', ensureJWT, getStudents);
+router.get('/:studentId/timetable', ensureJWT, requirePermission('timetable'), getStudentTimetable);
+router.get('/', ensureJWT, canReadStudentData, getStudents);
 
 export default router;
