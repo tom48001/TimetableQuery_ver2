@@ -1,4 +1,3 @@
-// auth.js
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import dotenv from 'dotenv';
@@ -7,64 +6,72 @@ import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
-// ====== Manager 白名單處理 ======
 const MANAGER_EMAILS = process.env.MANAGER_EMAILS
-  ? process.env.MANAGER_EMAILS.split(',').map(e => e.trim())
+  ? process.env.MANAGER_EMAILS.split(',').map(email => email.trim()).filter(Boolean)
   : [];
 const GOOGLE_ALLOWED_DOMAIN = process.env.GOOGLE_ALLOWED_DOMAIN || 'gmail.com';
 
-// ====== Google OAuth2 Strategy ======
+async function promoteManagerIfNeeded(user) {
+  if (MANAGER_EMAILS.includes(user.email) && user.role !== 'manager') {
+    await pool.query("UPDATE user SET role = 'manager' WHERE user_id = ?", [user.user_id]);
+    return { ...user, role: 'manager' };
+  }
+
+  return user;
+}
+
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: process.env.GOOGLE_CALLBACK_URL
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    const email = profile.emails[0].value;
+    const email = profile.emails?.[0]?.value;
+    const googleId = profile.id;
 
-    // 1. 檢查 domain
+    if (!email || !googleId) {
+      return done(null, false, { message: 'Google profile is missing email or id.' });
+    }
+
     if (!email.endsWith(`@${GOOGLE_ALLOWED_DOMAIN}`)) {
-      return done(null, false, { message: `只允許 ${GOOGLE_ALLOWED_DOMAIN} 帳號登入` });
+      return done(null, false, { message: `Only ${GOOGLE_ALLOWED_DOMAIN} Google accounts are allowed.` });
     }
 
-    // 2. 查 DB user 白名單
-    let [existing] = await pool.query("SELECT * FROM user WHERE email = ?", [email]);
-
-    if (existing.length === 0) {
-      return done(null, false, { message: "帳號未註冊，請聯絡 admin 開帳號。" });
+    const [googleUsers] = await pool.query('SELECT * FROM user WHERE google_id = ?', [googleId]);
+    if (googleUsers.length > 0) {
+      return done(null, await promoteManagerIfNeeded(googleUsers[0]));
     }
 
-    let existingUser = existing[0];
-
-    // 3. 如果已有帳號但冇 google_id → 補上
-    if (!existingUser.google_id) {
-      await pool.query("UPDATE user SET google_id = ? WHERE user_id = ?", [profile.id, existingUser.user_id]);
+    const [emailUsers] = await pool.query('SELECT * FROM user WHERE email = ?', [email]);
+    if (emailUsers.length === 0) {
+      return done(null, false, { message: 'This Google email is not registered. Please ask a manager to add the account first.' });
     }
 
-    // 4. Manager 白名單 → 升級 role
-    if (MANAGER_EMAILS.includes(existingUser.email) && existingUser.role !== 'manager') {
-      await pool.query("UPDATE user SET role = 'manager' WHERE user_id = ?", [existingUser.user_id]);
-      existingUser.role = 'manager';
+    const existingUser = emailUsers[0];
+    if (existingUser.google_id && existingUser.google_id !== googleId) {
+      return done(null, false, { message: 'This user is already linked to another Google account.' });
     }
 
-    return done(null, existingUser);
-
+    await pool.query('UPDATE user SET google_id = ? WHERE user_id = ?', [googleId, existingUser.user_id]);
+    return done(null, await promoteManagerIfNeeded({ ...existingUser, google_id: googleId }));
   } catch (error) {
     return done(error, null);
   }
 }));
 
-// ====== Session 序列化 / 反序列化 ======
 passport.serializeUser((user, done) => {
   done(null, user.user_id);
 });
 
 passport.deserializeUser(async (id, done) => {
-  const [user] = await pool.query("SELECT * FROM user WHERE user_id = ?", [id]);
-  done(null, user[0]);
+  try {
+    const [users] = await pool.query('SELECT * FROM user WHERE user_id = ?', [id]);
+    done(null, users[0] || null);
+  } catch (error) {
+    done(error, null);
+  }
 });
 
-// ====== JWT Middleware ======
 export function ensureJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.sendStatus(401);
@@ -75,26 +82,24 @@ export function ensureJWT(req, res, next) {
     req.user = decoded;
     next();
   } catch {
-    return res.status(403).json({ error: 'Token 無效' });
+    return res.status(403).json({ error: 'Invalid token' });
   }
 }
 
-// 檢查是否登入
 export function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated && req.isAuthenticated()) {
     return next();
   }
-  res.status(401).json({ error: '未登入' });
+
+  res.status(401).json({ error: 'Unauthorized' });
 }
 
-// 檢查角色
 export function checkRole(role) {
   return (req, res, next) => {
-    console.log('使用者身分:', req.user?.role);
     if (req.user && req.user.role === role) {
       next();
     } else {
-      res.status(403).json({ error: '權限不足' });
+      res.status(403).json({ error: 'Forbidden' });
     }
   };
 }
