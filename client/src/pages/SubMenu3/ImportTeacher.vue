@@ -58,6 +58,24 @@
           class="message"
           :class="{ error: messageType === 'error', success: messageType === 'success' }"
         >{{ message }}</pre>
+
+        <div v-if="lastImportResult" class="batch-result">
+          <h2>{{ tr('Import Result', '\u532f\u5165\u7d50\u679c') }}</h2>
+          <dl>
+            <div>
+              <dt>{{ tr('Batch ID', '\u6279\u6b21') }}</dt>
+              <dd>#{{ lastImportResult.batchId }}</dd>
+            </div>
+            <div>
+              <dt>{{ tr('Imported rows', '\u532f\u5165\u7b46\u6578') }}</dt>
+              <dd>{{ lastImportResult.insertedTimetable }}</dd>
+            </div>
+            <div>
+              <dt>{{ tr('Previous snapshot', '\u532f\u5165\u524d\u5099\u4efd') }}</dt>
+              <dd>{{ lastImportResult.snapshotRows }}</dd>
+            </div>
+          </dl>
+        </div>
       </div>
 
       <div class="format-panel">
@@ -101,6 +119,55 @@
           </ul>
       </div>
     </section>
+
+    <section class="history-panel">
+      <div class="history-header">
+        <div>
+          <h2>{{ tr('Import History', '\u532f\u5165\u8a18\u9304') }}</h2>
+          <p>{{ tr('Managers can restore the timetable to the version before a successful import.', '\u53ef\u5c07\u6642\u9593\u8868\u56de\u5fa9\u5230\u67d0\u6b21\u6210\u529f\u532f\u5165\u524d\u7684\u7248\u672c\u3002') }}</p>
+        </div>
+        <button type="button" class="clear-button" :disabled="historyLoading" @click="fetchImportBatches">
+          {{ tr('Reload', '\u91cd\u65b0\u8f09\u5165') }}
+        </button>
+      </div>
+
+      <div class="history-table-wrap">
+        <table v-if="importBatches.length" class="history-table">
+          <thead>
+            <tr>
+              <th>{{ tr('Time', '\u6642\u9593') }}</th>
+              <th>{{ tr('File', '\u6a94\u6848') }}</th>
+              <th>{{ tr('User', '\u4f7f\u7528\u8005') }}</th>
+              <th>{{ tr('Status', '\u72c0\u614b') }}</th>
+              <th>{{ tr('Rows', '\u7b46\u6578') }}</th>
+              <th>{{ tr('Snapshot', '\u5099\u4efd') }}</th>
+              <th>{{ tr('Action', '\u64cd\u4f5c') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="batch in importBatches" :key="batch.batch_id">
+              <td>{{ formatDate(batch.created_at) }}</td>
+              <td>{{ batch.file_name }}</td>
+              <td>{{ batch.imported_by_name || '-' }}</td>
+              <td><span class="status-pill" :class="batch.status">{{ statusLabel(batch.status) }}</span></td>
+              <td>{{ batch.inserted_rows }}</td>
+              <td>{{ batch.snapshot_rows }}</td>
+              <td>
+                <button
+                  type="button"
+                  class="danger-button small"
+                  :disabled="!canRollback(batch) || rollbackLoading"
+                  @click="rollbackBatch(batch)"
+                >
+                  {{ tr('Restore', '\u56de\u5fa9') }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else class="empty-history">{{ historyLoading ? tr('Loading...', '\u8f09\u5165\u4e2d...') : tr('No import history yet.', '\u66ab\u6642\u6c92\u6709\u532f\u5165\u8a18\u9304\u3002') }}</p>
+      </div>
+    </section>
   </main>
 </template>
 
@@ -125,8 +192,12 @@ export default {
       file: null,
       dragging: false,
       uploading: false,
+      historyLoading: false,
+      rollbackLoading: false,
       message: '',
       messageType: '',
+      lastImportResult: null,
+      importBatches: [],
       text: TEXT
     };
   },
@@ -172,6 +243,72 @@ export default {
     showMessage(message, type) {
       this.message = message;
       this.messageType = type;
+    },
+    authHeaders() {
+      const token = localStorage.getItem('token');
+      return { Authorization: `Bearer ${token}` };
+    },
+    formatDate(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return date.toLocaleString();
+    },
+    statusLabel(status) {
+      const labels = {
+        success: this.tr('Success', '\u6210\u529f'),
+        failed: this.tr('Failed', '\u5931\u6557'),
+        rolled_back: this.tr('Restored', '\u5df2\u56de\u5fa9')
+      };
+      return labels[status] || status;
+    },
+    canRollback(batch) {
+      return batch.status === 'success';
+    },
+    async fetchImportBatches() {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      this.historyLoading = true;
+      try {
+        const res = await axios.get('/api/import/batches', { headers: this.authHeaders() });
+        this.importBatches = res.data;
+      } catch (err) {
+        console.error('Failed to load import history:', err);
+      } finally {
+        this.historyLoading = false;
+      }
+    },
+    async rollbackBatch(batch) {
+      const firstConfirm = confirm(this.tr(
+        `Restore timetable to before import #${batch.batch_id}? Current timetable will be replaced.`,
+        `\u78ba\u5b9a\u8981\u56de\u5fa9\u5230\u532f\u5165 #${batch.batch_id} \u524d\u7684\u7248\u672c\uff1f\u73fe\u5728\u7684\u6642\u9593\u8868\u6703\u88ab\u53d6\u4ee3\u3002`
+      ));
+      if (!firstConfirm) return;
+
+      const typed = prompt(this.tr(
+        'Type ROLLBACK to confirm restore.',
+        '\u8acb\u8f38\u5165 ROLLBACK \u78ba\u8a8d\u56de\u5fa9\u3002'
+      ));
+      if (typed !== 'ROLLBACK') {
+        this.showMessage(this.tr('Restore cancelled.', '\u5df2\u53d6\u6d88\u56de\u5fa9\u3002'), 'error');
+        return;
+      }
+
+      this.rollbackLoading = true;
+      try {
+        const res = await axios.post(`/api/import/rollback/${batch.batch_id}`, {}, { headers: this.authHeaders() });
+        this.showMessage([
+          res.data.message,
+          `Restored rows: ${res.data.restoredRows}`
+        ].join('\n'), 'success');
+        await this.fetchImportBatches();
+      } catch (err) {
+        const data = err.response && err.response.data;
+        this.showMessage(data && data.message ? data.message : this.tr('Restore failed.', '\u56de\u5fa9\u5931\u6557\u3002'), 'error');
+      } finally {
+        this.rollbackLoading = false;
+      }
     },
     formatList(title, values) {
       if (!values || values.length === 0) return '';
@@ -225,11 +362,17 @@ export default {
 
         this.showMessage([
           res.data.message,
+          `Batch ID: ${res.data.batchId}`,
           `Imported rows: ${res.data.insertedTimetable}`,
-          `Skipped rows: ${res.data.skippedRows}`
+          `Skipped rows: ${res.data.skippedRows}`,
+          `Snapshot rows: ${res.data.snapshotRows}`
         ].join('\n'), 'success');
+        this.lastImportResult = res.data;
+        this.clearFile();
+        await this.fetchImportBatches();
       } catch (err) {
         console.error('Import failed:', err);
+        this.lastImportResult = null;
 
         if (err.response && err.response.data) {
           this.showMessage(this.buildErrorMessage(err.response.data), 'error');
@@ -240,6 +383,9 @@ export default {
         this.uploading = false;
       }
     }
+  },
+  mounted() {
+    this.fetchImportBatches();
   }
 };
 </script>
@@ -435,6 +581,49 @@ button:disabled {
   color: #8c2929;
 }
 
+.batch-result {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfdfd;
+  margin-top: 18px;
+  padding: 16px;
+}
+
+.batch-result h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.batch-result dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.batch-result dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.batch-result dl div:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.batch-result dt {
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.batch-result dd {
+  color: var(--text);
+  font-weight: 900;
+  margin: 0;
+}
+
 .format-panel {
   padding: 24px;
 }
@@ -510,6 +699,106 @@ ul {
   padding: 14px 16px;
 }
 
+.history-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  margin-top: 22px;
+  padding: 24px;
+}
+
+.history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.history-header p {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  margin: 6px 0 0;
+}
+
+.history-table-wrap {
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.history-table th,
+.history-table td {
+  border: 1px solid var(--border);
+  padding: 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.history-table th {
+  background: var(--surface-soft);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #e8eef2;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 900;
+  min-height: 26px;
+  padding: 0 10px;
+}
+
+.status-pill.success {
+  background: #e6f4ed;
+  color: #16613f;
+}
+
+.status-pill.failed {
+  background: #fff1f0;
+  color: #8c2929;
+}
+
+.status-pill.rolled_back {
+  background: #eef2f5;
+  color: #607683;
+}
+
+.danger-button {
+  background: var(--danger);
+  color: #fff;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #9f302b;
+}
+
+.danger-button.small {
+  height: 34px;
+  padding: 0 12px;
+}
+
+.empty-history {
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-weight: 800;
+  margin: 0;
+  padding: 28px;
+  text-align: center;
+}
+
 @media (max-width: 820px) {
   .import-page {
     padding: 34px 16px 50px;
@@ -525,6 +814,10 @@ ul {
 
   .drop-zone {
     min-height: 238px;
+  }
+
+  .history-header {
+    flex-direction: column;
   }
 }
 </style>

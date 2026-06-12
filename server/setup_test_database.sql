@@ -151,6 +151,38 @@ CREATE TABLE import_schedule (
   import_date DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE import_batches (
+  batch_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  file_name VARCHAR(255) NOT NULL,
+  imported_by_user_id BIGINT NULL,
+  imported_by_name VARCHAR(255) NULL,
+  status ENUM('success', 'failed', 'rolled_back') NOT NULL DEFAULT 'success',
+  inserted_rows INT NOT NULL DEFAULT 0,
+  skipped_rows INT NOT NULL DEFAULT 0,
+  error_code VARCHAR(80) NULL,
+  error_message TEXT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  rolled_back_at DATETIME NULL,
+  INDEX idx_import_batches_created_at (created_at),
+  INDEX idx_import_batches_status (status),
+  FOREIGN KEY (imported_by_user_id) REFERENCES user(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE timetable_history (
+  history_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  batch_id BIGINT NOT NULL,
+  timetable_id BIGINT NULL,
+  teacher_id BIGINT NOT NULL,
+  subject_id BIGINT NOT NULL,
+  class_id BIGINT NOT NULL,
+  room_id BIGINT NOT NULL,
+  day_of_week ENUM('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat') NOT NULL,
+  period_id BIGINT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (batch_id) REFERENCES import_batches(batch_id) ON DELETE CASCADE,
+  INDEX idx_timetable_history_batch (batch_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET @default_password = '$2b$10$56QvvYnrtdQlgwFzqI3ZOu5MXh/JCP/5Wvt3vfrqhhnukrrNO87KG';
 SET @teacher_permissions = '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":false,"manageStudents":false,"importTimetable":false}';
 SET @staff_permissions = '{"timetable":true,"nominations":true,"changePassword":false,"manageUsers":true,"manageStudents":false,"importTimetable":false}';

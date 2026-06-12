@@ -65,6 +65,162 @@ function formatMissing(rows, key) {
   return rows.map(row => row[key]).filter(Boolean);
 }
 
+async function ensureImportHistoryTables(connOrPool = pool) {
+  await connOrPool.query(`
+    CREATE TABLE IF NOT EXISTS import_batches (
+      batch_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      file_name VARCHAR(255) NOT NULL,
+      imported_by_user_id BIGINT NULL,
+      imported_by_name VARCHAR(255) NULL,
+      status ENUM('success', 'failed', 'rolled_back') NOT NULL DEFAULT 'success',
+      inserted_rows INT NOT NULL DEFAULT 0,
+      skipped_rows INT NOT NULL DEFAULT 0,
+      error_code VARCHAR(80) NULL,
+      error_message TEXT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      rolled_back_at DATETIME NULL,
+      INDEX idx_import_batches_created_at (created_at),
+      INDEX idx_import_batches_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await connOrPool.query(`
+    CREATE TABLE IF NOT EXISTS timetable_history (
+      history_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      batch_id BIGINT NOT NULL,
+      timetable_id BIGINT NULL,
+      teacher_id BIGINT NOT NULL,
+      subject_id BIGINT NOT NULL,
+      class_id BIGINT NOT NULL,
+      room_id BIGINT NOT NULL,
+      day_of_week ENUM('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat') NOT NULL,
+      period_id BIGINT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (batch_id) REFERENCES import_batches(batch_id) ON DELETE CASCADE,
+      INDEX idx_timetable_history_batch (batch_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+}
+
+async function logFailedImport(fileName, user, code, message, skippedRows = 0) {
+  await ensureImportHistoryTables(pool);
+  await pool.query(
+    `INSERT INTO import_batches
+      (file_name, imported_by_user_id, imported_by_name, status, skipped_rows, error_code, error_message)
+     VALUES (?, ?, ?, 'failed', ?, ?, ?)`,
+    [
+      fileName || 'Unknown file',
+      user?.id || user?.user_id || null,
+      await importUserName(pool, user),
+      skippedRows,
+      code || 'IMPORT_FAILED',
+      message || 'Import failed.'
+    ]
+  );
+}
+
+function userIdFromRequest(req) {
+  return req.user?.id || req.user?.user_id || null;
+}
+
+async function importUserName(connOrPool, user) {
+  const userId = user?.id || user?.user_id;
+  if (user?.user_name || user?.email) return user.user_name || user.email;
+  if (!userId) return null;
+
+  const [rows] = await connOrPool.query('SELECT user_name, email FROM user WHERE user_id = ?', [userId]);
+  if (rows.length === 0) return null;
+  return rows[0].user_name || rows[0].email || null;
+}
+
+async function respondImportError(req, res, status, payload) {
+  await logFailedImport(
+    req.file?.originalname,
+    req.user,
+    payload.code,
+    payload.message,
+    payload.invalidRows?.length || 0
+  );
+  return res.status(status).json(payload);
+}
+
+router.get('/batches', ensureJWT, requirePermission('importTimetable'), async (req, res) => {
+  try {
+    await ensureImportHistoryTables(pool);
+    const [rows] = await pool.query(`
+      SELECT
+        b.*,
+        COUNT(h.history_id) AS snapshot_rows
+      FROM import_batches b
+      LEFT JOIN timetable_history h ON b.batch_id = h.batch_id
+      GROUP BY b.batch_id
+      ORDER BY b.created_at DESC, b.batch_id DESC
+      LIMIT 20
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('Load import batches error:', err);
+    res.status(500).json({ code: 'DATABASE_ERROR', message: 'Failed to load import history.' });
+  }
+});
+
+router.post('/rollback/:batchId', ensureJWT, requirePermission('importTimetable'), async (req, res) => {
+  const conn = await pool.getConnection();
+
+  try {
+    const batchId = Number(req.params.batchId);
+    if (!batchId) {
+      return res.status(400).json({ code: 'INVALID_BATCH', message: 'Invalid import batch.' });
+    }
+
+    await ensureImportHistoryTables(conn);
+    await conn.beginTransaction();
+
+    const [batches] = await conn.query('SELECT * FROM import_batches WHERE batch_id = ? FOR UPDATE', [batchId]);
+    if (batches.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ code: 'BATCH_NOT_FOUND', message: 'Import batch was not found.' });
+    }
+
+    const batch = batches[0];
+    if (batch.status !== 'success') {
+      await conn.rollback();
+      return res.status(400).json({ code: 'BATCH_NOT_ROLLBACKABLE', message: 'Only successful import batches can be rolled back.' });
+    }
+
+    await conn.query('DELETE FROM timetable');
+    const [restoreResult] = await conn.query(`
+      INSERT INTO timetable
+        (teacher_id, subject_id, class_id, room_id, day_of_week, period_id)
+      SELECT teacher_id, subject_id, class_id, room_id, day_of_week, period_id
+      FROM timetable_history
+      WHERE batch_id = ?
+      ORDER BY history_id
+    `, [batchId]);
+
+    await conn.query(
+      `UPDATE import_batches
+       SET status = 'rolled_back', rolled_back_at = NOW()
+       WHERE batch_id = ?`,
+      [batchId]
+    );
+
+    await conn.commit();
+    res.json({
+      code: 'ROLLBACK_OK',
+      message: 'Timetable restored to the version before this import.',
+      batchId,
+      restoredRows: restoreResult.affectedRows
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('Rollback import error:', err);
+    res.status(500).json({ code: 'DATABASE_ERROR', message: 'Rollback failed because of a server or database error.' });
+  } finally {
+    conn.release();
+  }
+});
+
 router.post(
   '/excel',
   ensureJWT,
@@ -81,9 +237,11 @@ router.post(
         });
       }
 
+      await ensureImportHistoryTables(conn);
+
       const workbook = xlsx.readFile(req.file.path);
       if (!workbook.SheetNames.includes('Timetable')) {
-        return res.status(400).json({
+        return respondImportError(req, res, 400, {
           code: 'MISSING_SHEET',
           message: 'Excel must include a worksheet named Timetable.',
           expectedSheet: 'Timetable'
@@ -92,7 +250,7 @@ router.post(
 
       const rows = xlsx.utils.sheet_to_json(workbook.Sheets.Timetable, { defval: '' });
       if (rows.length === 0) {
-        return res.status(400).json({
+        return respondImportError(req, res, 400, {
           code: 'EMPTY_SHEET',
           message: 'Timetable worksheet is empty.'
         });
@@ -101,7 +259,7 @@ router.post(
       const columns = Object.keys(rows[0]).map(column => column.trim());
       const missingColumns = REQUIRED_COLUMNS.filter(column => !columns.includes(column));
       if (missingColumns.length) {
-        return res.status(400).json({
+        return respondImportError(req, res, 400, {
           code: 'MISSING_COLUMNS',
           message: 'Excel is missing required columns.',
           requiredColumns: REQUIRED_COLUMNS,
@@ -110,7 +268,7 @@ router.post(
       }
 
       await conn.beginTransaction();
-      await conn.query('TRUNCATE TABLE staging_timetable');
+      await conn.query('DELETE FROM staging_timetable');
 
       const invalidRows = [];
       let insertedStagingRows = 0;
@@ -148,7 +306,7 @@ router.post(
 
       if (insertedStagingRows === 0) {
         await conn.rollback();
-        return res.status(400).json({
+        return respondImportError(req, res, 400, {
           code: 'NO_VALID_ROWS',
           message: 'No valid timetable rows were found in the Excel file.',
           invalidRows
@@ -202,14 +360,37 @@ router.post(
       const hasImportErrors = Object.values(importErrors).some(value => value.length > 0);
       if (hasImportErrors) {
         await conn.rollback();
-        return res.status(400).json({
+        return respondImportError(req, res, 400, {
           code: 'IMPORT_VALIDATION_FAILED',
           message: 'Import failed. Please fix the Excel file or database reference data first.',
           ...importErrors
         });
       }
 
-      await conn.query('TRUNCATE TABLE timetable');
+      const [batchResult] = await conn.query(
+        `INSERT INTO import_batches
+          (file_name, imported_by_user_id, imported_by_name, status, skipped_rows)
+         VALUES (?, ?, ?, 'success', ?)`,
+        [req.file.originalname, userIdFromRequest(req), await importUserName(conn, req.user), invalidRows.length]
+      );
+      const batchId = batchResult.insertId;
+
+      const [snapshotResult] = await conn.query(`
+        INSERT INTO timetable_history
+          (batch_id, timetable_id, teacher_id, subject_id, class_id, room_id, day_of_week, period_id)
+        SELECT
+          ?,
+          timetable_id,
+          teacher_id,
+          subject_id,
+          class_id,
+          room_id,
+          day_of_week,
+          period_id
+        FROM timetable
+      `, [batchId]);
+
+      await conn.query('DELETE FROM timetable');
 
       const [insertResult] = await conn.query(`
         INSERT INTO timetable
@@ -229,18 +410,29 @@ router.post(
         JOIN period p ON TRIM(st.period) = TRIM(p.period_name)
       `);
 
+      await conn.query(
+        'UPDATE import_batches SET inserted_rows = ? WHERE batch_id = ?',
+        [insertResult.affectedRows, batchId]
+      );
       await conn.query('INSERT INTO import_schedule (file_name) VALUES (?)', [req.file.originalname]);
       await conn.commit();
 
       return res.json({
         code: 'IMPORT_OK',
         message: 'Timetable imported successfully.',
+        batchId,
         insertedTimetable: insertResult.affectedRows,
-        skippedRows: invalidRows.length
+        skippedRows: invalidRows.length,
+        snapshotRows: snapshotResult.affectedRows
       });
     } catch (err) {
       await conn.rollback();
       console.error('Import error:', err);
+      if (req.file) {
+        await logFailedImport(req.file.originalname, req.user, 'DATABASE_ERROR', err.message, 0).catch(logErr => {
+          console.error('Failed to log failed import:', logErr);
+        });
+      }
       return res.status(500).json({
         code: 'DATABASE_ERROR',
         message: err.message || 'Import failed because of a server or database error.'
