@@ -3,10 +3,10 @@
     <section class="admin-panel">
       <header class="page-header">
         <div>
-          <p>{{ tr('Permission Management', '權限管理') }}</p>
+          <p>{{ tr('Permission Management', '\u6b0a\u9650\u7ba1\u7406') }}</p>
           <h1>{{ tr('User Management', '使用者管理') }}</h1>
         </div>
-        <span class="summary-pill">{{ teachers.length }} {{ tr('users', '使用者') }}</span>
+        <span class="summary-pill">{{ filteredTeachers.length }} / {{ teachers.length }} {{ tr('users', '使用者') }}</span>
       </header>
 
       <details class="permission-help">
@@ -66,12 +66,13 @@
         </div>
 
         <div class="list-status">
-          <span>{{ tr('Matching', '符合') }}: {{ filteredTeachers.length }}</span>
+          <span>{{ tr('Total', '\u7e3d\u6578') }}: {{ teachers.length }}</span>
+          <span>{{ tr('Matched', '\u7b26\u5408') }}: {{ filteredTeachers.length }}</span>
           <span>{{ pageRangeLabel }}</span>
         </div>
 
         <div class="table-wrap">
-          <table>
+          <table v-if="paginatedTeachers.length">
             <thead>
               <tr>
                 <th class="name-col">{{ tr('Name', '姓名') }}</th>
@@ -105,14 +106,12 @@
                   <button class="danger-btn small" @click="deleteTeacher(teacher.user_id)">{{ tr('Delete', '刪除') }}</button>
                 </td>
               </tr>
-              <tr v-if="paginatedTeachers.length === 0">
-                <td colspan="6" class="empty-cell">{{ tr('No users found.', '沒有符合的使用者。') }}</td>
-              </tr>
             </tbody>
           </table>
+          <p v-else class="empty-state">{{ tr('No users found.', '\u6c92\u6709\u7b26\u5408\u7684\u4f7f\u7528\u8005\u3002') }}</p>
         </div>
 
-        <div class="pagination-bar" v-if="totalPages > 1">
+        <div class="pagination-bar" v-if="filteredTeachers.length">
           <button class="secondary-btn small" :disabled="currentPage === 1" @click="currentPage -= 1">
             {{ tr('Previous', '上一頁') }}
           </button>
@@ -168,7 +167,7 @@ export default {
       selectedRole: '',
       selectedPermission: '',
       currentPage: 1,
-      pageSize: 20,
+      pageSize: 30,
       newTeacher: {
         user_name: '',
         email: '',
@@ -246,7 +245,7 @@ export default {
       return this.filteredTeachers.slice(start, start + this.pageSize);
     },
     pageRangeLabel() {
-      if (this.filteredTeachers.length === 0) return this.tr('No matching users', '沒有符合的使用者');
+      if (this.filteredTeachers.length === 0) return this.tr('No records', '\u6c92\u6709\u8cc7\u6599');
       const page = Math.min(this.currentPage, this.totalPages);
       const start = (page - 1) * this.pageSize + 1;
       const end = Math.min(start + this.pageSize - 1, this.filteredTeachers.length);
@@ -676,31 +675,26 @@ button:disabled {
 }
 
 .table-wrap {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  max-height: 620px;
-  overflow: auto;
-  background: #fff;
+  overflow-x: auto;
+  margin-top: 14px;
 }
 
 table {
   width: 100%;
   min-width: 1120px;
   border-collapse: collapse;
+  background: #fff;
 }
 
 th,
 td {
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
   padding: 8px;
   text-align: left;
   vertical-align: top;
 }
 
 th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
   background: #f3f8fa;
   color: var(--text);
   font-weight: 800;
@@ -748,10 +742,13 @@ td select {
   white-space: nowrap;
 }
 
-.empty-cell {
+.empty-state {
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
   color: var(--text-muted);
   font-weight: 800;
-  padding: 24px;
+  margin: 0;
+  padding: 28px;
   text-align: center;
 }
 
