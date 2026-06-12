@@ -1,8 +1,8 @@
 const messages = {
   app: {
     title: {
-      zh: '\u6642\u9593\u8868\u67e5\u8a62\u7cfb\u7d71',
-      en: 'Timetable Query System'
+      zh: '\u8056\u516c\u6703\u8056\u99ac\u5229\u4e9e\u5802\u83ab\u6176\u582f\u4e2d\u5b78 \u884c\u653f\u7ba1\u7406\u7cfb\u7d71',
+      en: 'SKH St. Mary\'s Church Mok Hing Yiu College Administration System'
     }
   },
   common: {
