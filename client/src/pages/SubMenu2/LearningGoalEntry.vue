@@ -93,7 +93,7 @@ export default {
         return;
       }
 
-      const res = await axios.get('http://localhost:3000/api/classes', {
+      const res = await axios.get('/api/classes', {
         headers: { Authorization: `Bearer ${token}` }
       });
       this.classList = res.data;
@@ -104,7 +104,7 @@ export default {
 
       try {
         const decoded = jwtDecode(token);
-        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${decoded.id}`, {
+        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         this.teacher_id = res.data.teacher_id;
@@ -119,7 +119,7 @@ export default {
       const params = this.teacher_id ? { teacher_id: this.teacher_id } : {};
 
       try {
-        const res = await axios.get('http://localhost:3000/api/learning-goals/records', {
+        const res = await axios.get('/api/learning-goals/records', {
           params,
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -142,7 +142,7 @@ export default {
       this.students = [];
 
       try {
-        const res = await axios.get(`http://localhost:3000/api/students/by-class/${this.selectedClassId}`, {
+        const res = await axios.get(`/api/students/by-class/${this.selectedClassId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -178,7 +178,7 @@ export default {
 
       this.saving = true;
       try {
-        await axios.post('http://localhost:3000/api/learning-goals/records', {
+        await axios.post('/api/learning-goals/records', {
           teacher_id: this.teacher_id,
           records
         }, {

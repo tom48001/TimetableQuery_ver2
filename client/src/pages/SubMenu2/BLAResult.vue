@@ -79,7 +79,7 @@ export default {
       const token = localStorage.getItem('token');
 
       try {
-        const res = await axios.get('http://localhost:3000/api/bla/results', {
+        const res = await axios.get('/api/bla/results', {
           headers: { Authorization: `Bearer ${token}` }
         });
         this.BLAResults = res.data;

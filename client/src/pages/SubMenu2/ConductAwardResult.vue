@@ -67,7 +67,7 @@ export default {
       const token = localStorage.getItem('token');
 
       try {
-        const res = await axios.get('http://localhost:3000/api/conduct/results', {
+        const res = await axios.get('/api/conduct/results', {
           headers: { Authorization: `Bearer ${token}` }
         });
         this.nominationResults = res.data;

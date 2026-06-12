@@ -62,7 +62,7 @@ export default {
       const token = localStorage.getItem('token');
 
       try {
-        const res = await axios.get('http://localhost:3000/api/prefect/results', {
+        const res = await axios.get('/api/prefect/results', {
           headers: { Authorization: `Bearer ${token}` }
         });
         this.nominationResults = res.data;

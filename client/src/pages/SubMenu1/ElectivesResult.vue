@@ -52,7 +52,7 @@ export default {
       const form = this.$route.query.form;
       const subject = this.$route.query.subject;
 
-      const res = await axios.post('http://localhost:3000/api/subjects/list', {
+      const res = await axios.post('/api/subjects/list', {
         form: form,
         subject: subject
       }, {
@@ -65,7 +65,7 @@ export default {
       const token = localStorage.getItem('token');
       const subject = this.$route.query.subject;
 
-      const res = await axios.post('http://localhost:3000/api/subjects/electiveName', {
+      const res = await axios.post('/api/subjects/electiveName', {
         subject: subject
       }, {
         headers: { Authorization: `Bearer ${token}` }

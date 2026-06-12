@@ -73,7 +73,7 @@ export default {
       const token = localStorage.getItem('token');
 
       try {
-        const res = await axios.get('http://localhost:3000/api/learning-goals/results', {
+        const res = await axios.get('/api/learning-goals/results', {
           headers: { Authorization: `Bearer ${token}` }
         });
         this.results = res.data;

@@ -64,7 +64,7 @@ export default {
 
       try {
         const decoded = jwtDecode(token);
-        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${decoded.id}`, {
+        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -82,7 +82,7 @@ export default {
         this.$set(this.selectedStudents, classId, []);
 
         try {
-          const res = await axios.get(`http://localhost:3000/api/students/by-class/${classId}`, {
+          const res = await axios.get(`/api/students/by-class/${classId}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           this.$set(this.studentsByClass, classId, res.data);
@@ -97,7 +97,7 @@ export default {
       if (!token || !this.teacher_id) return;
 
       try {
-        const res = await axios.get('http://localhost:3000/api/prefect/students', {
+        const res = await axios.get('/api/prefect/students', {
           params: { teacher_id: this.teacher_id },
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -128,7 +128,7 @@ export default {
       const teacherId = this.teacher_id;
       const selectedStudentIds = Object.values(this.selectedStudents).flat();
 
-      axios.post('http://localhost:3000/api/prefect/insert', {
+      axios.post('/api/prefect/insert', {
         teacher_id: teacherId,
         student_ids: selectedStudentIds
       }, {
@@ -140,7 +140,7 @@ export default {
           );
 
           if (removed.length > 0) {
-            axios.delete('http://localhost:3000/api/prefect/delete', {
+            axios.delete('/api/prefect/delete', {
               data: {
                 teacherId,
                 removed

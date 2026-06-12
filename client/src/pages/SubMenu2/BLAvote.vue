@@ -128,7 +128,7 @@ export default {
 
       try {
         const decoded = jwtDecode(token);
-        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${decoded.id}`, {
+        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         this.teacher_id = res.data.teacher_id;
@@ -139,8 +139,8 @@ export default {
     },
     async fetchStudentsForClass(classId, token) {
       const headers = { Authorization: `Bearer ${token}` };
-      const subjectUrl = `http://localhost:3000/api/students/by-class/${classId}/subject/${this.selectedSubject.subject_id}`;
-      const classUrl = `http://localhost:3000/api/students/by-class/${classId}`;
+      const subjectUrl = `/api/students/by-class/${classId}/subject/${this.selectedSubject.subject_id}`;
+      const classUrl = `/api/students/by-class/${classId}`;
 
       try {
         const res = await axios.get(subjectUrl, { headers });
@@ -180,7 +180,7 @@ export default {
       if (!token || !this.teacher_id) return;
 
       try {
-        const res = await axios.get('http://localhost:3000/api/bla/students', {
+        const res = await axios.get('/api/bla/students', {
           params: {
             subject_id: this.selectedSubject.subject_id,
             teacher_id: this.teacher_id
@@ -216,7 +216,7 @@ export default {
       const selectedStudentIds = Object.values(this.selectedStudents).flat();
 
       try {
-        await axios.post('http://localhost:3000/api/bla/insert', {
+        await axios.post('/api/bla/insert', {
           teacher_id: teacherId,
           subject_id: subjectId,
           student_ids: selectedStudentIds
@@ -232,7 +232,7 @@ export default {
 
           if (removed.length === 0) return;
 
-          await axios.delete('http://localhost:3000/api/bla/delete', {
+          await axios.delete('/api/bla/delete', {
             data: {
               subjectId,
               teacherId,

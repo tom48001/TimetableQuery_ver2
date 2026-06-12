@@ -22,11 +22,18 @@ import learningGoalRoutes from './routes/learningGoalRoutes.js';
 import importRoutes from "./routes/importRoutes.js";
 
 dotenv.config();
+
+const requiredEnv = ['JWT_SECRET', 'SESSION_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_CALLBACK_URL'];
+const missingEnv = requiredEnv.filter((key) => !process.env[key]);
+if (missingEnv.length > 0) {
+  throw new Error(`Missing required environment variables: ${missingEnv.join(', ')}`);
+}
+
 const app = express();
 
 // Database connection
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'secret123',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false
   }));
@@ -40,8 +47,9 @@ app.use(session({
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:8080', credentials: true }));
 app.use(bodyParser.json());
 
-//Auth
+// Auth. Keep /auth for existing local callbacks; use /api/auth for deployment through Apache reverse proxy.
 app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 
 // Routes
 app.use('/api/teachers', teacherRoutes);

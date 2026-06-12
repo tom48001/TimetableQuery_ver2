@@ -304,7 +304,7 @@ export default {
     },
     async fetchTeachers() {
       try {
-        const res = await axios.get('http://localhost:3000/api/teachers/getAllTeachers', {
+        const res = await axios.get('/api/teachers/getAllTeachers', {
           headers: this.authHeaders()
         });
         this.teachers = res.data.map(t => ({
@@ -324,7 +324,7 @@ export default {
     },
     async updateTeacher(teacher) {
       try {
-        await axios.put(`http://localhost:3000/api/teachers/${teacher.user_id}`, {
+        await axios.put(`/api/teachers/${teacher.user_id}`, {
           user_name: teacher.user_name,
           email: teacher.email,
           role: teacher.role,
@@ -344,7 +344,7 @@ export default {
     },
     async addTeacher() {
       try {
-        await axios.post('http://localhost:3000/api/teachers', this.newTeacher, {
+        await axios.post('/api/teachers', this.newTeacher, {
           headers: this.authHeaders()
         });
         alert(this.tr('User added.', '使用者已新增。'));
@@ -367,7 +367,7 @@ export default {
       if (!confirm(this.tr('Delete this user?', '確定刪除這個使用者？'))) return;
 
       try {
-        await axios.delete(`http://localhost:3000/api/teachers/${id}`, {
+        await axios.delete(`/api/teachers/${id}`, {
           headers: this.authHeaders()
         });
         alert(this.tr('User deleted.', '使用者已刪除。'));

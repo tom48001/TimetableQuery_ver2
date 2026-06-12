@@ -94,7 +94,7 @@ export default {
       this.messageType = '';
 
       try {
-        const res = await axios.put('http://localhost:3000/auth/change-password', {
+        const res = await axios.put('/api/auth/change-password', {
           currentPassword: this.currentPassword,
           newPassword: this.newPassword,
           confirmPassword: this.confirmPassword

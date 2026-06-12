@@ -184,14 +184,14 @@ export default {
       return { Authorization: `Bearer ${token}` };
     },
     async loadClasses() {
-      const res = await axios.get('http://localhost:3000/api/classes', {
+      const res = await axios.get('/api/classes', {
         headers: this.authHeaders()
       });
       this.classes = res.data;
     },
     async loadStudents() {
       try {
-        const res = await axios.get('http://localhost:3000/api/students/admin/list', {
+        const res = await axios.get('/api/students/admin/list', {
           headers: this.authHeaders()
         });
         this.students = res.data;
@@ -219,7 +219,7 @@ export default {
       }
 
       try {
-        await axios.post('http://localhost:3000/api/students/admin', this.newStudent, {
+        await axios.post('/api/students/admin', this.newStudent, {
           headers: this.authHeaders()
         });
         alert(this.tr('Student added.', '學生已新增。'));
@@ -237,7 +237,7 @@ export default {
       if (!confirm(this.tr(`Delete ${label}?`, `\u78ba\u5b9a\u522a\u9664 ${label}\uff1f`))) return;
 
       try {
-        await axios.delete(`http://localhost:3000/api/students/admin/${student.student_id}`, {
+        await axios.delete(`/api/students/admin/${student.student_id}`, {
           headers: this.authHeaders()
         });
         alert(this.tr('Student deleted.', '學生已刪除。'));

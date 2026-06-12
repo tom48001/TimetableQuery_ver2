@@ -37,7 +37,7 @@
           <button type="submit">{{ $t('login.submit') }}</button>
         </form>
 
-        <a href="http://localhost:3000/auth/google" class="google-login-link">
+        <a href="/api/auth/google" class="google-login-link">
           <img :src="require('@/assets/google-icon.png')" alt="Google Icon" class="google-icon" />
           <span>{{ $t('login.google') }}</span>
         </a>
@@ -59,7 +59,7 @@ export default {
   methods: {
     async handleLogin() {
       try {
-        const res = await axios.post('http://localhost:3000/auth/login', {
+        const res = await axios.post('/api/auth/login', {
           email: this.email,
           password: this.password
         });

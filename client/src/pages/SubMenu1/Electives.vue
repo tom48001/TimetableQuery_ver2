@@ -17,7 +17,7 @@ export default {
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     subjectLabel(subject) { return formatSubjectLabel(subject, this.$lang.locale); },
-    async fetchSubjects() { const token = localStorage.getItem('token'); const res = await axios.get('http://localhost:3000/api/subjects/findElective', { headers: { Authorization: `Bearer ${token}` } }); this.subjects = res.data; },
+    async fetchSubjects() { const token = localStorage.getItem('token'); const res = await axios.get('/api/subjects/findElective', { headers: { Authorization: `Bearer ${token}` } }); this.subjects = res.data; },
     goNext() { if (!this.form) { alert(this.tr('Please select a form.', '請選擇級別。')); return; } if (!this.selectedSubject) { alert(this.tr('Please select a subject.', '請選擇科目。')); return; } this.$router.push({ name: 'ElectivesResult', query: { form: this.form, subject: this.selectedSubject } }); }
   },
   mounted() { this.fetchSubjects(); }

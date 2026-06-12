@@ -99,7 +99,7 @@ export default {
         const observers = this.$route.query.observers;
         const target = this.$route.query.target;
         const observerIds = Array.isArray(observers) ? observers : String(observers || '').split(',').filter(Boolean);
-        const res = await axios.post('http://localhost:3000/api/observation/observe/schedule', { observerIds, targetId: target }, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.post('/api/observation/observe/schedule', { observerIds, targetId: target }, { headers: { Authorization: `Bearer ${token}` } });
         this.schedule = res.data;
       } catch (err) {
         alert(this.tr('Failed to load timetable.', '載入課表失敗。'));

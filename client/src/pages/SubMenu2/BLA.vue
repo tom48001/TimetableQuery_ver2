@@ -78,11 +78,11 @@ export default {
     countKey(subjectId, classId) { return `${subjectId}-${classId}`; },
     isAvailable(subjectId, classId) { return this.counts[this.countKey(subjectId, classId)] !== undefined; },
     countFor(subjectId, classId) { const value = this.counts[this.countKey(subjectId, classId)]; return value === undefined ? '' : value; },
-    async fetchSubjects() { const token = localStorage.getItem('token'); const res = await axios.get('http://localhost:3000/api/subjects', { headers: { Authorization: `Bearer ${token}` } }); this.subjects = res.data; },
-    async fetchClasses() { const token = localStorage.getItem('token'); const res = await axios.get('http://localhost:3000/api/classes', { headers: { Authorization: `Bearer ${token}` } }); this.classList = res.data; },
+    async fetchSubjects() { const token = localStorage.getItem('token'); const res = await axios.get('/api/subjects', { headers: { Authorization: `Bearer ${token}` } }); this.subjects = res.data; },
+    async fetchClasses() { const token = localStorage.getItem('token'); const res = await axios.get('/api/classes', { headers: { Authorization: `Bearer ${token}` } }); this.classList = res.data; },
     async fetchCounts() {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/subjects/class-counts', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get('/api/subjects/class-counts', { headers: { Authorization: `Bearer ${token}` } });
       const nextCounts = {};
       res.data.forEach(row => { nextCounts[this.countKey(row.subject_id, row.class_id)] = Number(row.student_count) || 0; });
       this.counts = nextCounts;

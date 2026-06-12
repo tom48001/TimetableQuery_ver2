@@ -102,7 +102,7 @@ export default {
     const teacherId = this.$route.query.teacherId;
 
     try {
-      const res = await axios.get(`http://localhost:3000/api/swap/teacher-lessons/${teacherId}`, {
+      const res = await axios.get(`/api/swap/teacher-lessons/${teacherId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       this.lessons = res.data;

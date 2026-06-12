@@ -52,7 +52,7 @@ export default {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     async loadClassList() {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/classes', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get('/api/classes', { headers: { Authorization: `Bearer ${token}` } });
       this.classList = res.data;
     },
     goToResult() { this.$router.push({ name: 'ClassTimetableResult', query: { classId: this.selectedClass } }); }

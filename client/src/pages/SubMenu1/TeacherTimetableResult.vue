@@ -101,7 +101,7 @@ export default {
       try {
         const token = localStorage.getItem('token');
         const ids = this.normalizeTeacherIds(this.$route.query.teacherId);
-        const res = await axios.post('http://localhost:3000/api/teachers/schedule', { teacherIds: ids }, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.post('/api/teachers/schedule', { teacherIds: ids }, { headers: { Authorization: `Bearer ${token}` } });
         this.schedule = res.data;
       } catch (err) {
         const detail = err.response && err.response.data && (err.response.data.detail || err.response.data.error);

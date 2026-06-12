@@ -86,7 +86,7 @@ export default {
       try {
         const token = localStorage.getItem('token');
         const roomId = this.$route.query.roomId;
-        const res = await axios.get(`http://localhost:3000/api/rooms/schedule/${roomId}`, {
+        const res = await axios.get(`/api/rooms/schedule/${roomId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         this.schedule = res.data;

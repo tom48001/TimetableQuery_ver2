@@ -56,7 +56,7 @@ export default {
   },
   async mounted() {
     const token = localStorage.getItem('token');
-    const res = await axios.get('http://localhost:3000/api/classes', { headers: { Authorization: `Bearer ${token}` } });
+    const res = await axios.get('/api/classes', { headers: { Authorization: `Bearer ${token}` } });
     this.classes = res.data;
   },
   methods: {
@@ -65,7 +65,7 @@ export default {
     async fetchStudents() {
       if (!this.selectedClass) return;
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:3000/api/students/by-class/${this.selectedClass}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`/api/students/by-class/${this.selectedClass}`, { headers: { Authorization: `Bearer ${token}` } });
       this.students = res.data;
       this.selectedStudent = '';
       this.studentSearch = '';

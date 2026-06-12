@@ -108,7 +108,7 @@ export default {
       const token = localStorage.getItem('token');
 
       try {
-        const res = await axios.post('http://localhost:3000/api/teachers/free-teachers-day', {
+        const res = await axios.post('/api/teachers/free-teachers-day', {
           weekday: this.weekday
         }, {
           headers: { Authorization: `Bearer ${token}` }

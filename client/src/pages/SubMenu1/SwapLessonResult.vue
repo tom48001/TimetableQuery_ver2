@@ -112,7 +112,7 @@ export default {
     const token = localStorage.getItem('token');
 
     try {
-      const res = await axios.post('http://localhost:3000/api/swap/substitute-candidates',
+      const res = await axios.post('/api/swap/substitute-candidates',
         { day, period, classId, subjectId, teacherId },
         { headers: { Authorization: `Bearer ${token}` } }
       );

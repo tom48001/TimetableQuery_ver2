@@ -83,7 +83,7 @@ export default {
         const decoded = jwtDecode(token);
         const userId = decoded.id;
 
-        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${userId}`, {
+        const res = await axios.get(`/api/teachers/from-user/${userId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -101,7 +101,7 @@ export default {
         }
 
         const res = await axios.post(
-          'http://localhost:3000/api/teachers/schedule',
+          '/api/teachers/schedule',
           { teacherIds: [this.teacherId] },
           { headers: { Authorization: `Bearer ${token}` } }
         );
