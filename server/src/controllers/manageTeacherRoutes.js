@@ -1,8 +1,9 @@
-﻿import db from '../db.js';
+import db from '../db.js';
 import bcrypt from 'bcrypt';
 import {
   ensurePermissionsColumn,
   permissionsForUser,
+  parsePermissions,
   stringifyPermissions,
   hasPermission
 } from '../auth/permissions.js';
@@ -37,12 +38,71 @@ function sanitizePermissions(permissions, role, req) {
   }
   return stringifyPermissions(permissions, role);
 }
+function sanitizeTeacherCode(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 40) || 'T';
+}
+
+async function uniqueTeacherCode(baseCode, userId) {
+  const base = sanitizeTeacherCode(baseCode);
+  let code = base;
+  let suffix = 1;
+
+  while (true) {
+    const [rows] = await db.query(
+      'SELECT teacher_id FROM teacher WHERE teacher_code = ? AND user_id <> ?',
+      [code, userId]
+    );
+    if (!rows.length) return code;
+    suffix += 1;
+    code = `${base}${suffix}`.slice(0, 50);
+  }
+}
+
+async function syncTeacherProfile(userId, userName, email, role, permissionText) {
+  const permissions = parsePermissions(permissionText, role);
+  const shouldHaveTeacherProfile = permissions.timetable || permissions.nominations;
+
+  const [existingRows] = await db.query('SELECT teacher_id, teacher_code FROM teacher WHERE user_id = ?', [userId]);
+  if (!shouldHaveTeacherProfile) {
+    if (existingRows.length) {
+      await db.query('UPDATE teacher SET status = ? WHERE user_id = ?', ['inactive', userId]);
+    }
+    return;
+  }
+
+  const teacherName = String(userName || email || `User ${userId}`).trim();
+  if (existingRows.length) {
+    await db.query(
+      'UPDATE teacher SET teacher_name = ?, status = ? WHERE user_id = ?',
+      [teacherName, 'active', userId]
+    );
+    return;
+  }
+
+  const codeSource = userName || (email ? email.split('@')[0] : `T${userId}`);
+  const teacherCode = await uniqueTeacherCode(codeSource, userId);
+  await db.query(
+    'INSERT INTO teacher (user_id, teacher_name, teacher_code, status) VALUES (?, ?, ?, ?)',
+    [userId, teacherName, teacherCode, 'active']
+  );
+}
+export async function syncEligibleTeacherProfiles() {
+  await ensurePermissionsColumn();
+  const [users] = await db.query('SELECT user_id, user_name, email, role, permissions FROM user');
+  for (const user of users) {
+    await syncTeacherProfile(user.user_id, user.user_name, user.email, user.role, user.permissions);
+  }
+}
 
 export const getAllTeachers = async (req, res) => {
   if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission denied.' });
 
   try {
-    await ensurePermissionsColumn();
+    await syncEligibleTeacherProfiles();
     const roles = allowedRolesFor(req);
     const placeholders = roles.map(() => '?').join(', ');
     const [teachers] = await db.query(
@@ -72,10 +132,12 @@ export const createTeacher = async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    await db.query(
+    const permissionText = sanitizePermissions(permissions, normalizedRole, req);
+    const [result] = await db.query(
       'INSERT INTO user (user_name, email, password, role, permissions) VALUES (?, ?, ?, ?, ?)',
-      [user_name, email, hashed, normalizedRole, sanitizePermissions(permissions, normalizedRole, req)]
+      [user_name, email, hashed, normalizedRole, permissionText]
     );
+    await syncTeacherProfile(result.insertId, user_name, email, normalizedRole, permissionText);
     res.json({ message: 'User created successfully.' });
   } catch (error) {
     console.error('Failed to create user:', error);
@@ -118,6 +180,7 @@ export const updateTeacher = async (req, res) => {
     }
 
     await db.query(query, params);
+    await syncTeacherProfile(id, user_name, email, normalizedRole, permissionText);
     res.json({ message: 'User updated successfully.' });
   } catch (error) {
     console.error('Failed to update user:', error);

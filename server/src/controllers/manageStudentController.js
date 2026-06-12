@@ -1,4 +1,4 @@
-﻿import db from '../db.js';
+import db from '../db.js';
 
 function normalizeText(value) {
   return String(value || '').trim();
@@ -73,6 +73,53 @@ export const createManagedStudent = async (req, res) => {
   }
 };
 
+export const updateManagedStudent = async (req, res) => {
+  const studentId = Number(req.params.studentId);
+  const student_ch_name = normalizeText(req.body.student_ch_name);
+  const student_eng_name = normalizeText(req.body.student_eng_name);
+  const class_id = Number(req.body.class_id);
+  const class_number = normalizeText(req.body.class_number).padStart(2, '0');
+  const sex = normalizeSex(req.body.sex);
+
+  if (!studentId) {
+    return res.status(400).json({ error: 'Invalid student id.' });
+  }
+
+  if (!student_ch_name || !student_eng_name || !class_id || !class_number || !sex) {
+    return res.status(400).json({ error: 'Invalid student data.' });
+  }
+
+  try {
+    const [classRows] = await db.query('SELECT class_id FROM class WHERE class_id = ?', [class_id]);
+    if (!classRows.length) {
+      return res.status(400).json({ error: 'Class not found.' });
+    }
+
+    const [duplicateRows] = await db.query(
+      'SELECT student_id FROM student WHERE class_id = ? AND class_number = ? AND student_id <> ?',
+      [class_id, class_number, studentId]
+    );
+    if (duplicateRows.length) {
+      return res.status(409).json({ error: 'This class number already exists in the selected class.' });
+    }
+
+    const [result] = await db.query(
+      `UPDATE student
+       SET student_ch_name = ?, student_eng_name = ?, class_id = ?, class_number = ?, sex = ?
+       WHERE student_id = ?`,
+      [student_ch_name, student_eng_name, class_id, class_number, sex, studentId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Student not found.' });
+    }
+
+    res.json({ message: 'Student updated successfully.' });
+  } catch (error) {
+    console.error('Failed to update student:', error);
+    res.status(500).json({ error: 'Failed to update student.' });
+  }
+};
 export const deleteManagedStudent = async (req, res) => {
   const studentId = Number(req.params.studentId);
 

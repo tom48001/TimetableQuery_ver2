@@ -68,6 +68,12 @@
           <button type="button" class="secondary-btn" @click="loadStudents">{{ tr('Reload', '重新載入') }}</button>
         </div>
 
+        <div class="table-meta">
+          <span>{{ tr('Total', '總數') }}: {{ students.length }}</span>
+          <span>{{ tr('Matched', '符合') }}: {{ filteredStudents.length }}</span>
+          <span>{{ pageRangeLabel }}</span>
+        </div>
+
         <div class="table-wrap">
           <table v-if="paginatedStudents.length" class="student-table">
             <thead>
@@ -82,12 +88,39 @@
             </thead>
             <tbody>
               <tr v-for="student in paginatedStudents" :key="student.student_id">
-                <td>{{ student.class_name || '-' }}</td>
-                <td>{{ student.class_number }}</td>
-                <td class="name-cell">{{ student.student_ch_name }}</td>
-                <td>{{ student.student_eng_name }}</td>
-                <td>{{ student.sex }}</td>
-                <td><button type="button" class="danger-btn" @click="deleteStudent(student)">{{ tr('Delete', '刪除') }}</button></td>
+                <template v-if="editingStudentId === student.student_id">
+                  <td>
+                    <select v-model="editStudent.class_id">
+                      <option v-for="classItem in classes" :key="classItem.class_id" :value="classItem.class_id">
+                        {{ classItem.class_name }}
+                      </option>
+                    </select>
+                  </td>
+                  <td><input v-model.trim="editStudent.class_number" maxlength="2" /></td>
+                  <td><input v-model.trim="editStudent.student_ch_name" /></td>
+                  <td><input v-model.trim="editStudent.student_eng_name" /></td>
+                  <td>
+                    <select v-model="editStudent.sex">
+                      <option value="F">F</option>
+                      <option value="M">M</option>
+                    </select>
+                  </td>
+                  <td class="action-cell">
+                    <button type="button" class="primary-btn compact-btn" @click="saveStudent(student)">{{ tr('Save', '儲存') }}</button>
+                    <button type="button" class="secondary-btn compact-btn" @click="cancelEdit">{{ tr('Cancel', '取消') }}</button>
+                  </td>
+                </template>
+                <template v-else>
+                  <td>{{ student.class_name || '-' }}</td>
+                  <td>{{ student.class_number }}</td>
+                  <td class="name-cell">{{ student.student_ch_name }}</td>
+                  <td>{{ student.student_eng_name }}</td>
+                  <td>{{ student.sex }}</td>
+                  <td class="action-cell">
+                    <button type="button" class="secondary-btn compact-btn" @click="startEdit(student)">{{ tr('Edit', '編輯') }}</button>
+                    <button type="button" class="danger-btn compact-btn" @click="deleteStudent(student)">{{ tr('Delete', '刪除') }}</button>
+                  </td>
+                </template>
               </tr>
             </tbody>
           </table>
@@ -98,7 +131,7 @@
           <button type="button" class="secondary-btn" :disabled="currentPage === 1" @click="currentPage -= 1">
             {{ tr('Previous', '上一頁') }}
           </button>
-          <span>{{ tr('Page', '\u9801') }} {{ currentPage }} / {{ totalPages }}</span>
+          <span>{{ tr('Page', '頁') }} {{ currentPage }} / {{ totalPages }}</span>
           <button type="button" class="secondary-btn" :disabled="currentPage === totalPages" @click="currentPage += 1">
             {{ tr('Next', '下一頁') }}
           </button>
@@ -120,8 +153,10 @@ export default {
       searchText: '',
       selectedClassId: '',
       classNumberFilter: '',
-      pageSize: 25,
+      pageSize: 30,
       currentPage: 1,
+      editingStudentId: null,
+      editStudent: null,
       newStudent: {
         student_ch_name: '',
         student_eng_name: '',
@@ -158,19 +193,13 @@ export default {
       if (!this.filteredStudents.length) return this.tr('No records', '沒有記錄');
       const start = (this.currentPage - 1) * this.pageSize + 1;
       const end = Math.min(start + this.pageSize - 1, this.filteredStudents.length);
-      return this.tr(`Showing ${start}-${end}`, `\u986f\u793a\u7b2c ${start}-${end} \u4f4d`);
+      return this.tr(`Showing ${start}-${end}`, `顯示第 ${start}-${end} 位`);
     }
   },
   watch: {
-    searchText() {
-      this.currentPage = 1;
-    },
-    selectedClassId() {
-      this.currentPage = 1;
-    },
-    classNumberFilter() {
-      this.currentPage = 1;
-    },
+    searchText() { this.currentPage = 1; },
+    selectedClassId() { this.currentPage = 1; },
+    classNumberFilter() { this.currentPage = 1; },
     filteredStudents() {
       if (this.currentPage > this.totalPages) this.currentPage = this.totalPages;
     }
@@ -184,16 +213,12 @@ export default {
       return { Authorization: `Bearer ${token}` };
     },
     async loadClasses() {
-      const res = await axios.get('/api/classes', {
-        headers: this.authHeaders()
-      });
+      const res = await axios.get('/api/classes', { headers: this.authHeaders() });
       this.classes = res.data;
     },
     async loadStudents() {
       try {
-        const res = await axios.get('/api/students/admin/list', {
-          headers: this.authHeaders()
-        });
+        const res = await axios.get('/api/students/admin/list', { headers: this.authHeaders() });
         this.students = res.data;
         if (this.currentPage > this.totalPages) this.currentPage = this.totalPages;
       } catch (error) {
@@ -219,27 +244,55 @@ export default {
       }
 
       try {
-        await axios.post('/api/students/admin', this.newStudent, {
-          headers: this.authHeaders()
-        });
+        await axios.post('/api/students/admin', this.newStudent, { headers: this.authHeaders() });
         alert(this.tr('Student added.', '學生已新增。'));
         this.resetForm();
         this.loadStudents();
       } catch (error) {
         const status = error.response ? error.response.status : 0;
         alert(status === 409
-          ? this.tr('Student already exists.', '學生已存在。')
+          ? this.tr('This class number already exists.', '這個班別已有相同學號。')
           : this.tr('Failed to add student.', '新增學生失敗。'));
+      }
+    },
+    startEdit(student) {
+      this.editingStudentId = student.student_id;
+      this.editStudent = {
+        student_ch_name: student.student_ch_name,
+        student_eng_name: student.student_eng_name,
+        class_id: student.class_id,
+        class_number: student.class_number,
+        sex: student.sex
+      };
+    },
+    cancelEdit() {
+      this.editingStudentId = null;
+      this.editStudent = null;
+    },
+    async saveStudent(student) {
+      if (!this.editStudent.class_id || !this.editStudent.class_number || !this.editStudent.student_ch_name || !this.editStudent.student_eng_name) {
+        alert(this.tr('Please fill in all required fields.', '請填寫所有必填欄位。'));
+        return;
+      }
+
+      try {
+        await axios.put(`/api/students/admin/${student.student_id}`, this.editStudent, { headers: this.authHeaders() });
+        alert(this.tr('Student updated.', '學生資料已更新。'));
+        this.cancelEdit();
+        this.loadStudents();
+      } catch (error) {
+        const status = error.response ? error.response.status : 0;
+        alert(status === 409
+          ? this.tr('This class number already exists.', '這個班別已有相同學號。')
+          : this.tr('Failed to update student.', '更新學生資料失敗。'));
       }
     },
     async deleteStudent(student) {
       const label = `${student.class_name || ''}${student.class_number || ''} ${student.student_ch_name || student.student_eng_name}`.trim();
-      if (!confirm(this.tr(`Delete ${label}?`, `\u78ba\u5b9a\u522a\u9664 ${label}\uff1f`))) return;
+      if (!confirm(this.tr(`Delete ${label}?`, `確定刪除 ${label}？`))) return;
 
       try {
-        await axios.delete(`/api/students/admin/${student.student_id}`, {
-          headers: this.authHeaders()
-        });
+        await axios.delete(`/api/students/admin/${student.student_id}`, { headers: this.authHeaders() });
         alert(this.tr('Student deleted.', '學生已刪除。'));
         this.loadStudents();
       } catch (error) {
@@ -262,7 +315,7 @@ export default {
 }
 
 .admin-panel {
-  max-width: 1120px;
+  max-width: 1180px;
   margin: 0 auto;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -274,11 +327,17 @@ export default {
 
 .page-header,
 .list-toolbar,
-.pagination-bar {
+.pagination-bar,
+.table-meta,
+.action-cell {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 14px;
+}
+
+.page-header,
+.list-toolbar {
+  justify-content: space-between;
 }
 
 .page-header p {
@@ -295,13 +354,8 @@ h2 {
   margin: 0;
 }
 
-h1 {
-  font-size: 32px;
-}
-
-h2 {
-  font-size: 22px;
-}
+h1 { font-size: 32px; }
+h2 { font-size: 22px; }
 
 .summary-pill {
   border: 1px solid var(--border-strong);
@@ -329,10 +383,7 @@ h2 {
   margin-top: 14px;
 }
 
-.form-grid {
-  grid-template-columns: repeat(5, minmax(130px, 1fr));
-}
-
+.form-grid { grid-template-columns: repeat(5, minmax(130px, 1fr)); }
 .filter-grid {
   flex: 1;
   grid-template-columns: minmax(220px, 1.6fr) minmax(150px, 0.8fr) minmax(130px, 0.6fr);
@@ -378,40 +429,22 @@ select:focus {
   padding: 0 16px;
 }
 
-.primary-btn {
-  background: var(--primary);
-  color: #fff;
+.primary-btn { background: var(--primary); color: #fff; margin-top: 14px; }
+.secondary-btn { background: #fff; border: 1px solid var(--border-strong); color: var(--text); }
+.danger-btn { background: var(--danger); color: #fff; }
+.compact-btn { height: 34px; margin-top: 0; padding: 0 12px; }
+
+.primary-btn:hover { background: var(--primary-dark); }
+.secondary-btn:hover { border-color: var(--primary); color: var(--primary); }
+.secondary-btn:disabled { background: #d7e1e6; color: #7b8d97; cursor: not-allowed; }
+.danger-btn:hover { background: #9f302b; }
+
+.table-meta {
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 800;
   margin-top: 14px;
-}
-
-.secondary-btn {
-  background: #fff;
-  border: 1px solid var(--border-strong);
-  color: var(--text);
-}
-
-.danger-btn {
-  background: var(--danger);
-  color: #fff;
-}
-
-.primary-btn:hover {
-  background: var(--primary-dark);
-}
-
-.secondary-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.secondary-btn:disabled {
-  background: #d7e1e6;
-  color: #7b8d97;
-  cursor: not-allowed;
-}
-
-.danger-btn:hover {
-  background: #9f302b;
 }
 
 .table-wrap {
@@ -421,7 +454,7 @@ select:focus {
 
 .student-table {
   width: 100%;
-  min-width: 820px;
+  min-width: 960px;
   border-collapse: collapse;
   background: #fff;
 }
@@ -431,6 +464,7 @@ select:focus {
   border: 1px solid var(--border);
   padding: 10px;
   text-align: left;
+  vertical-align: middle;
 }
 
 .student-table th {
@@ -441,16 +475,9 @@ select:focus {
   font-weight: 800;
 }
 
-.name-cell {
-  font-weight: 800;
-}
-
-.pagination-bar {
-  justify-content: center;
-  color: var(--text-muted);
-  font-weight: 800;
-  margin-top: 14px;
-}
+.name-cell { font-weight: 800; }
+.action-cell { flex-wrap: wrap; }
+.pagination-bar { justify-content: center; color: var(--text-muted); font-weight: 800; margin-top: 14px; }
 
 .empty-state {
   border: 1px dashed var(--border-strong);
@@ -462,35 +489,20 @@ select:focus {
 }
 
 @media (max-width: 900px) {
-  .form-grid {
-    grid-template-columns: repeat(2, minmax(140px, 1fr));
-  }
-
-  .filter-grid {
-    grid-template-columns: 1fr;
-  }
+  .form-grid { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+  .filter-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
-  .admin-panel {
-    padding: 20px;
-  }
-
+  .admin-panel { padding: 20px; }
   .page-header,
   .list-toolbar,
   .pagination-bar {
     align-items: stretch;
     flex-direction: column;
   }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
+  .form-grid { grid-template-columns: 1fr; }
   .primary-btn,
-  .secondary-btn {
-    max-width: none;
-    width: 100%;
-  }
+  .secondary-btn { max-width: none; width: 100%; }
 }
 </style>

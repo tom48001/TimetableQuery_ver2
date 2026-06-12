@@ -12,6 +12,7 @@ import {
 import {
   getManagedStudents,
   createManagedStudent,
+  updateManagedStudent,
   deleteManagedStudent
 } from '../controllers/manageStudentController.js';
 
@@ -20,6 +21,7 @@ const canReadStudentData = requireAnyPermission(['timetable', 'nominations', 'ma
 
 router.get('/admin/list', ensureJWT, requirePermission('manageStudents'), getManagedStudents);
 router.post('/admin', ensureJWT, requirePermission('manageStudents'), createManagedStudent);
+router.put('/admin/:studentId', ensureJWT, requirePermission('manageStudents'), updateManagedStudent);
 router.delete('/admin/:studentId', ensureJWT, requirePermission('manageStudents'), deleteManagedStudent);
 
 router.get('/by-class/:classId/subject/:subjectId', ensureJWT, canReadStudentData, getStudentsByClassNSubject);

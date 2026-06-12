@@ -2,7 +2,7 @@ import express from 'express';
 import db from '../db.js';
 import { ensureJWT } from '../auth/auth.js';
 import { hasPermission, requireAnyPermission, requirePermission } from '../auth/permissions.js';
-import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher } from '../controllers/manageTeacherRoutes.js';
+import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, syncEligibleTeacherProfiles } from '../controllers/manageTeacherRoutes.js';
 import { getTeachersSchedule } from '../controllers/teacherScheduleController.js';
 import pool from '../db.js';
 
@@ -16,6 +16,7 @@ router.post('/schedule', requirePermission('timetable'), getTeachersSchedule);
 
 router.get('/list', requireAnyPermission(['timetable', 'nominations', 'manageUsers']), async (req, res) => {
   try {
+    await syncEligibleTeacherProfiles();
     const [rows] = await db.query(`
       SELECT
         t.teacher_id,
@@ -23,6 +24,7 @@ router.get('/list', requireAnyPermission(['timetable', 'nominations', 'manageUse
         COUNT(tt.timetable_id) AS lesson_count
       FROM teacher t
       LEFT JOIN timetable tt ON tt.teacher_id = t.teacher_id
+      WHERE COALESCE(t.status, 'active') = 'active'
       GROUP BY t.teacher_id, t.teacher_name
       ORDER BY
         CASE WHEN COUNT(tt.timetable_id) > 0 THEN 0 ELSE 1 END,
@@ -43,12 +45,14 @@ router.post('/free-teachers', requirePermission('timetable'), async (req, res) =
   }
 
   try {
+    await syncEligibleTeacherProfiles();
     const placeholders = period.map(() => '?').join(', ');
     const [rows] = await db.query(
       `
       SELECT t.teacher_id, t.teacher_name
       FROM teacher t
-      WHERE t.teacher_id NOT IN (
+      WHERE COALESCE(t.status, 'active') = 'active'
+        AND t.teacher_id NOT IN (
         SELECT tt.teacher_id
         FROM timetable tt
         WHERE tt.day_of_week = ? AND tt.period_id IN (${placeholders})
@@ -73,6 +77,7 @@ router.post('/free-teachers-day', requirePermission('timetable'), async (req, re
   }
 
   try {
+    await syncEligibleTeacherProfiles();
     const [rows] = await db.query(
       `
       SELECT
@@ -86,6 +91,7 @@ router.post('/free-teachers-day', requirePermission('timetable'), async (req, re
        AND tt.day_of_week = ?
        AND tt.period_id BETWEEN 1 AND 12
       LEFT JOIN class c ON tt.class_id = c.class_id
+      WHERE COALESCE(t.status, 'active') = 'active'
       ORDER BY t.teacher_name, tt.period_id
       `,
       [weekday]
@@ -122,8 +128,9 @@ router.get('/from-user/:userId', requireAnyPermission(['timetable', 'nominations
     return res.status(403).json({ code: 'NO_PERMISSION', error: 'No permission to view another user teacher account.' });
   }
   try {
+    await syncEligibleTeacherProfiles();
     const [rows] = await pool.query(
-      'SELECT teacher_id FROM teacher WHERE user_id = ?',
+      'SELECT teacher_id FROM teacher WHERE user_id = ? AND COALESCE(status, \'active\') = \'active\'',
       [userId]
     );
     if (rows.length === 0) {
