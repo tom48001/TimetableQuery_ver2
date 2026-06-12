@@ -64,11 +64,7 @@
           </select>
           <button class="secondary-btn" @click="clearFilters">{{ tr('Clear', '清除') }}</button>
         </div>
-
         <div class="list-status">
-          <span>{{ tr('Total', '\u7e3d\u6578') }}: {{ teachers.length }}</span>
-          <span>{{ tr('Matched', '\u7b26\u5408') }}: {{ filteredTeachers.length }}</span>
-          <span>{{ pageRangeLabel }}</span>
         </div>
 
         <div class="table-wrap">

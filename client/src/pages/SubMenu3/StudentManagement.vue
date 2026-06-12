@@ -3,7 +3,6 @@
     <section class="admin-panel">
       <header class="page-header">
         <div>
-          <p>{{ tr('Student Records', '學生資料') }}</p>
           <h1>{{ tr('Student Management', '學生管理') }}</h1>
         </div>
         <span class="summary-pill">{{ filteredStudents.length }} / {{ students.length }} {{ tr('students', '學生') }}</span>
@@ -69,9 +68,6 @@
         </div>
 
         <div class="table-meta">
-          <span>{{ tr('Total', '總數') }}: {{ students.length }}</span>
-          <span>{{ tr('Matched', '符合') }}: {{ filteredStudents.length }}</span>
-          <span>{{ pageRangeLabel }}</span>
         </div>
 
         <div class="table-wrap">
