@@ -1,5 +1,5 @@
 <template>
-  <div class="redirect-page">甇?摰? Google ?餃...</div>
+  <div class="redirect-page">{{ $lang && $lang.locale === 'en' ? 'Signing in with Google...' : '\u6b63\u5728\u4f7f\u7528 Google \u767b\u5165...' }}</div>
 </template>
 
 <script>

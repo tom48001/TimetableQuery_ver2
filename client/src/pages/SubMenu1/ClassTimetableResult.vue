@@ -1,10 +1,10 @@
 <template>
   <div class="schedule-container">
-    <h1>{{ tr('Class Timetable', '各班上課時間表') }}</h1>
+    <h1>{{ tr('Class Timetable', '\u5404\u73ed\u4e0a\u8ab2\u6642\u9593\u8868') }}</h1>
     <table class="timetable">
       <thead>
         <tr>
-          <th>{{ tr('Period / Day', '課節 / 星期') }}</th>
+          <th>{{ tr('Period / Day', '\u8ab2\u7bc0 / \u661f\u671f') }}</th>
           <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
         </tr>
       </thead>
@@ -18,7 +18,7 @@
               class="cell-entry"
               :class="{ 'red-entry': periodName(item) === 'Period 11' || periodName(item) === 'Period 12' }"
             >
-              <strong>{{ tr('Teacher', '老師') }}: {{ item.teacher_name }}</strong><br />
+              <strong>{{ tr('Teacher', '\u8001\u5e2b') }}: {{ item.teacher_name }}</strong><br />
               {{ item.class_name }} | {{ subjectLabel(item) }}<br />
               {{ roomLabel(item.room_name) }}
             </div>
@@ -28,7 +28,7 @@
     </table>
 
     <p v-if="loaded && schedule.length === 0" class="empty-message">
-      {{ tr('No timetable data.', '沒有課表資料。') }}
+      {{ tr('No timetable data.', '\u6c92\u6709\u8ab2\u8868\u8cc7\u6599\u3002') }}
     </p>
   </div>
 </template>
@@ -84,7 +84,7 @@ export default {
     },
     periodLabel(period, time, electiveTime) {
       const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
-      const elective = electiveTime ? '<br><span class="red-time">' + this.tr('Elective', '選修') + ' ' + electiveTime + '</span>' : '';
+      const elective = electiveTime ? '<br><span class="red-time">' + this.tr('Elective', '\u9078\u4fee') + ' ' + electiveTime + '</span>' : '';
       return label + '<br><small>' + time + elective + '</small>';
     },
     periodName(item) {
@@ -100,7 +100,7 @@ export default {
         const res = await axios.get(`/api/classes/schedule/${classId}`, { headers: { Authorization: `Bearer ${token}` } });
         this.schedule = res.data;
       } catch (err) {
-        alert(this.tr('Failed to load timetable.', '載入課表失敗。'));
+        alert(this.tr('Failed to load timetable.', '\u8f09\u5165\u8ab2\u8868\u5931\u6557\u3002'));
         console.error(err);
       } finally {
         this.loaded = true;

@@ -58,7 +58,7 @@ export default {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      console.log('?豯止齒??:', res.data);
+      console.log('Loaded elective data:', res.data);
       this.stuedntElectives = await res.data;
     },
     async getElectives() {
@@ -70,7 +70,7 @@ export default {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      console.log('?豯止齒??:', res.data.subject_name);
+      console.log('Loaded elective subject:', res.data.subject_name);
       this.electineName = await res.data.subject_name;
     }
   },

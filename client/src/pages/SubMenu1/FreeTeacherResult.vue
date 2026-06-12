@@ -3,14 +3,14 @@
     <section class="result-panel">
       <header class="result-header">
         <h1>{{ date }} ({{ displayWeekday }})</h1>
-        <h2>{{ periodLabel }} {{ tr('Free Teachers', '空堂老師') }}</h2>
+        <h2>{{ periodLabel }} {{ tr('Free Teachers', '\u7a7a\u5802\u8001\u5e2b') }}</h2>
       </header>
 
       <div class="table-wrap">
         <table v-if="freeTeachers.length" class="free-table">
           <thead>
             <tr>
-              <th class="teacher-col">{{ tr('Teacher', '老師') }}</th>
+              <th class="teacher-col">{{ tr('Teacher', '\u8001\u5e2b') }}</th>
               <th v-for="periodNumber in periodNumbers" :key="periodNumber">
                 {{ periodText(periodNumber) }}
               </th>
@@ -28,8 +28,8 @@
           </tbody>
         </table>
 
-        <p v-else-if="loaded" class="empty-message">{{ tr('No free teachers found.', '找不到空堂老師。') }}</p>
-        <p v-else class="empty-message">{{ tr('Loading...', '載入中...') }}</p>
+        <p v-else-if="loaded" class="empty-message">{{ tr('No free teachers found.', '\u6c92\u6709\u7a7a\u5802\u8001\u5e2b\u3002') }}</p>
+        <p v-else class="empty-message">{{ tr('Loading...', '\u8f09\u5165\u4e2d...') }}</p>
       </div>
     </section>
   </main>
@@ -117,7 +117,7 @@ export default {
         this.teachers = res.data;
       } catch (err) {
         console.error('Failed to load free teacher day schedule:', err);
-        alert(this.tr('Failed to load free teachers.', '載入空堂老師失敗。'));
+        alert(this.tr('Failed to load free teachers.', '\u8f09\u5165\u7a7a\u5802\u8001\u5e2b\u5931\u6557\u3002'));
       } finally {
         this.loaded = true;
       }

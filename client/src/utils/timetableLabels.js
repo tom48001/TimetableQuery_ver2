@@ -87,25 +87,36 @@ export function roomLabel(roomName, locale) {
   const value = String(roomName || '');
   if (locale !== 'en') return value;
 
+  const replacements = [
+    ['\u8996\u89ba\u85dd\u8853\u5ba4', 'Visual Arts Room'],
+    ['\u97f3\u6a02\u5ba4', 'Music Room'],
+    ['\u5730\u7406\u5ba4', 'Geography Room'],
+    ['\u5716\u66f8\u9928', 'Library'],
+    ['\u96fb\u8166\u5ba4', 'Computer Room'],
+    ['\u6f14\u8b1b\u5ef3', 'Lecture Theatre'],
+    ['\u5287\u85dd\u5ba4', 'Drama Room'],
+    ['CAL \u5ba4', 'CAL Room'],
+    ['CAL\u5ba4', 'CAL Room'],
+    ['\u5bb6\u653f\u5ba4', 'Home Economics Room'],
+    ['\u6703\u8b70\u5ba4', 'Conference Room'],
+    ['\u6eab\u5ba4', 'Greenhouse'],
+    ['\u79ae\u5802', 'Hall'],
+    ['\u6709\u84cb\u64cd\u5834', 'Covered Playground'],
+    ['\u64cd\u5834', 'Playground'],
+    ['\u8ab2\u5ba4', 'Classroom'],
+    ['\u6559\u5ba4', 'Classroom'],
+    ['\u5ba4', 'Room']
+  ];
+
+  let translated = value;
+  replacements.forEach(([from, to]) => {
+    translated = translated.split(from).join(to);
+  });
+
+  if (translated !== value) return translated;
+
   return value
-    .replace(/課室/g, 'Classroom')
-    .replace(/音樂室/g, 'Music Room')
-    .replace(/視覺藝術室/g, 'Visual Arts Room')
-    .replace(/視覺藝術/g, 'Visual Arts')
-    .replace(/地理室/g, 'Geography Room')
-    .replace(/圖書館/g, 'Library')
-    .replace(/電腦室/g, 'Computer Room')
-    .replace(/演講廳/g, 'Lecture Theatre')
-    .replace(/劇藝室/g, 'Drama Room')
-    .replace(/劇藝/g, 'Drama')
-    .replace(/禮堂/g, 'Hall')
-    .replace(/操場/g, 'Playground')
-    .replace(/有蓋操場/g, 'Covered Playground')
-    .replace(/溫室/g, 'Greenhouse')
-    .replace(/家政室/g, 'Home Economics Room')
-    .replace(/會議室/g, 'Conference Room')
     .replace(/Little Britain/g, 'Little Britain')
-    .replace(/CAL\s*室/g, 'CAL Room')
     .replace(/Bio\s*Lab/g, 'Bio Lab')
     .replace(/Phy\s*Lab/g, 'Phy Lab')
     .replace(/IS\s*Lab/g, 'IS Lab')

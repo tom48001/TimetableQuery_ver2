@@ -3,8 +3,8 @@
     <section class="schedule-panel">
       <header class="page-header">
         <div>
-          <p>{{ tr('Room', '房間') }}</p>
-          <h1>{{ tr('Room Timetable', '房間時間表') }}</h1>
+          <p>{{ tr('Room', '\u623f\u9593') }}</p>
+          <h1>{{ tr('Room Timetable', '\u623f\u9593\u6642\u9593\u8868') }}</h1>
         </div>
       </header>
 
@@ -12,7 +12,7 @@
         <table class="timetable">
           <thead>
             <tr>
-              <th class="period-col">{{ tr('Period / Day', '課節 / 星期') }}</th>
+              <th class="period-col">{{ tr('Period / Day', '\u8ab2\u7bc0 / \u661f\u671f') }}</th>
               <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
             </tr>
           </thead>
@@ -91,7 +91,7 @@ export default {
         });
         this.schedule = res.data;
       } catch (err) {
-        alert('\u8f09\u5165\u623f\u9593\u6642\u9593\u8868\u5931\u6557\u3002');
+        alert(this.tr('Failed to load room timetable.', '\u8f09\u5165\u623f\u9593\u6642\u9593\u8868\u5931\u6557\u3002'));
       }
     },
     getCell(day, periodIndex) {

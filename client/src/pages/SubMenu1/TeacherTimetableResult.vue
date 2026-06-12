@@ -83,7 +83,7 @@ export default {
       return labels[day] || day;
     },
     periodLabel(period, time, electiveTime) {
-      const label = this.$lang.locale === 'en' ? 'Period ' + period : '第' + period + '節';
+      const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
       const elective = electiveTime ? '<br><span class="red-time">' + this.tr('Elective', '\u9078\u4fee') + ' ' + electiveTime + '</span>' : '';
       return label + '<br><small>' + time + elective + '</small>';
     },
