@@ -1,42 +1,32 @@
 <template>
-  <main class="schedule-page">
-    <section class="schedule-panel">
-      <header class="page-header">
-        <div>
-          <p>{{ roomDisplayName }}</p>
-          <h1>{{ tr('Room Timetable', '\u623f\u9593\u6642\u9593\u8868') }}</h1>
-        </div>
-      </header>
-
-      <div class="table-wrap">
-        <table class="timetable">
-          <thead>
-            <tr>
-              <th class="period-col">{{ tr('Period / Day', '\u8ab2\u7bc0 / \u661f\u671f') }}</th>
-              <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(label, index) in periodLabels" :key="index">
-              <th class="period-col" v-html="label"></th>
-              <td v-for="day in days" :key="day">
-                <div
-                  v-for="item in getCell(day, index + 1)"
-                  :key="`${item.teacher_name}-${item.period_name}-${item.class_name}`"
-                  class="cell-entry"
-                  :class="{ elective: isElectivePeriod(item) }"
-                >
-                  <small>{{ tr('Teacher:', '\u8001\u5e2b:') }} <strong>{{ item.teacher_name }}</strong></small>
-                  <span>{{ item.class_name }} | {{ subjectLabel(item) }}</span>
-                  <span>{{ roomDisplayName }}</span>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+  <div class="schedule-container">
+    <h1>{{ tr('Room Timetable', '\u623f\u9593\u6642\u9593\u8868') }}</h1>
+    <table class="timetable">
+      <thead>
+        <tr>
+          <th>{{ tr('Period / Day', '\u8ab2\u7bc0 / \u661f\u671f') }}</th>
+          <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(label, index) in periodLabels" :key="index">
+          <th v-html="label"></th>
+          <td v-for="day in days" :key="day">
+            <div
+              v-for="item in getCell(day, index + 1)"
+              :key="`${item.teacher_name}-${item.period_name}-${item.class_name}`"
+              class="cell-entry"
+              :class="{ 'red-entry': isElectivePeriod(item) }"
+            >
+              <strong>{{ tr('Teacher', '\u8001\u5e2b') }}: {{ item.teacher_name }}</strong><br />
+              {{ item.class_name }} | {{ subjectLabel(item) }}<br />
+              {{ roomDisplayName }}
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </template>
 
 <script>
@@ -158,156 +148,55 @@ export default {
 </script>
 
 <style scoped>
-.schedule-page {
-  min-height: calc(100vh - 126px);
-  box-sizing: border-box;
-  padding: 34px 20px 56px;
-}
-
-.schedule-panel {
-  max-width: 1220px;
-  margin: 0 auto;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: var(--shadow);
-  padding: 24px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.page-header p {
-  width: fit-content;
-  max-width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--surface-soft);
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1;
-  margin: 0 auto 12px;
-  padding: 8px 14px;
+.schedule-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: auto;
 }
 
 h1 {
   color: var(--text);
-  font-size: 32px;
-  letter-spacing: 0;
-  margin: 0;
-}
-
-.table-wrap {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow-x: auto;
+  margin: 0 0 22px;
+  text-align: center;
 }
 
 .timetable {
   width: 100%;
-  min-width: 980px;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
 .timetable th,
 .timetable td {
-  border-bottom: 1px solid var(--border);
-  border-left: 1px solid var(--border);
-  height: 74px;
-  padding: 10px;
+  border: 1px solid #cfdde3;
+  padding: 8px;
   vertical-align: top;
-}
-
-.timetable th:first-child,
-.timetable td:first-child {
-  border-left: none;
-}
-
-.timetable tr:last-child th,
-.timetable tr:last-child td {
-  border-bottom: none;
-}
-
-.timetable thead th {
-  background: var(--surface-soft);
-  color: var(--text);
-  font-weight: 800;
   text-align: center;
 }
 
-.period-col {
-  width: 128px;
-  background: #f8fbfc;
-  color: var(--text-muted);
-  font-weight: 800;
-  line-height: 1.35;
-  text-align: center;
-}
-
-.period-col small {
-  display: block;
-  color: #6b8391;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.45;
-  margin-top: 4px;
-}
-
-.period-col .red-time {
-  color: var(--text);
+.timetable th {
+  background-color: #f3f8fa;
   font-weight: 800;
 }
 
 .cell-entry {
-  display: grid;
-  gap: 4px;
-  justify-items: center;
-  border: 1px solid #d8e8f5;
-  border-radius: 6px;
-  background: #eaf4ff;
+  background-color: #eef6ff;
   margin-bottom: 6px;
-  padding: 10px 8px;
-  text-align: center;
+  padding: 7px 4px;
+  border-radius: 4px;
+  line-height: 1.35;
 }
 
 .cell-entry:last-child {
   margin-bottom: 0;
 }
 
-.cell-entry.elective {
-  border-color: #f1d1d1;
-  background: #fde7e7;
+.red-entry {
+  background-color: #ffeaea;
 }
 
-.cell-entry span,
-.cell-entry small {
+.red-time {
   color: var(--text);
-  font-size: 13px;
-  line-height: 1.3;
-}
-
-.cell-entry small strong {
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-@media (max-width: 760px) {
-  .schedule-panel {
-    padding: 18px;
-  }
-
-  h1 {
-    font-size: 28px;
-  }
+  font-weight: 800;
 }
 </style>
