@@ -73,12 +73,11 @@ export default {
     },
     dayLabel(day) {
       const labels = {
-        Mon: this.tr('Mon', '星期一'),
-        Tue: this.tr('Tue', '星期二'),
-        Wed: this.tr('Wed', '星期三'),
-        Thu: this.tr('Thu', '星期四'),
-        Fri: this.tr('Fri', '星期五'),
-        Sat: this.tr('Sat', '星期六')
+        Mon: this.tr('Mon', '\u661f\u671f\u4e00'),
+        Tue: this.tr('Tue', '\u661f\u671f\u4e8c'),
+        Wed: this.tr('Wed', '\u661f\u671f\u4e09'),
+        Thu: this.tr('Thu', '\u661f\u671f\u56db'),
+        Fri: this.tr('Fri', '\u661f\u671f\u4e94')
       };
       return labels[day] || day;
     },
@@ -129,34 +128,59 @@ export default {
   }
 };
 </script>
+
 <style scoped>
 .schedule-container {
   padding: 20px;
   max-width: 1200px;
   margin: auto;
 }
+
+h1 {
+  color: var(--text);
+  margin: 0 0 22px;
+  text-align: center;
+}
+
 .timetable {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
+
 .timetable th,
 .timetable td {
-  border: 1px solid #ccc;
+  border: 1px solid #cfdde3;
   padding: 8px;
   vertical-align: top;
   text-align: center;
 }
+
 .timetable th {
-  background-color: #f0f0f0;
+  background-color: #f3f8fa;
+  font-weight: 800;
 }
+
 .cell-entry {
   background-color: #eef6ff;
   margin-bottom: 6px;
-  padding: 4px;
+  padding: 7px 4px;
   border-radius: 4px;
+  line-height: 1.35;
 }
+
+.cell-entry:last-child {
+  margin-bottom: 0;
+}
+
 .red-entry {
   background-color: #ffeaea;
+}
+
+.empty-message {
+  color: var(--text-muted);
+  margin: 18px 0 0;
+  padding: 28px;
+  text-align: center;
 }
 </style>

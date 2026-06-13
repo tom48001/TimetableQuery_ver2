@@ -1,31 +1,47 @@
 <template>
-  <div class="nomination-page">
-    <h1>{{ tr('Select Students', '選擇學生') }}</h1>
+  <main class="student-page">
+    <section class="student-panel">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">{{ tr('Discipline Leader Nomination', '\u7d00\u5f8b\u9818\u8896\u751f\u63d0\u540d') }}</p>
+          <h1>{{ tr('Select Students', '\u9078\u64c7\u5b78\u751f') }}</h1>
+        </div>
+        <span class="count-badge">{{ selectedCount }} {{ tr('selected', '\u5df2\u9078') }}</span>
+      </header>
 
-    <div v-for="classItem in selectedClass" :key="classItem" class="class-section">
-      <h3>{{ className(classItem) }}</h3>
+      <div v-if="allStudents.length" class="class-sections">
+        <section v-for="classItem in selectedClass" :key="classItem" class="class-section">
+          <h2>{{ className(classItem) }}</h2>
 
-      <div v-if="studentsByClass[classItem]" class="student-grid">
-        <label
-          v-for="student in studentsByClass[classItem]"
-          :key="student.student_id"
-          class="student-option"
-          :class="{ selected: selectedStudents[classItem].includes(student.student_id) }"
-        >
-          <input
-            type="checkbox"
-            :value="student.student_id"
-            v-model="selectedStudents[classItem]"
-          />
-          <span class="student-number">{{ studentNumber(student) }}</span>
-          <span class="student-name">{{ student.student_name }}</span>
-        </label>
+          <div v-if="studentsByClass[classItem] && studentsByClass[classItem].length" class="student-grid">
+            <label
+              v-for="student in studentsByClass[classItem]"
+              :key="student.student_id"
+              class="student-card"
+              :class="{ selected: isSelected(classItem, student.student_id) }"
+            >
+              <input
+                type="checkbox"
+                :value="student.student_id"
+                v-model="selectedStudents[classItem]"
+              />
+              <span class="student-number">{{ studentNumber(student) }}</span>
+              <span class="student-name">{{ student.student_name }}</span>
+            </label>
+          </div>
+          <p v-else class="state-message">{{ tr('No students in this class.', '\u9019\u500b\u73ed\u5225\u6c92\u6709\u5b78\u751f\u3002') }}</p>
+        </section>
       </div>
-      <div v-else class="loading">??舫??..</div>
-    </div>
 
-    <button @click="submitNomination">{{ tr('Submit', '提交') }}</button>
-  </div>
+      <p v-else-if="loading" class="state-message">{{ tr('Loading students...', '\u8f09\u5165\u5b78\u751f\u4e2d...') }}</p>
+      <p v-else-if="loadError" class="state-message error">{{ loadError }}</p>
+      <p v-else class="state-message">{{ tr('No matching students.', '\u6c92\u6709\u7b26\u5408\u7684\u5b78\u751f\u3002') }}</p>
+
+      <button type="button" class="primary-btn" @click="submitNomination">
+        {{ tr('Submit', '\u63d0\u4ea4') }}
+      </button>
+    </section>
+  </main>
 </template>
 
 <script>
@@ -40,8 +56,18 @@ export default {
       studentsByClass: {},
       selectedStudents: {},
       previousSelectedStudents: {},
-      teacher_id: null
+      teacher_id: null,
+      loading: false,
+      loadError: ''
     };
+  },
+  computed: {
+    allStudents() {
+      return Object.values(this.studentsByClass).flat();
+    },
+    selectedCount() {
+      return Object.values(this.selectedStudents).flat().length;
+    }
   },
   created() {
     if (!this.selectedClass.length) {
@@ -58,6 +84,9 @@ export default {
     className(classId) {
       return this.classTable[classId - 1] || `Class ${classId}`;
     },
+    isSelected(classId, studentId) {
+      return (this.selectedStudents[classId] || []).includes(studentId);
+    },
     async getTeacherId() {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -71,26 +100,35 @@ export default {
         this.teacher_id = res.data.teacher_id;
       } catch (err) {
         console.error('Failed to load teacher id:', err);
-        alert(this.tr('Failed to load teacher account.', '載入老師帳戶失敗。'));
+        alert(this.tr('Failed to load teacher account.', '\u8f09\u5165\u8001\u5e2b\u5e33\u6236\u5931\u6557\u3002'));
       }
     },
     async fetchStudentsForClasses() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      await Promise.all(this.selectedClass.map(async classId => {
-        this.$set(this.selectedStudents, classId, []);
+      this.loading = true;
+      this.loadError = '';
 
-        try {
-          const res = await axios.get(`/api/students/by-class/${classId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          this.$set(this.studentsByClass, classId, res.data);
-        } catch (err) {
-          console.error(`Failed to load students for class ${classId}:`, err);
-          this.$set(this.studentsByClass, classId, []);
-        }
-      }));
+      try {
+        await Promise.all(this.selectedClass.map(async classId => {
+          this.$set(this.selectedStudents, classId, []);
+
+          try {
+            const res = await axios.get(`/api/students/by-class/${classId}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            this.$set(this.studentsByClass, classId, res.data);
+          } catch (err) {
+            console.error(`Failed to load students for class ${classId}:`, err);
+            this.$set(this.studentsByClass, classId, []);
+          }
+        }));
+      } catch (err) {
+        this.loadError = this.tr('Failed to load students.', '\u8f09\u5165\u5b78\u751f\u5931\u6557\u3002');
+      } finally {
+        this.loading = false;
+      }
     },
     async loadSelectedStudents() {
       const token = localStorage.getItem('token');
@@ -121,7 +159,7 @@ export default {
     submitNomination() {
       const token = localStorage.getItem('token');
       if (!token || !this.teacher_id) {
-        alert(this.tr('Please login again.', '請重新登入。'));
+        alert(this.tr('Please login again.', '\u8acb\u91cd\u65b0\u767b\u5165\u3002'));
         return;
       }
 
@@ -172,84 +210,148 @@ export default {
 </script>
 
 <style scoped>
+.student-page {
+  padding: 34px 20px 48px;
+}
+
+.student-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  margin: 0 auto;
+  max-width: 1100px;
+  padding: 28px;
+}
+
+.page-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.eyebrow {
+  color: var(--primary);
+  font-weight: 800;
+  margin: 0 0 8px;
+}
+
 h1,
-h3 {
-  text-align: center;
+h2 {
+  color: var(--text);
+  margin: 0;
+}
+
+h1 {
+  font-size: 32px;
+}
+
+h2 {
+  font-size: 20px;
+  margin-bottom: 14px;
+}
+
+.count-badge {
+  background: var(--soft);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text);
+  font-weight: 800;
+  padding: 10px 16px;
+  white-space: nowrap;
 }
 
 .class-section {
-  margin-bottom: 20px;
+  background: var(--soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 18px;
+  padding: 16px;
 }
 
 .student-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  margin: 20px 0;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
 
-.student-option {
-  display: flex;
+.student-card {
   align-items: center;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 2px solid #dcdcdc;
-  background-color: #f9f9f9;
-  font-weight: 500;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  min-width: 180px;
-  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.05);
+  display: flex;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 10px;
 }
 
-.student-option:hover {
-  background-color: #eaf3ff;
-  border-color: #7ab8f5;
+.student-card:hover {
+  border-color: var(--primary);
 }
 
-.student-option.selected {
-  background-color: #007bff;
-  color: white;
-  border-color: #0056b3;
+.student-card.selected {
+  background: #e8f6f8;
+  border-color: var(--primary);
+}
+
+.student-card input {
+  accent-color: var(--primary);
 }
 
 .student-number {
-  color: #007bff;
-  font-weight: 800;
+  color: var(--primary);
+  font-weight: 900;
   min-width: 2ch;
 }
 
 .student-name {
+  font-weight: 700;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.student-option input[type="checkbox"] {
-  margin-right: 8px;
-  accent-color: #007bff;
-}
-
-.loading {
+.state-message {
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
+  margin: 18px 0;
+  padding: 24px;
   text-align: center;
 }
 
-button {
-  display: block;
-  margin: 30px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+.state-message.error {
+  color: var(--danger);
 }
 
-button:hover {
-  background-color: #0056b3;
+.primary-btn {
+  background: var(--primary);
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  display: block;
+  font-weight: 800;
+  margin: 26px auto 0;
+  padding: 13px 32px;
+}
+
+.primary-btn:hover {
+  background: var(--primary-dark);
+}
+
+@media (max-width: 640px) {
+  .student-panel {
+    padding: 20px;
+  }
+
+  .page-header {
+    flex-direction: column;
+  }
 }
 </style>
