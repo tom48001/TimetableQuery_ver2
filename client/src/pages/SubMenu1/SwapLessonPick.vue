@@ -180,11 +180,20 @@ export default {
 }
 
 .page-header p {
-  color: var(--primary);
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text);
   font-size: 13px;
-  font-weight: 700;
-  margin: 0 0 8px;
-  text-transform: uppercase;
+  font-weight: 800;
+  line-height: 1;
+  margin: 0 0 12px;
+  padding: 8px 12px;
 }
 
 h1 {
@@ -248,7 +257,7 @@ h1 {
 }
 
 .period-col {
-  width: 76px;
+  width: 112px;
   background: #f8fbfc;
   color: var(--text-muted);
   font-weight: 800;
@@ -265,7 +274,7 @@ h1 {
 }
 
 .lesson-card {
-  min-height: 42px;
+  min-height: 44px;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
@@ -278,7 +287,8 @@ h1 {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.25;
-  padding: 7px 9px;
+  padding: 8px 10px;
+  position: relative;
 }
 
 .lesson-card:hover,
@@ -298,6 +308,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 8px;
+  overflow: hidden;
 }
 
 .class-pill {
