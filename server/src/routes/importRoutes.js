@@ -164,6 +164,72 @@ router.get('/batches', ensureJWT, requirePermission('importTimetable'), async (r
   }
 });
 
+router.get('/batches/:batchId/json', ensureJWT, requirePermission('importTimetable'), async (req, res) => {
+  try {
+    const batchId = Number(req.params.batchId);
+    if (!batchId) {
+      return res.status(400).json({ code: 'INVALID_BATCH', message: 'Invalid import batch.' });
+    }
+
+    await ensureImportHistoryTables(pool);
+
+    const [batches] = await pool.query('SELECT * FROM import_batches WHERE batch_id = ?', [batchId]);
+    if (batches.length === 0) {
+      return res.status(404).json({ code: 'BATCH_NOT_FOUND', message: 'Import batch was not found.' });
+    }
+
+    const [snapshotRows] = await pool.query(`
+      SELECT
+        h.history_id,
+        h.timetable_id,
+        h.day_of_week,
+        t.teacher_code,
+        t.teacher_name,
+        s.subject_name,
+        c.class_name,
+        r.room_name,
+        p.period_name
+      FROM timetable_history h
+      LEFT JOIN teacher t ON h.teacher_id = t.teacher_id
+      LEFT JOIN subject s ON h.subject_id = s.subject_id
+      LEFT JOIN class c ON h.class_id = c.class_id
+      LEFT JOIN room r ON h.room_id = r.room_id
+      LEFT JOIN period p ON h.period_id = p.period_id
+      WHERE h.batch_id = ?
+      ORDER BY h.history_id
+    `, [batchId]);
+
+    res.json({
+      batch: batches[0],
+      snapshotRows
+    });
+  } catch (err) {
+    console.error('Load import batch JSON error:', err);
+    res.status(500).json({ code: 'DATABASE_ERROR', message: 'Failed to load import batch JSON.' });
+  }
+});
+
+router.delete('/batches/:batchId', ensureJWT, requirePermission('importTimetable'), async (req, res) => {
+  try {
+    const batchId = Number(req.params.batchId);
+    if (!batchId) {
+      return res.status(400).json({ code: 'INVALID_BATCH', message: 'Invalid import batch.' });
+    }
+
+    await ensureImportHistoryTables(pool);
+    const [result] = await pool.query('DELETE FROM import_batches WHERE batch_id = ?', [batchId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ code: 'BATCH_NOT_FOUND', message: 'Import batch was not found.' });
+    }
+
+    res.json({ code: 'BATCH_DELETED', message: 'Import history deleted.', batchId });
+  } catch (err) {
+    console.error('Delete import batch error:', err);
+    res.status(500).json({ code: 'DATABASE_ERROR', message: 'Failed to delete import history.' });
+  }
+});
+
 router.post('/rollback/:batchId', ensureJWT, requirePermission('importTimetable'), async (req, res) => {
   const conn = await pool.getConnection();
 

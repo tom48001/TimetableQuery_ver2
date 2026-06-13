@@ -153,14 +153,31 @@
               <td>{{ batch.inserted_rows }}</td>
               <td>{{ batch.snapshot_rows }}</td>
               <td>
-                <button
-                  type="button"
-                  class="danger-button small"
-                  :disabled="!canRollback(batch) || rollbackLoading"
-                  @click="rollbackBatch(batch)"
-                >
-                  {{ tr('Restore', '\u56de\u5fa9') }}
-                </button>
+                <div class="history-actions">
+                  <button
+                    type="button"
+                    class="clear-button small"
+                    @click="downloadBatchJson(batch)"
+                  >
+                    JSON
+                  </button>
+                  <button
+                    type="button"
+                    class="danger-button small"
+                    :disabled="!canRollback(batch) || rollbackLoading"
+                    @click="rollbackBatch(batch)"
+                  >
+                    {{ tr('Restore', '\u56de\u5fa9') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="delete-button small"
+                    :disabled="historyLoading || rollbackLoading"
+                    @click="deleteBatch(batch)"
+                  >
+                    {{ tr('Delete', '\u522a\u9664') }}
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -339,6 +356,40 @@ export default {
         this.showMessage(data && data.message ? data.message : this.tr('Restore failed.', '\u56de\u5fa9\u5931\u6557\u3002'), 'error');
       } finally {
         this.rollbackLoading = false;
+      }
+    },
+    async downloadBatchJson(batch) {
+      try {
+        const res = await axios.get(`/api/import/batches/${batch.batch_id}/json`, { headers: this.authHeaders() });
+        const json = JSON.stringify(res.data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `import_batch_${batch.batch_id}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        const data = err.response && err.response.data;
+        this.showMessage(data && data.message ? data.message : this.tr('Failed to download JSON.', '\u4e0b\u8f09 JSON \u5931\u6557\u3002'), 'error');
+      }
+    },
+    async deleteBatch(batch) {
+      const confirmed = confirm(this.tr(
+        `Delete import history #${batch.batch_id}? This only deletes the record and snapshot, not the current timetable.`,
+        `\u78ba\u5b9a\u522a\u9664\u532f\u5165\u8a18\u9304 #${batch.batch_id}\uff1f\u9019\u53ea\u6703\u522a\u9664\u8a18\u9304\u548c\u5099\u4efd\uff0c\u4e0d\u6703\u6539\u8b8a\u73fe\u5728\u7684\u6642\u9593\u8868\u3002`
+      ));
+      if (!confirmed) return;
+
+      try {
+        await axios.delete(`/api/import/batches/${batch.batch_id}`, { headers: this.authHeaders() });
+        this.showMessage(this.tr('Import history deleted.', '\u532f\u5165\u8a18\u9304\u5df2\u522a\u9664\u3002'), 'success');
+        await this.fetchImportBatches();
+      } catch (err) {
+        const data = err.response && err.response.data;
+        this.showMessage(data && data.message ? data.message : this.tr('Failed to delete import history.', '\u522a\u9664\u532f\u5165\u8a18\u9304\u5931\u6557\u3002'), 'error');
       }
     },
     formatList(title, values) {
@@ -815,7 +866,23 @@ ul {
   background: #9f302b;
 }
 
-.danger-button.small {
+.history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.delete-button {
+  background: #7f1d1d;
+  color: #fff;
+}
+
+.delete-button:hover:not(:disabled) {
+  background: #631616;
+}
+
+.danger-button.small,
+.delete-button.small {
   height: 34px;
   padding: 0 12px;
 }
