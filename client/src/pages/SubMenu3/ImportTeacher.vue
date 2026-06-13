@@ -145,7 +145,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="batch in importBatches" :key="batch.batch_id">
+            <tr v-for="batch in paginatedImportBatches" :key="batch.batch_id">
               <td>{{ formatDate(batch.created_at) }}</td>
               <td>{{ batch.file_name }}</td>
               <td>{{ batch.imported_by_name || '-' }}</td>
@@ -166,6 +166,19 @@
           </tbody>
         </table>
         <p v-else class="empty-history">{{ historyLoading ? tr('Loading...', '\u8f09\u5165\u4e2d...') : tr('No import history yet.', '\u66ab\u6642\u6c92\u6709\u532f\u5165\u8a18\u9304\u3002') }}</p>
+      </div>
+
+      <div v-if="importBatches.length" class="history-footer">
+        <span>{{ historyRangeLabel }}</span>
+        <div class="history-pager">
+          <button type="button" class="clear-button small" :disabled="historyPage === 1" @click="historyPage -= 1">
+            {{ tr('Previous', '\u4e0a\u4e00\u9801') }}
+          </button>
+          <span>{{ historyPage }} / {{ historyTotalPages }}</span>
+          <button type="button" class="clear-button small" :disabled="historyPage === historyTotalPages" @click="historyPage += 1">
+            {{ tr('Next', '\u4e0b\u4e00\u9801') }}
+          </button>
+        </div>
       </div>
     </section>
   </main>
@@ -198,6 +211,8 @@ export default {
       messageType: '',
       lastImportResult: null,
       importBatches: [],
+      historyPage: 1,
+      historyPageSize: 5,
       text: TEXT
     };
   },
@@ -206,6 +221,21 @@ export default {
       if (!this.file) return '';
       const sizeInKb = Math.max(1, Math.round(this.file.size / 1024));
       return `${sizeInKb} KB`;
+    },
+    historyTotalPages() {
+      return Math.max(1, Math.ceil(this.importBatches.length / this.historyPageSize));
+    },
+    paginatedImportBatches() {
+      const page = Math.min(this.historyPage, this.historyTotalPages);
+      const start = (page - 1) * this.historyPageSize;
+      return this.importBatches.slice(start, start + this.historyPageSize);
+    },
+    historyRangeLabel() {
+      if (!this.importBatches.length) return '';
+      const page = Math.min(this.historyPage, this.historyTotalPages);
+      const start = (page - 1) * this.historyPageSize + 1;
+      const end = Math.min(start + this.historyPageSize - 1, this.importBatches.length);
+      return this.tr(`Showing ${start}-${end} of ${this.importBatches.length}`, `\u986f\u793a\u7b2c ${start}-${end} \u7b46\uff0c\u5171 ${this.importBatches.length} \u7b46`);
     }
   },
   methods: {
@@ -273,6 +303,7 @@ export default {
       try {
         const res = await axios.get('/api/import/batches', { headers: this.authHeaders() });
         this.importBatches = res.data;
+        if (this.historyPage > this.historyTotalPages) this.historyPage = this.historyTotalPages;
       } catch (err) {
         console.error('Failed to load import history:', err);
       } finally {
@@ -799,6 +830,33 @@ ul {
   text-align: center;
 }
 
+.history-footer,
+.history-pager {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.history-footer {
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 14px;
+}
+
+.history-pager span {
+  color: var(--text);
+  font-weight: 900;
+  min-width: 52px;
+  text-align: center;
+}
+
+.clear-button.small {
+  height: 34px;
+  padding: 0 12px;
+}
+
 @media (max-width: 820px) {
   .import-page {
     padding: 34px 16px 50px;
@@ -818,6 +876,15 @@ ul {
 
   .history-header {
     flex-direction: column;
+  }
+
+  .history-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .history-pager {
+    justify-content: center;
   }
 }
 </style>
