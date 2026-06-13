@@ -21,10 +21,10 @@
               <th class="period-col" v-html="label"></th>
               <td v-for="day in days" :key="day">
                 <div
-                  v-for="item in getCell(day, index)"
+                  v-for="item in getCell(day, index + 1)"
                   :key="`${item.teacher_name}-${item.period_name}-${item.class_name}`"
                   class="cell-entry"
-                  :class="{ elective: isElectivePeriod(item, index) }"
+                  :class="{ elective: isElectivePeriod(item) }"
                 >
                   <small>{{ tr('Teacher:', '\u8001\u5e2b:') }} <strong>{{ item.teacher_name }}</strong></small>
                   <span>{{ item.class_name }} | {{ subjectLabel(item) }}</span>
@@ -71,7 +71,7 @@ export default {
   data() {
     return {
       schedule: [],
-      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
     };
   },
   computed: {
@@ -79,10 +79,18 @@ export default {
       return this.$route.query.roomName || this.tr('Room', '\u623f\u9593');
     },
     periodLabels() {
-      return Array.from({ length: 12 }, (value, index) => index + 1).map(period => {
-        const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
-        return label + '<br><small>' + PERIOD_TIMES[period] + '</small>';
-      });
+      return [
+        this.periodLabel(1, PERIOD_TIMES[1]),
+        this.periodLabel(2, PERIOD_TIMES[2]),
+        this.periodLabel(3, PERIOD_TIMES[3]),
+        this.periodLabel(4, PERIOD_TIMES[4]),
+        this.periodLabel(5, PERIOD_TIMES[5]),
+        this.periodLabel(6, PERIOD_TIMES[6]),
+        this.periodLabel(7, PERIOD_TIMES[7]),
+        this.periodLabel(8, PERIOD_TIMES[8]),
+        this.periodLabel(9, PERIOD_TIMES[9], PERIOD_TIMES[11]),
+        this.periodLabel(10, PERIOD_TIMES[10], PERIOD_TIMES[12])
+      ];
     }
   },
   mounted() {
@@ -100,6 +108,11 @@ export default {
       const en = { Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat' }[day] || day;
       return this.$lang.locale === 'en' ? en : zh;
     },
+    periodLabel(period, time, electiveTime) {
+      const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
+      const elective = electiveTime ? '<br><span class="red-time">' + this.tr('Elective', '\u9078\u4fee') + ' ' + electiveTime + '</span>' : '';
+      return label + '<br><small>' + time + elective + '</small>';
+    },
     async fetchSchedule() {
       try {
         const token = localStorage.getItem('token');
@@ -112,11 +125,9 @@ export default {
         alert(this.tr('Failed to load room timetable.', '\u8f09\u5165\u623f\u9593\u6642\u9593\u8868\u5931\u6557\u3002'));
       }
     },
-    getCell(day, periodIndex) {
-      const periodNumber = periodIndex + 1;
+    getCell(day, periodNumber) {
       const currentPeriod = `Period ${periodNumber}`;
-
-      return this.schedule.filter(
+      let result = this.schedule.filter(
         item => item.day_of_week === day && (
           item.period_name === currentPeriod ||
           Number(item.period_id) === periodNumber ||
@@ -124,9 +135,22 @@ export default {
           Number(String(item.period_name || '').replace('Period ', '')) === periodNumber
         )
       );
+
+      if (periodNumber === 9) {
+        result = result.concat(this.schedule.filter(item => item.day_of_week === day && this.itemPeriodNumber(item) === 11));
+      }
+
+      if (periodNumber === 10) {
+        result = result.concat(this.schedule.filter(item => item.day_of_week === day && this.itemPeriodNumber(item) === 12));
+      }
+
+      return result;
     },
-    isElectivePeriod(item, periodIndex) {
-      const periodNumber = Number(item.period_id) || Number(item.period) || Number(String(item.period_name || '').replace('Period ', '')) || periodIndex + 1;
+    itemPeriodNumber(item) {
+      return Number(item.period_id) || Number(item.period) || Number(String(item.period_name || '').replace('Period ', ''));
+    },
+    isElectivePeriod(item) {
+      const periodNumber = this.itemPeriodNumber(item);
       return periodNumber >= 11;
     }
   }
@@ -236,6 +260,11 @@ h1 {
   font-weight: 700;
   line-height: 1.45;
   margin-top: 4px;
+}
+
+.period-col .red-time {
+  color: var(--text);
+  font-weight: 800;
 }
 
 .cell-entry {
