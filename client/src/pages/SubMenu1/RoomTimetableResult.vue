@@ -3,7 +3,7 @@
     <section class="schedule-panel">
       <header class="page-header">
         <div>
-          <p>{{ tr('Room', '\u623f\u9593') }}</p>
+          <p>{{ roomDisplayName }}</p>
           <h1>{{ tr('Room Timetable', '\u623f\u9593\u6642\u9593\u8868') }}</h1>
         </div>
       </header>
@@ -59,6 +59,9 @@ export default {
     };
   },
   computed: {
+    roomDisplayName() {
+      return this.$route.query.roomName || this.tr('Room', '\u623f\u9593');
+    },
     periodLabels() {
       return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(period => {
         const times = ['08:30-09:05', '09:05-09:40', '09:55-10:30', '10:30-11:05', '11:20-11:55', '11:55-12:30', '13:30-14:05', '14:05-14:40', '14:40-15:15', '15:25-16:00'];
@@ -124,15 +127,27 @@ export default {
 }
 
 .page-header {
+  display: flex;
+  justify-content: center;
   margin-bottom: 20px;
+  text-align: center;
 }
 
 .page-header p {
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
   color: var(--primary);
   font-size: 13px;
   font-weight: 800;
-  margin: 0 0 8px;
-  text-transform: uppercase;
+  line-height: 1;
+  margin: 0 auto 12px;
+  padding: 8px 14px;
 }
 
 h1 {
@@ -159,7 +174,8 @@ h1 {
 .timetable td {
   border-bottom: 1px solid var(--border);
   border-left: 1px solid var(--border);
-  padding: 8px;
+  height: 74px;
+  padding: 10px;
   vertical-align: top;
 }
 
@@ -181,7 +197,7 @@ h1 {
 }
 
 .period-col {
-  width: 96px;
+  width: 128px;
   background: #f8fbfc;
   color: var(--text-muted);
   font-weight: 800;
@@ -190,19 +206,23 @@ h1 {
 }
 
 .period-col small {
+  display: block;
   color: #6b8391;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  margin-top: 4px;
 }
 
 .cell-entry {
   display: grid;
-  gap: 4px;
-  border: 1px solid #d9e7eb;
-  border-radius: 6px;
-  background: #fbfdfd;
+  gap: 6px;
+  border: 1px solid #cfe1e7;
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  background: #f7fbfd;
   margin-bottom: 6px;
-  padding: 7px;
+  padding: 9px 10px;
   text-align: left;
 }
 

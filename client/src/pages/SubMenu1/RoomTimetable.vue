@@ -65,7 +65,7 @@ export default {
       return firstDigit === this.selectedFilter;
     },
     async loadRooms() { const token = localStorage.getItem('token'); const res = await axios.get('/api/rooms', { headers: { Authorization: `Bearer ${token}` } }); this.roomList = res.data; },
-    searchSchedule() { this.$router.push({ name: 'RoomTimetableResult', query: { roomId: this.selectedRoom } }); }
+    searchSchedule() { this.$router.push({ name: 'RoomTimetableResult', query: { roomId: this.selectedRoom, roomName: this.selectedRoomName } }); }
   }
 };
 </script>
