@@ -24,10 +24,11 @@
                   v-for="item in getCell(day, index)"
                   :key="`${item.teacher_name}-${item.period_name}-${item.class_name}`"
                   class="cell-entry"
+                  :class="{ elective: isElectivePeriod(item, index) }"
                 >
-                  <span class="class-pill">{{ item.class_name }}</span>
-                  <strong>{{ subjectLabel(item) }}</strong>
-                  <small>{{ item.teacher_name }}</small>
+                  <small>{{ tr('Teacher:', '\u8001\u5e2b:') }} <strong>{{ item.teacher_name }}</strong></small>
+                  <span>{{ item.class_name }} | {{ subjectLabel(item) }}</span>
+                  <span>{{ roomDisplayName }}</span>
                 </div>
               </td>
             </tr>
@@ -123,6 +124,10 @@ export default {
           Number(String(item.period_name || '').replace('Period ', '')) === periodNumber
         )
       );
+    },
+    isElectivePeriod(item, periodIndex) {
+      const periodNumber = Number(item.period_id) || Number(item.period) || Number(String(item.period_name || '').replace('Period ', '')) || periodIndex + 1;
+      return periodNumber >= 11;
     }
   }
 };
@@ -235,41 +240,36 @@ h1 {
 
 .cell-entry {
   display: grid;
-  gap: 6px;
-  border: 1px solid #cfe1e7;
-  border-left: 4px solid var(--primary);
-  border-radius: 8px;
-  background: #f7fbfd;
+  gap: 4px;
+  justify-items: center;
+  border: 1px solid #d8e8f5;
+  border-radius: 6px;
+  background: #eaf4ff;
   margin-bottom: 6px;
-  padding: 9px 10px;
-  text-align: left;
+  padding: 10px 8px;
+  text-align: center;
 }
 
 .cell-entry:last-child {
   margin-bottom: 0;
 }
 
-.class-pill {
-  justify-self: start;
-  border-radius: 999px;
-  background: #e7f4f6;
-  color: #0a5260;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-  padding: 5px 8px;
+.cell-entry.elective {
+  border-color: #f1d1d1;
+  background: #fde7e7;
 }
 
-.cell-entry strong {
+.cell-entry span,
+.cell-entry small {
   color: var(--text);
   font-size: 13px;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
-.cell-entry small {
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.2;
+.cell-entry small strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
 }
 
 @media (max-width: 760px) {
