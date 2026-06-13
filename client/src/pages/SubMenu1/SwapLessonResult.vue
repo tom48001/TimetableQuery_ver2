@@ -43,6 +43,7 @@
             v-for="teacher in filteredTeachers"
             :key="teacher.teacher_id"
             class="teacher-chip"
+            :class="teacherCardClass(teacher.match_reason)"
           >
             <span>{{ teacher.teacher_name }}</span>
             <span class="reason-row">
@@ -170,6 +171,16 @@ export default {
       if (text.includes('same class') || reason.includes('\u540c\u73ed')) return 'reason-same-class';
       if (text.includes('same subject') || reason.includes('\u540c\u79d1')) return 'reason-same-subject';
       return 'reason-free';
+    },
+    teacherCardClass(reason) {
+      const parts = this.reasonParts(reason);
+      const hasClass = parts.some(part => this.reasonClass(part) === 'reason-same-class');
+      const hasSubject = parts.some(part => this.reasonClass(part) === 'reason-same-subject');
+
+      if (hasClass && hasSubject) return 'teacher-chip-combo';
+      if (hasClass) return 'teacher-chip-class';
+      if (hasSubject) return 'teacher-chip-subject';
+      return 'teacher-chip-free';
     }
   }
 };
@@ -270,9 +281,53 @@ h1 {
   font-size: 13px;
   font-weight: 700;
   overflow: hidden;
-  padding: 8px 10px;
+  padding: 9px 10px 9px 12px;
+  position: relative;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.teacher-chip::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+}
+
+.teacher-chip-class {
+  border-color: #9bc5ee;
+  background: #f0f7ff;
+}
+
+.teacher-chip-class::before {
+  background: #3a8fd8;
+}
+
+.teacher-chip-subject {
+  border-color: #9bd6bf;
+  background: #effaf5;
+}
+
+.teacher-chip-subject::before {
+  background: #2a9b66;
+}
+
+.teacher-chip-free {
+  border-color: #d5c4ee;
+  background: #f7f3fd;
+}
+
+.teacher-chip-free::before {
+  background: #8a6ac0;
+}
+
+.teacher-chip-combo {
+  border-color: #78c9d2;
+  background: linear-gradient(135deg, #edf7ff 0%, #effaf5 100%);
+}
+
+.teacher-chip-combo::before {
+  background: linear-gradient(180deg, #3a8fd8 0%, #2a9b66 100%);
 }
 
 .reason-row {
@@ -311,8 +366,8 @@ h1 {
 }
 
 .teacher-chip:hover {
-  border-color: #86adba;
-  background: #eef7f8;
+  box-shadow: 0 6px 14px rgba(25, 54, 69, 0.12);
+  transform: translateY(-1px);
 }
 
 .empty-message {
