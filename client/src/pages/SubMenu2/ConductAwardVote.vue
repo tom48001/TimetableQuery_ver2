@@ -3,7 +3,6 @@
     <section class="student-panel">
       <header class="page-header">
         <div>
-          <p class="eyebrow">{{ tr('Conduct Award Nomination', '\u64cd\u884c\u734e\u63d0\u540d') }}</p>
           <h1>{{ tr('Select Students', '\u9078\u64c7\u5b78\u751f') }}</h1>
         </div>
         <span class="count-badge">{{ selectedCount }} {{ tr('selected', '\u5df2\u9078') }}</span>

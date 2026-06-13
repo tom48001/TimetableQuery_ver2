@@ -329,8 +329,8 @@ export default {
     },
     async rollbackBatch(batch) {
       const firstConfirm = confirm(this.tr(
-        `Restore timetable to before import #${batch.batch_id}? Current timetable will be replaced.`,
-        `\u78ba\u5b9a\u8981\u56de\u5fa9\u5230\u532f\u5165 #${batch.batch_id} \u524d\u7684\u7248\u672c\uff1f\u73fe\u5728\u7684\u6642\u9593\u8868\u6703\u88ab\u53d6\u4ee3\u3002`
+        `Restore timetable to before import? Current timetable will be replaced.`,
+        `\u78ba\u5b9a\u8981\u56de\u5fa9\u5230\u532f\u5165\u524d\u7684\u7248\u672c\uff1f\u73fe\u5728\u7684\u6642\u9593\u8868\u6703\u88ab\u53d6\u4ee3\u3002`
       ));
       if (!firstConfirm) return;
 
@@ -378,8 +378,8 @@ export default {
     },
     async deleteBatch(batch) {
       const confirmed = confirm(this.tr(
-        `Delete import history #${batch.batch_id}? This only deletes the record and snapshot, not the current timetable.`,
-        `\u78ba\u5b9a\u522a\u9664\u532f\u5165\u8a18\u9304 #${batch.batch_id}\uff1f\u9019\u53ea\u6703\u522a\u9664\u8a18\u9304\u548c\u5099\u4efd\uff0c\u4e0d\u6703\u6539\u8b8a\u73fe\u5728\u7684\u6642\u9593\u8868\u3002`
+        `Delete import history? This only deletes the record and snapshot not the current timetable.`,
+        `\u78ba\u5b9a\u522a\u9664\u532f\u5165\u8a18\u9304\uff1f\u9019\u53ea\u6703\u522a\u9664\u8a18\u9304\u548c\u5099\u4efd\uff0c\u4e0d\u6703\u6539\u8b8a\u73fe\u5728\u7684\u6642\u9593\u8868\u3002`
       ));
       if (!confirmed) return;
 

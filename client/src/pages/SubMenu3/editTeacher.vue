@@ -3,7 +3,6 @@
     <section class="admin-panel">
       <header class="page-header">
         <div>
-          <p>{{ tr('Permission Management', '\u6b0a\u9650\u7ba1\u7406') }}</p>
           <h1>{{ tr('User Management', '使用者管理') }}</h1>
         </div>
         <span class="summary-pill">{{ filteredTeachers.length }} / {{ teachers.length }} {{ tr('users', '使用者') }}</span>
