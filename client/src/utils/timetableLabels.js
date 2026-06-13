@@ -70,14 +70,14 @@ function compact(value) {
 
 export function subjectLabel(item, locale) {
   const fallback = item.subject_name || item.subject || '';
-  if (locale !== 'en') return fallback;
-
-  const byId = SUBJECT_LABELS[Number(item.subject_id)];
-  if (byId) return byId;
+  if (String(locale).toLowerCase() !== 'en') return fallback;
 
   const normalized = compact(fallback);
   const direct = SUBJECT_NAME_LABELS[fallback] || SUBJECT_NAME_LABELS[normalized];
   if (direct) return direct;
+
+  const byId = SUBJECT_LABELS[Number(item.subject_id)];
+  if (byId) return byId;
 
   const partial = Object.keys(SUBJECT_NAME_LABELS).find(name => normalized.includes(compact(name)));
   return partial ? SUBJECT_NAME_LABELS[partial] : fallback;
@@ -85,16 +85,19 @@ export function subjectLabel(item, locale) {
 
 export function roomLabel(roomName, locale) {
   const value = String(roomName || '');
-  if (locale !== 'en') return value;
+  if (String(locale).toLowerCase() !== 'en') return value;
 
   const replacements = [
     ['\u8996\u89ba\u85dd\u8853\u5ba4', 'Visual Arts Room'],
+    ['\u8996\u85dd\u5ba4', 'Visual Arts Room'],
+    ['\u8996\u89ba\u85dd\u8853', 'Visual Arts'],
     ['\u97f3\u6a02\u5ba4', 'Music Room'],
     ['\u5730\u7406\u5ba4', 'Geography Room'],
     ['\u5716\u66f8\u9928', 'Library'],
     ['\u96fb\u8166\u5ba4', 'Computer Room'],
     ['\u6f14\u8b1b\u5ef3', 'Lecture Theatre'],
     ['\u5287\u85dd\u5ba4', 'Drama Room'],
+    ['\u5287\u85dd', 'Drama'],
     ['CAL \u5ba4', 'CAL Room'],
     ['CAL\u5ba4', 'CAL Room'],
     ['\u5bb6\u653f\u5ba4', 'Home Economics Room'],

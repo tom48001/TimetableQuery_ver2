@@ -1,9 +1,9 @@
 <template>
   <main class="selector-page">
     <section class="selector-panel">
-      <header class="page-header"><div><h1>{{ tr('Room Timetable', '房間時間表') }}</h1></div></header>
+      <header class="page-header"><div><h1>{{ tr('Room Timetable', '\u623f\u9593\u6642\u9593\u8868') }}</h1></div></header>
       <div class="toolbar">
-        <input v-model.trim="searchText" class="search-input" type="text" :placeholder="tr('Search room, e.g. 301 or Room...', '搜尋房間，例如 301 或課室...')" />
+        <input v-model.trim="searchText" class="search-input" type="text" :placeholder="tr('Search room, e.g. 301 or Room...', '\u641c\u5c0b\u623f\u9593\uff0c\u4f8b\u5982 301 \u6216 Room...')" />
         <div class="floor-tabs" aria-label="room filters">
           <button v-for="filter in roomFilters" :key="filter.value" type="button" :class="{ active: selectedFilter === filter.value }" @click="selectedFilter = filter.value">{{ filter.label }}</button>
         </div>
@@ -15,10 +15,10 @@
           <span class="room-name">{{ roomLabel(room.room_name) }}</span>
         </label>
       </div>
-      <p v-else class="empty-message">{{ tr('No rooms found', '找不到房間') }}</p>
+      <p v-else class="empty-message">{{ tr('No rooms found', '\u627e\u4e0d\u5230\u623f\u9593') }}</p>
       <footer class="footer-actions">
-        <span>{{ selectedRoomName || tr('Please select a room', '請選擇房間') }}</span>
-        <button type="button" class="primary-btn" :disabled="!selectedRoom" @click="searchSchedule">{{ tr('View Timetable', '查看時間表') }}</button>
+        <span>{{ selectedRoomName || tr('Please select a room', '\u8acb\u9078\u64c7\u623f\u9593') }}</span>
+        <button type="button" class="primary-btn" :disabled="!selectedRoom" @click="searchSchedule">{{ tr('View Timetable', '\u67e5\u770b\u6642\u9593\u8868') }}</button>
       </footer>
     </section>
   </main>
@@ -36,7 +36,7 @@ export default {
         { label: this.tr('All', '全部'), value: 'all' },
         { label: '1/F', value: '1' }, { label: '2/F', value: '2' }, { label: '3/F', value: '3' },
         { label: '4/F', value: '4' }, { label: '5/F', value: '5' }, { label: '6/F+', value: '6plus' },
-        { label: '7/F+', value: '7plus' }, { label: this.tr('Special', '特別室'), value: 'special' }
+        { label: '7/F+', value: '7plus' }, { label: this.tr('Special', '\u7279\u5225\u5ba4'), value: 'special' }
       ];
     },
     filteredRooms() {
@@ -54,7 +54,7 @@ export default {
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     roomCode(roomName) { const match = String(roomName || '').match(/^(\S+)/); return match ? match[1] : roomName; },
-    roomLabel(roomName) { const code = this.roomCode(roomName); const label = String(roomName || '').replace(code, '').trim() || this.tr('Room', '房間'); return formatRoomLabel(label, this.$lang.locale); },
+    roomLabel(roomName) { const code = this.roomCode(roomName); const label = String(roomName || '').replace(code, '').trim() || this.tr('Room', '\u623f\u9593'); return formatRoomLabel(label, this.$lang.locale); },
     matchesFilter(roomName) {
       if (this.selectedFilter === 'all') return true;
       const code = this.roomCode(roomName);
