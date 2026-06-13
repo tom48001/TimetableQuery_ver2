@@ -135,11 +135,20 @@ export default {
       return this.$lang.locale === 'en' ? en : zh;
     },
     reasonLabel(reason) {
-      if (this.$lang.locale !== 'en') return reason;
-      return String(reason || '')
-        .replace('??', 'Same class')
-        .replace('??', 'Same subject')
-        .replace('??', 'Free');
+      const text = String(reason || '');
+      if (this.$lang.locale !== 'en') return text;
+
+      const labels = {
+        '\u540c\u73ed': 'Same class',
+        '\u540c\u79d1': 'Same subject',
+        '\u7a7a\u5802': 'Free'
+      };
+
+      return text
+        .split('/')
+        .map(part => labels[part.trim()] || part.trim())
+        .filter(Boolean)
+        .join(' / ');
     }
   }
 };
