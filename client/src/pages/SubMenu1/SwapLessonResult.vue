@@ -45,7 +45,16 @@
             class="teacher-chip"
           >
             <span>{{ teacher.teacher_name }}</span>
-            <small>{{ reasonLabel(teacher.match_reason) }}</small>
+            <span class="reason-row">
+              <small
+                v-for="reason in reasonParts(teacher.match_reason)"
+                :key="reason"
+                class="reason-badge"
+                :class="reasonClass(reason)"
+              >
+                {{ reason }}
+              </small>
+            </span>
           </span>
         </div>
 
@@ -149,6 +158,18 @@ export default {
         .map(part => labels[part.trim()] || part.trim())
         .filter(Boolean)
         .join(' / ');
+    },
+    reasonParts(reason) {
+      return this.reasonLabel(reason)
+        .split('/')
+        .map(part => part.trim())
+        .filter(Boolean);
+    },
+    reasonClass(reason) {
+      const text = String(reason || '').toLowerCase();
+      if (text.includes('same class') || reason.includes('\u540c\u73ed')) return 'reason-same-class';
+      if (text.includes('same subject') || reason.includes('\u540c\u79d1')) return 'reason-same-subject';
+      return 'reason-free';
     }
   }
 };
@@ -254,10 +275,39 @@ h1 {
   white-space: nowrap;
 }
 
-.teacher-chip small {
-  color: #0b7285;
-  font-size: 11px;
+.reason-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.reason-badge {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 10px;
   font-weight: 700;
+  line-height: 1;
+  padding: 4px 7px;
+  white-space: nowrap;
+}
+
+.reason-same-class {
+  border-color: #9bc5ee;
+  background: #e7f2ff;
+  color: #145a91;
+}
+
+.reason-same-subject {
+  border-color: #9bd6bf;
+  background: #e8f8f0;
+  color: #17643e;
+}
+
+.reason-free {
+  border-color: #d5c4ee;
+  background: #f2edfb;
+  color: #60408c;
 }
 
 .teacher-chip:hover {
