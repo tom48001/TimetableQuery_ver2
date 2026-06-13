@@ -51,6 +51,21 @@ const DAY_LABELS = {
   Sat: '\u661f\u671f\u516d'
 };
 
+const PERIOD_TIMES = {
+  1: '08:30-09:05',
+  2: '09:05-09:40',
+  3: '09:55-10:30',
+  4: '10:30-11:05',
+  5: '11:20-11:55',
+  6: '11:55-12:30',
+  7: '13:30-14:05',
+  8: '14:05-14:40',
+  9: '14:40-15:15',
+  10: '15:25-16:00',
+  11: '14:50-15:25',
+  12: '15:25-16:00'
+};
+
 export default {
   data() {
     return {
@@ -63,10 +78,9 @@ export default {
       return this.$route.query.roomName || this.tr('Room', '\u623f\u9593');
     },
     periodLabels() {
-      return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(period => {
-        const times = ['08:30-09:05', '09:05-09:40', '09:55-10:30', '10:30-11:05', '11:20-11:55', '11:55-12:30', '13:30-14:05', '14:05-14:40', '14:40-15:15', '15:25-16:00'];
+      return Array.from({ length: 12 }, (value, index) => index + 1).map(period => {
         const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
-        return label + '<br><small>' + times[period - 1] + '</small>';
+        return label + '<br><small>' + PERIOD_TIMES[period] + '</small>';
       });
     }
   },
@@ -102,7 +116,12 @@ export default {
       const currentPeriod = `Period ${periodNumber}`;
 
       return this.schedule.filter(
-        item => item.day_of_week === day && item.period_name === currentPeriod
+        item => item.day_of_week === day && (
+          item.period_name === currentPeriod ||
+          Number(item.period_id) === periodNumber ||
+          Number(item.period) === periodNumber ||
+          Number(String(item.period_name || '').replace('Period ', '')) === periodNumber
+        )
       );
     }
   }
