@@ -53,8 +53,8 @@ export default {
   mounted() { this.loadRooms(); },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
-    roomCode(roomName) { const match = String(roomName || '').match(/^(\S+)/); return match ? match[1] : roomName; },
-    roomLabel(roomName) { const code = this.roomCode(roomName); const label = String(roomName || '').replace(code, '').trim() || this.tr('Room', '\u623f\u9593'); return formatRoomLabel(label, this.$lang.locale); },
+    roomCode(roomName) { const match = String(roomName || '').match(/^([A-Za-z]?\d+[A-Za-z]?|G\d+[A-Za-z]?)\b/); return match ? match[1] : ''; },
+    roomLabel(roomName) { const code = this.roomCode(roomName); const label = code ? String(roomName || '').replace(code, '').trim() : String(roomName || '').trim(); return formatRoomLabel(label || this.tr('Room', '\u623f\u9593'), this.$lang.locale); },
     matchesFilter(roomName) {
       if (this.selectedFilter === 'all') return true;
       const code = this.roomCode(roomName);
