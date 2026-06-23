@@ -2,6 +2,44 @@
 -- Run this before importing outputs/school_timetable_import_system_periods.xlsx
 USE school_management;
 
+-- Ensure bilingual columns exist when upgrading an existing database.
+DROP PROCEDURE IF EXISTS ensure_school_bilingual_columns;
+DELIMITER $$
+CREATE PROCEDURE ensure_school_bilingual_columns()
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subject' AND COLUMN_NAME = 'subject_name_zh'
+  ) THEN
+    ALTER TABLE subject ADD COLUMN subject_name_zh VARCHAR(255) NULL AFTER subject_name;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subject' AND COLUMN_NAME = 'subject_name_en'
+  ) THEN
+    ALTER TABLE subject ADD COLUMN subject_name_en VARCHAR(255) NULL AFTER subject_name_zh;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'room' AND COLUMN_NAME = 'room_name_zh'
+  ) THEN
+    ALTER TABLE room ADD COLUMN room_name_zh VARCHAR(255) NULL AFTER room_name;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'room' AND COLUMN_NAME = 'room_name_en'
+  ) THEN
+    ALTER TABLE room ADD COLUMN room_name_en VARCHAR(255) NULL AFTER room_name_zh;
+  END IF;
+END$$
+DELIMITER ;
+CALL ensure_school_bilingual_columns();
+DROP PROCEDURE ensure_school_bilingual_columns;
+
+
 INSERT INTO class (class_name, grade_level)
 SELECT '#5A/5M', 'F5'
 WHERE NOT EXISTS (SELECT 1 FROM class WHERE TRIM(class_name) = '#5A/5M');
