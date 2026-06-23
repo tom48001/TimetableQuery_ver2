@@ -882,7 +882,11 @@ INSERT IGNORE INTO teacher_subject (teacher_id, subject_id) SELECT t.teacher_id,
 INSERT IGNORE INTO teacher_subject (teacher_id, subject_id) SELECT t.teacher_id, s.subject_id FROM teacher t JOIN subject s ON s.subject_name = 'RS' WHERE t.teacher_code = '麗';
 INSERT IGNORE INTO teacher_subject (teacher_id, subject_id) SELECT t.teacher_id, s.subject_id FROM teacher t JOIN subject s ON s.subject_name = 'SCJ' WHERE t.teacher_code = '麗';
 INSERT IGNORE INTO teacher_subject (teacher_id, subject_id) SELECT t.teacher_id, s.subject_id FROM teacher t JOIN subject s ON s.subject_name = 'SCJb' WHERE t.teacher_code = '麗';
-INSERT IGNORE INTO teacher_subject (teacher_id, subject_id) SELECT t.teacher_id, s.subject_id FROM teacher t JOIN subject s ON s.subject_name = '班主任課' WHERE t.teacher_code = '麗';-- Bilingual subject and room labels for school deployment
+INSERT IGNORE INTO teacher_subject (teacher_id, subject_id) SELECT t.teacher_id, s.subject_id FROM teacher t JOIN subject s ON s.subject_name = '班主任課' WHERE t.teacher_code = '麗';
+
+-- Bilingual subject and room labels for school deployment
+SET SQL_SAFE_UPDATES = 0;
+
 UPDATE subject
 SET
   subject_name_zh = CASE TRIM(subject_name)
@@ -1144,3 +1148,5 @@ SET
     WHEN TRIM(room_name) REGEXP '^705([[:space:]]|$)' THEN '705 6Y Classroom'
     ELSE COALESCE(room_name_en, room_name)
   END;
+
+SET SQL_SAFE_UPDATES = 1;
