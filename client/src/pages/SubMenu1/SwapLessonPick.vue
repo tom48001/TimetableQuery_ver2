@@ -28,13 +28,12 @@
                 <label
                   v-if="getLesson(day, period)"
                   class="lesson-card"
-                  :class="{ selected: Number(selectedLessonId) === Number(getLesson(day, period).timetable_id) }"
+                  :class="{ selected: isSelected(getLesson(day, period)) }"
                 >
                   <input
-                    type="radio"
-                    name="lesson"
+                    type="checkbox"
                     :value="getLesson(day, period).timetable_id"
-                    v-model="selectedLessonId"
+                    v-model="selectedLessonIds"
                   />
                   <span class="lesson-info">
                     <span class="class-pill">{{ getLesson(day, period).class_name }}</span>
@@ -47,7 +46,11 @@
         </table>
       </div>
 
-      <button type="button" class="primary-btn" :disabled="!selectedLesson" @click="goNext">
+      <div class="selection-summary">
+        {{ selectedLessons.length }} {{ tr('lessons selected', '堂已選課堂') }}
+      </div>
+
+      <button type="button" class="primary-btn" :disabled="selectedLessons.length === 0" @click="goNext">
         {{ tr('Next', '下一頁') }}
       </button>
     </section>
@@ -72,7 +75,7 @@ export default {
   data() {
     return {
       lessons: [],
-      selectedLessonId: null
+      selectedLessonIds: []
     };
   },
   computed: {
@@ -93,8 +96,10 @@ export default {
       const maxPeriod = Math.max(9, Math.max(...periods));
       return Array.from({ length: maxPeriod }, (value, index) => index + 1);
     },
-    selectedLesson() {
-      return this.lessons.find(lesson => Number(lesson.timetable_id) === Number(this.selectedLessonId));
+    selectedLessons() {
+      return this.lessons.filter(lesson =>
+        this.selectedLessonIds.some(id => Number(id) === Number(lesson.timetable_id))
+      );
     }
   },
   async mounted() {
@@ -129,9 +134,12 @@ export default {
     subjectLabel(lesson) {
       return formatSubjectLabel({ subject_id: lesson.subject_id, subject_name: lesson.subject_name || lesson.subject }, this.$lang.locale);
     },
+    isSelected(lesson) {
+      return this.selectedLessonIds.some(id => Number(id) === Number(lesson.timetable_id));
+    },
     goNext() {
-      if (!this.selectedLesson) {
-        alert(this.tr('Please select a lesson.', '請選擇課堂。'));
+      if (this.selectedLessons.length === 0) {
+        alert(this.tr('Please select at least one lesson.', '請至少選擇一堂課。'));
         return;
       }
 
@@ -140,12 +148,15 @@ export default {
         query: {
           teacherId: this.$route.query.teacherId,
           teacherName: this.$route.query.teacherName,
-          day: this.selectedLesson.day,
-          period: this.selectedLesson.period,
-          classId: this.selectedLesson.class_id,
-          className: this.selectedLesson.class_name,
-          subject: this.selectedLesson.subject || this.selectedLesson.subject_name,
-          subjectId: this.selectedLesson.subject_id
+          lessons: JSON.stringify(this.selectedLessons.map(lesson => ({
+            timetableId: lesson.timetable_id,
+            day: lesson.day,
+            period: lesson.period,
+            classId: lesson.class_id,
+            className: lesson.class_name,
+            subject: lesson.subject || lesson.subject_name,
+            subjectId: lesson.subject_id
+          })))
         }
       });
     }
@@ -339,6 +350,13 @@ h1 {
   height: 46px;
   margin: 22px auto 0;
   padding: 0 24px;
+}
+
+.selection-summary {
+  color: var(--text-muted);
+  font-weight: 800;
+  margin-top: 18px;
+  text-align: center;
 }
 
 .primary-btn:disabled {

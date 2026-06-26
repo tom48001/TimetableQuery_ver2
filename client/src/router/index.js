@@ -253,7 +253,7 @@ const router = new Router({
       path: '/ImportTeacher',
       name: 'ImportTeacher',
       component: ImportTeacher,
-      meta: { show: true, requiredPermission: 'importTimetable' }
+      meta: { show: true, requiredAnyPermissions: ['importTimetable', 'manageStudents'] }
     },
     {
       path: '/StudentManagement',
@@ -288,6 +288,7 @@ router.beforeEach((to, from, next) => {
   const routePermission = to.meta.requiredPermission ||
     (timetableRouteNames.has(to.name) ? 'timetable' : null) ||
     (nominationRouteNames.has(to.name) ? 'nominations' : null)
+  const routeAnyPermissions = to.meta.requiredAnyPermissions || []
 
   if (to.meta.requiredRole && (!user || user.role !== to.meta.requiredRole)) {
     return next('/login')
@@ -297,6 +298,15 @@ router.beforeEach((to, from, next) => {
     const permissions = user && user.permissions ? user.permissions : {}
     const isManager = user && user.role === 'manager'
     if (!user || (!isManager && !permissions[routePermission])) {
+      return next('/login')
+    }
+  }
+
+  if (routeAnyPermissions.length) {
+    const permissions = user && user.permissions ? user.permissions : {}
+    const isManager = user && user.role === 'manager'
+    const hasAnyPermission = routeAnyPermissions.some(permission => permissions[permission])
+    if (!user || (!isManager && !hasAnyPermission)) {
       return next('/login')
     }
   }

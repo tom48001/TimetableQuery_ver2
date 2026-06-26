@@ -25,7 +25,7 @@
                 v-model="selectedStudents[classItem]"
               />
               <span class="student-number">{{ studentNumber(student) }}</span>
-              <span class="student-name">{{ student.student_name }}</span>
+              <span class="student-name">{{ studentDisplayName(student) }}</span>
             </label>
           </div>
           <p v-else class="state-message">{{ tr('No students in this class.', '\u9019\u500b\u73ed\u5225\u6c92\u6709\u5b78\u751f\u3002') }}</p>
@@ -79,6 +79,12 @@ export default {
     },
     studentNumber(student) {
       return String(student.class_number || '').padStart(2, '0');
+    },
+    studentDisplayName(student) {
+      if (this.$lang.locale === 'en') {
+        return student.english_name || student.student_eng_name || student.student_name;
+      }
+      return student.student_name || student.student_ch_name || student.english_name;
     },
     className(classId) {
       return this.classTable[classId - 1] || `Class ${classId}`;

@@ -24,7 +24,10 @@
             <tr v-for="row in BLAResults" :key="row.student_id">
               <td class="center">{{ row.class_name }}</td>
               <td>{{ row.student_id }}</td>
-              <td class="name">{{ row.student_ch_name || row.student_id }}</td>
+              <td class="name">
+                {{ row.student_ch_name || row.student_id }}
+                <small v-if="row.student_eng_name">{{ row.student_eng_name }}</small>
+              </td>
               <td>{{ subjectNames(row) }}</td>
               <td class="center">
                 <span class="count-badge">{{ row.subject_count }} {{ tr('subjects', '\u79d1') }}</span>
@@ -109,7 +112,7 @@ export default {
 }
 
 .name-col {
-  width: 130px;
+  width: 180px;
 }
 
 .count-col,

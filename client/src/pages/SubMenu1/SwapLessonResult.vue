@@ -14,16 +14,12 @@
           <strong>{{ $route.query.teacherName || '-' }}</strong>
         </div>
         <div>
-          <span class="summary-label">{{ tr('Lesson to swap', '需要調課課節') }}</span>
-          <strong>{{ lessonLabel }}</strong>
-        </div>
-        <div>
-          <span class="summary-label">{{ tr('Class', '班別') }}</span>
-          <strong>{{ $route.query.className || '-' }}</strong>
-        </div>
-        <div>
-          <span class="summary-label">{{ tr('Subject', '科目') }}</span>
-          <strong>{{ subjectLabel }}</strong>
+          <span class="summary-label">{{ tr('Lessons to swap', '需要調課課節') }}</span>
+          <ul class="lesson-summary-list">
+            <li v-for="(lesson, index) in selectedLessons" :key="lesson.timetableId || index">
+              {{ lessonLabel(lesson) }}
+            </li>
+          </ul>
         </div>
       </div>
 
@@ -98,37 +94,57 @@ export default {
         String(teacher.teacher_name || '').toLowerCase().includes(keyword)
       );
     },
-    subjectLabel() {
-      return formatSubjectLabel({ subject_id: this.$route.query.subjectId, subject_name: this.$route.query.subject || '-' }, this.$lang.locale);
-    },
-    lessonLabel() {
-      const day = this.dayLabel(this.$route.query.day);
-      const period = this.$route.query.period || '-';
-      const periodLabel = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
-      const className = this.$route.query.className || '-';
-      return day + ' ' + periodLabel + ' ' + className + ' ' + this.subjectLabel;
-    },
-    fallbackLessonLabel() {
-      const zhDay = DAY_LABELS[this.$route.query.day] || this.$route.query.day || '-';
-      const enDay = { Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat' }[this.$route.query.day] || this.$route.query.day || '-';
-      const day = this.$lang.locale === 'en' ? enDay : zhDay;
-      const period = this.$route.query.period || '-';
-      const periodLabel = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
-      return day + ' ' + periodLabel;
+    selectedLessons() {
+      try {
+        const lessons = JSON.parse(this.$route.query.lessons || '[]');
+        if (Array.isArray(lessons) && lessons.length) return lessons;
+      } catch (error) {
+        console.error('Failed to parse selected lessons:', error);
+      }
+
+      return [{
+        day: this.$route.query.day,
+        period: this.$route.query.period,
+        classId: this.$route.query.classId,
+        className: this.$route.query.className,
+        subject: this.$route.query.subject,
+        subjectId: this.$route.query.subjectId
+      }];
     }
   },
   async mounted() {
-    const { day, period, classId, subjectId, teacherId } = this.$route.query;
+    const teacherId = this.$route.query.teacherId;
     const token = localStorage.getItem('token');
 
     try {
-      const res = await axios.post('/api/swap/substitute-candidates',
-        { day, period, classId, subjectId, teacherId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const responses = await Promise.all(this.selectedLessons.map(lesson =>
+        axios.post('/api/swap/substitute-candidates', {
+          day: lesson.day,
+          period: lesson.period,
+          classId: lesson.classId,
+          subjectId: lesson.subjectId,
+          teacherId
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ));
 
-      this.availableTeachers = Array.isArray(res.data) ? res.data : [];
-      console.log('Swap candidates:', this.availableTeachers.length, { day, period, classId, subjectId, teacherId });
+      const candidateLists = responses.map(response => Array.isArray(response.data) ? response.data : []);
+      const firstList = candidateLists[0] || [];
+      this.availableTeachers = firstList
+        .filter(teacher => candidateLists.every(list =>
+          list.some(candidate => Number(candidate.teacher_id) === Number(teacher.teacher_id))
+        ))
+        .map(teacher => {
+          const reasons = candidateLists.flatMap(list => {
+            const candidate = list.find(item => Number(item.teacher_id) === Number(teacher.teacher_id));
+            return candidate ? this.reasonParts(candidate.match_reason) : [];
+          });
+          return {
+            ...teacher,
+            match_reason: Array.from(new Set(reasons)).join(' / ')
+          };
+        });
     } catch (err) {
       console.error('Failed to load substitute teachers:', err);
       alert(this.tr('Failed to load available teachers.', '載入可供調課老師失敗。'));
@@ -143,6 +159,18 @@ export default {
     },
     tr(en, zh) {
       return this.$lang.locale === 'en' ? en : zh;
+    },
+    lessonSubjectLabel(lesson) {
+      return formatSubjectLabel({
+        subject_id: lesson.subjectId,
+        subject_name: lesson.subject || '-'
+      }, this.$lang.locale);
+    },
+    lessonLabel(lesson) {
+      const day = this.dayLabel(lesson.day);
+      const period = lesson.period || '-';
+      const periodLabel = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
+      return day + ' ' + periodLabel + ' ' + (lesson.className || '-') + ' ' + this.lessonSubjectLabel(lesson);
     },
     reasonLabel(reason) {
       const text = String(reason || '');
@@ -240,6 +268,13 @@ h1 {
 .summary-label {
   color: #0b7285;
   margin-right: 6px;
+}
+
+.lesson-summary-list {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding-left: 22px;
 }
 
 .search-input {

@@ -24,7 +24,10 @@
             <tr v-for="row in results" :key="row.student_id">
               <td class="center">{{ row.class_name }}</td>
               <td class="center">{{ row.class_number }}</td>
-              <td class="name">{{ row.student_ch_name }}</td>
+              <td class="name">
+                {{ row.student_ch_name || row.student_id }}
+                <small v-if="row.student_eng_name">{{ row.student_eng_name }}</small>
+              </td>
               <td class="center">
                 <span class="count-badge">{{ row.completed_goals }}</span>
               </td>
@@ -104,7 +107,7 @@ export default {
 }
 
 .name-col {
-  width: 150px;
+  width: 190px;
 }
 
 .goals-col,

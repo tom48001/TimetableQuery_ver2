@@ -69,8 +69,14 @@ function compact(value) {
 }
 
 export function subjectLabel(item, locale) {
+  const isEnglish = String(locale).toLowerCase() === 'en';
   const fallback = item.subject_name || item.subject || '';
-  if (String(locale).toLowerCase() !== 'en') return fallback;
+
+  if (!isEnglish) {
+    return item.subject_name_zh || fallback;
+  }
+
+  if (item.subject_name_en) return item.subject_name_en;
 
   const normalized = compact(fallback);
   const direct = SUBJECT_NAME_LABELS[fallback] || SUBJECT_NAME_LABELS[normalized];

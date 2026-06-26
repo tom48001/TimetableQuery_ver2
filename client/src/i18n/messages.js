@@ -47,7 +47,7 @@ const messages = {
     prefectNominationResult: { zh: '\u7d00\u5f8b\u9818\u8896\u751f\u63d0\u540d\u7d71\u8a08\u7d50\u679c', en: 'Prefect Nomination Results' },
     editTeacher: { zh: '\u4f7f\u7528\u8005\u7ba1\u7406', en: 'User Management' },
     studentManagement: { zh: '\u5b78\u751f\u7ba1\u7406', en: 'Student Management' },
-    importTeacher: { zh: '\u5c0e\u5165\u6642\u9593\u8868', en: 'Import Timetable' },
+    importTeacher: { zh: '\u8cc7\u6599\u5c0e\u5165', en: 'Data Import' },
     changePassword: { zh: '\u66f4\u6539\u5bc6\u78bc', en: 'Change Password' }
   },
   login: {

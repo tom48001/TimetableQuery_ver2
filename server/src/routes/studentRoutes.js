@@ -11,18 +11,20 @@ import {
 } from '../controllers/studentController.js';
 import {
   getManagedStudents,
+  getElectiveSubjects,
   createManagedStudent,
   updateManagedStudent,
-  deleteManagedStudent
+  setManagedStudentStatus
 } from '../controllers/manageStudentController.js';
 
 const router = express.Router();
 const canReadStudentData = requireAnyPermission(['timetable', 'nominations', 'manageStudents']);
 
 router.get('/admin/list', ensureJWT, requirePermission('manageStudents'), getManagedStudents);
+router.get('/admin/elective-subjects', ensureJWT, requirePermission('manageStudents'), getElectiveSubjects);
 router.post('/admin', ensureJWT, requirePermission('manageStudents'), createManagedStudent);
 router.put('/admin/:studentId', ensureJWT, requirePermission('manageStudents'), updateManagedStudent);
-router.delete('/admin/:studentId', ensureJWT, requirePermission('manageStudents'), deleteManagedStudent);
+router.patch('/admin/:studentId/status', ensureJWT, requirePermission('manageStudents'), setManagedStudentStatus);
 
 router.get('/by-class/:classId/subject/:subjectId', ensureJWT, canReadStudentData, getStudentsByClassNSubject);
 router.get('/by-class/:classId', ensureJWT, canReadStudentData, getStudentsByClassId);

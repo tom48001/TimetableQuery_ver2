@@ -25,7 +25,7 @@
           <label v-for="student in filteredStudents" :key="student.student_id" class="student-row" :class="{ selected: selectedStudent === student.student_id }">
             <input type="radio" :value="student.student_id" v-model="selectedStudent" />
             <span class="student-number">{{ studentNumber(student) }}</span>
-            <span class="student-name">{{ student.student_name || student.student_ch_name }}</span>
+            <span class="student-name">{{ studentDisplayName(student) }}</span>
           </label>
         </div>
       </section>
@@ -46,11 +46,18 @@ export default {
   computed: {
     filteredStudents() {
       const keyword = this.studentSearch.toLowerCase();
-      if (!keyword) return this.students;
-      return this.students.filter(student => {
-        const name = String(student.student_name || student.student_ch_name || '').toLowerCase();
+      const students = keyword ? this.students.filter(student => {
+        const chineseName = String(student.student_name || student.student_ch_name || '').toLowerCase();
+        const englishName = String(student.english_name || student.student_eng_name || '').toLowerCase();
         const number = String(student.class_number || '').toLowerCase();
-        return name.includes(keyword) || number.includes(keyword);
+        return chineseName.includes(keyword) || englishName.includes(keyword) || number.includes(keyword);
+      }) : this.students;
+
+      return students.slice().sort((a, b) => {
+        const numberA = Number(a.class_number);
+        const numberB = Number(b.class_number);
+        if (numberA !== numberB) return numberA - numberB;
+        return String(a.class_number || '').localeCompare(String(b.class_number || ''));
       });
     }
   },
@@ -62,6 +69,12 @@ export default {
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     studentNumber(student) { return String(student.class_number || '').padStart(2, '0'); },
+    studentDisplayName(student) {
+      if (this.$lang.locale === 'en') {
+        return student.english_name || student.student_eng_name || student.student_name;
+      }
+      return student.student_name || student.student_ch_name || student.english_name;
+    },
     async fetchStudents() {
       if (!this.selectedClass) return;
       const token = localStorage.getItem('token');

@@ -1,23 +1,41 @@
 <template>
   <main class="import-page">
     <section class="import-intro">
-      <h1>{{ tr('Import Timetable', '導入時間表') }}</h1>
-      <p class="intro-copy">{{ tr('Upload Excel timetable file.', '上載 Excel 時間表檔案。') }}</p>
+      <h1>{{ tr('Data Import', '資料導入') }}</h1>
     </section>
+
+    <nav class="import-tabs" :aria-label="tr('Import type', '導入類型')">
+      <button
+        v-if="canImportTimetable"
+        type="button"
+        :class="{ active: activeTab === 'timetable' }"
+        @click="selectTab('timetable')"
+      >
+        {{ tr('Import Timetable CSV', '導入時間表 CSV') }}
+      </button>
+      <button
+        v-if="canManageStudents"
+        type="button"
+        :class="{ active: activeTab === 'students' }"
+        @click="selectTab('students')"
+      >
+        {{ tr('Import Student Data CSV / XLSX', '導入學生資料 CSV / XLSX') }}
+      </button>
+    </nav>
 
     <section class="import-layout">
       <div class="upload-panel">
         <input
-          id="timetable-file"
+          id="data-import-file"
           ref="fileInput"
           class="file-input"
           type="file"
-          accept=".xlsx"
+          :accept="activeTab === 'timetable' ? '.csv,text/csv' : '.csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
           @change="handleFile"
         />
 
         <label
-          for="timetable-file"
+          for="data-import-file"
           class="drop-zone"
           :class="{ dragging: dragging, ready: file }"
           @dragenter.prevent="dragging = true"
@@ -25,7 +43,7 @@
           @dragleave.prevent="dragging = false"
           @drop.prevent="handleDrop"
         >
-          <span class="file-mark" aria-hidden="true">XLSX</span>
+          <span class="file-mark" aria-hidden="true">CSV</span>
           <strong v-if="file">{{ file.name }}</strong>
           <strong v-else>{{ tr('No file selected', '未選擇檔案') }}</strong>
           <span v-if="file" class="file-meta">{{ fileSize }}</span>
@@ -61,7 +79,7 @@
 
         <div v-if="lastImportResult" class="batch-result">
           <h2>{{ tr('Import Result', '\u532f\u5165\u7d50\u679c') }}</h2>
-          <dl>
+          <dl v-if="activeTab === 'timetable'">
             <div>
               <dt>{{ tr('Batch ID', '\u6279\u6b21') }}</dt>
               <dd>#{{ lastImportResult.batchId }}</dd>
@@ -75,17 +93,32 @@
               <dd>{{ lastImportResult.snapshotRows }}</dd>
             </div>
           </dl>
+          <dl v-else>
+            <div>
+              <dt>{{ tr('Added students', '新增學生') }}</dt>
+              <dd>{{ lastImportResult.insertedStudents }}</dd>
+            </div>
+            <div>
+              <dt>{{ tr('Updated students', '更新學生') }}</dt>
+              <dd>{{ lastImportResult.updatedStudents }}</dd>
+            </div>
+            <div>
+              <dt>{{ tr('Total rows', '總筆數') }}</dt>
+              <dd>{{ lastImportResult.totalRows }}</dd>
+            </div>
+          </dl>
         </div>
       </div>
 
       <div class="format-panel">
-        <h2>{{ tr('Excel Format', 'Excel 格式') }}</h2>
-        <div class="format-note">
-          <span>{{ tr('Worksheet name', '工作表名稱') }}</span>
-          <strong>Timetable</strong>
+        <div class="format-header">
+          <h2>{{ activeTab === 'timetable' ? tr('Timetable CSV Format', '時間表 CSV 格式') : tr('Student CSV Format', '學生 CSV 格式') }}</h2>
+          <button type="button" class="template-button" @click="downloadCsvTemplate">
+            {{ tr('Download CSV Template', '下載 CSV 範本') }}
+          </button>
         </div>
 
-        <div class="table-wrap">
+        <div v-if="activeTab === 'timetable'" class="table-wrap">
           <table>
             <thead>
               <tr>
@@ -110,17 +143,58 @@
           </table>
         </div>
 
-        <ul>
-          <li>day: Mon, Tue, Wed, Thu, Fri</li>
-          <li>period: Period 1, P1, or 1</li>
+        <div v-else class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>regno</th>
+                <th>student_ch_name</th>
+                <th>student_eng_name</th>
+                <th>email</th>
+                <th>class</th>
+                <th>class_number</th>
+                <th>sex</th>
+                <th>status</th>
+                <th>ncs</th>
+                <th>x1</th>
+                <th>x2</th>
+                <th>x3</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>20260001</td>
+                <td>陳小明</td>
+                <td>CHAN SIU MING</td>
+                <td>20260001@example.edu.hk</td>
+                <td>1A</td>
+                <td>01</td>
+                <td>M</td>
+                <td>active</td>
+                <td>No</td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul v-if="activeTab === 'timetable'">
           <li>day: Mon, Tue, Wed, Thu, Fri</li>
           <li>period: Period 1, P1, or 1</li>
           <li>{{ tr('First row must use the field names above.', '第一列必須使用以上欄位名稱。') }}</li>
-          </ul>
+        </ul>
+        <ul v-else>
+          <li>{{ tr('REGNO identifies students for add or update.', '系統按 REGNO 新增或更新學生。') }}</li>
+          <li>{{ tr('Student import accepts CSV or XLSX.', '學生資料可使用 CSV 或 XLSX。') }}</li>
+          <li>{{ tr('sex must be M or F.', 'sex 必須為 M 或 F。') }}</li>
+          <li>{{ tr('Students not listed in the CSV will not be deleted.', 'CSV 沒有列出的學生不會被刪除。') }}</li>
+        </ul>
       </div>
     </section>
 
-    <section class="history-panel">
+    <section v-if="activeTab === 'timetable' && canImportTimetable" class="history-panel">
       <div class="history-header">
         <div>
           <h2>{{ tr('Import History', '\u532f\u5165\u8a18\u9304') }}</h2>
@@ -198,6 +272,70 @@
         </div>
       </div>
     </section>
+
+    <section v-if="activeTab === 'students' && canManageStudents" class="history-panel">
+      <div class="history-header">
+        <div>
+          <h2>{{ tr('Student Import History', '學生匯入記錄') }}</h2>
+          <p>{{ tr('Restore student data to before a successful import.', '可將學生資料回復到某次成功匯入前的版本。') }}</p>
+        </div>
+        <button type="button" class="clear-button" :disabled="studentHistoryLoading" @click="fetchStudentImportBatches">
+          {{ tr('Reload', '重新載入') }}
+        </button>
+      </div>
+
+      <div class="history-table-wrap">
+        <table v-if="studentImportBatches.length" class="history-table">
+          <thead>
+            <tr>
+              <th>{{ tr('Time', '時間') }}</th>
+              <th>{{ tr('File', '檔案') }}</th>
+              <th>{{ tr('User', '使用者') }}</th>
+              <th>{{ tr('Status', '狀態') }}</th>
+              <th>{{ tr('Added', '新增') }}</th>
+              <th>{{ tr('Updated', '更新') }}</th>
+              <th>{{ tr('Snapshot', '備份') }}</th>
+              <th>{{ tr('Action', '操作') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="batch in studentImportBatches" :key="batch.batch_id">
+              <td>{{ formatDate(batch.created_at) }}</td>
+              <td>{{ batch.file_name }}</td>
+              <td>{{ batch.imported_by_name || '-' }}</td>
+              <td><span class="status-pill" :class="batch.status">{{ statusLabel(batch.status) }}</span></td>
+              <td>{{ batch.inserted_rows }}</td>
+              <td>{{ batch.updated_rows }}</td>
+              <td>{{ batch.snapshot_rows }}</td>
+              <td>
+                <div class="history-actions">
+                  <button type="button" class="clear-button small" @click="downloadStudentBatchJson(batch)">JSON</button>
+                  <button
+                    type="button"
+                    class="danger-button small"
+                    :disabled="batch.status !== 'success' || studentRollbackLoading"
+                    @click="rollbackStudentBatch(batch)"
+                  >
+                    {{ tr('Restore', '回復') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="delete-button small"
+                    :disabled="studentHistoryLoading || studentRollbackLoading"
+                    @click="deleteStudentBatch(batch)"
+                  >
+                    {{ tr('Delete', '刪除') }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else class="empty-history">
+          {{ studentHistoryLoading ? tr('Loading...', '載入中...') : tr('No student import history yet.', '暫時沒有學生匯入記錄。') }}
+        </p>
+      </div>
+    </section>
   </main>
 </template>
 
@@ -208,8 +346,8 @@ const TEXT = {
   upload: '\u4e0a\u8f09\u8ab2\u8868',
   uploading: '\u4e0a\u8f09\u4e2d...',
   clear: '\u6e05\u9664',
-  chooseFile: '\u8acb\u9078\u64c7 Excel \u6a94\u6848\u3002',
-  xlsxOnly: '\u8acb\u4e0a\u8f09 .xlsx \u6a94\u6848\u3002',
+  chooseFile: '\u8acb\u9078\u64c7 CSV \u6a94\u6848\u3002',
+  csvOnly: '\u8acb\u4e0a\u8f09 .csv \u6a94\u6848\u3002',
   loginFirst: '\u8acb\u5148\u767b\u5165\u518d\u4e0a\u8f09\u3002',
   failed: '\u4e0a\u8f09\u5931\u6557\u3002',
   networkFailed: '\u4e0a\u8f09\u5931\u6557\uff0c\u8acb\u6aa2\u67e5\u4f3a\u670d\u5668\u9023\u7dda\u3002',
@@ -219,21 +357,33 @@ const TEXT = {
 export default {
   data() {
     return {
+      activeTab: 'timetable',
+      permissions: {},
+      userRole: '',
       file: null,
       dragging: false,
       uploading: false,
       historyLoading: false,
       rollbackLoading: false,
+      studentHistoryLoading: false,
+      studentRollbackLoading: false,
       message: '',
       messageType: '',
       lastImportResult: null,
       importBatches: [],
+      studentImportBatches: [],
       historyPage: 1,
       historyPageSize: 5,
       text: TEXT
     };
   },
   computed: {
+    canImportTimetable() {
+      return this.userRole === 'manager' || Boolean(this.permissions.importTimetable);
+    },
+    canManageStudents() {
+      return this.userRole === 'manager' || Boolean(this.permissions.manageStudents);
+    },
     fileSize() {
       if (!this.file) return '';
       const sizeInKb = Math.max(1, Math.round(this.file.size / 1024));
@@ -259,15 +409,34 @@ export default {
     tr(en, zh) {
       return this.$lang.locale === 'en' ? en : zh;
     },
+    selectTab(tab) {
+      if (tab === 'timetable' && !this.canImportTimetable) return;
+      if (tab === 'students' && !this.canManageStudents) return;
+      this.activeTab = tab;
+      this.clearFile();
+      this.message = '';
+      this.messageType = '';
+      this.lastImportResult = null;
+      if (tab === 'timetable') this.fetchImportBatches();
+      if (tab === 'students') this.fetchStudentImportBatches();
+    },
     setFile(file) {
       this.dragging = false;
       this.message = '';
       this.messageType = '';
 
       if (!file) return;
-      if (!/\.xlsx$/i.test(file.name)) {
+      const validFile = this.activeTab === 'timetable'
+        ? /\.csv$/i.test(file.name)
+        : /\.(csv|xlsx)$/i.test(file.name);
+      if (!validFile) {
         this.clearFile();
-        this.showMessage(this.tr('Please upload a .xlsx file.', TEXT.xlsxOnly), 'error');
+        this.showMessage(
+          this.activeTab === 'timetable'
+            ? this.tr('Please upload a .csv file.', TEXT.csvOnly)
+            : this.tr('Please upload a .csv or .xlsx file.', '請上載 .csv 或 .xlsx 檔案。'),
+          'error'
+        );
         return;
       }
 
@@ -327,6 +496,19 @@ export default {
         this.historyLoading = false;
       }
     },
+    async fetchStudentImportBatches() {
+      const token = localStorage.getItem('token');
+      if (!token || !this.canManageStudents) return;
+      this.studentHistoryLoading = true;
+      try {
+        const res = await axios.get('/api/import/students/batches', { headers: this.authHeaders() });
+        this.studentImportBatches = res.data;
+      } catch (err) {
+        console.error('Failed to load student import history:', err);
+      } finally {
+        this.studentHistoryLoading = false;
+      }
+    },
     async rollbackBatch(batch) {
       const firstConfirm = confirm(this.tr(
         `Restore timetable to before import? Current timetable will be replaced.`,
@@ -376,6 +558,85 @@ export default {
         this.showMessage(data && data.message ? data.message : this.tr('Failed to download JSON.', '\u4e0b\u8f09 JSON \u5931\u6557\u3002'), 'error');
       }
     },
+    async downloadStudentBatchJson(batch) {
+      try {
+        const res = await axios.get(`/api/import/students/batches/${batch.batch_id}/json`, { headers: this.authHeaders() });
+        this.downloadJson(res.data, `student_import_batch_${batch.batch_id}.json`);
+      } catch (err) {
+        const data = err.response && err.response.data;
+        this.showMessage(data && data.message ? data.message : this.tr('Failed to download JSON.', '下載 JSON 失敗。'), 'error');
+      }
+    },
+    downloadJson(data, filename) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
+    async rollbackStudentBatch(batch) {
+      const confirmed = confirm(this.tr(
+        'Restore student data to before this import? Newly added students in this batch will be removed.',
+        '確定回復到這次匯入前的學生資料？此批次新增的學生會被移除。'
+      ));
+      if (!confirmed) return;
+
+      this.studentRollbackLoading = true;
+      try {
+        const res = await axios.post(`/api/import/students/rollback/${batch.batch_id}`, {}, { headers: this.authHeaders() });
+        this.showMessage([
+          res.data.message,
+          `Restored rows: ${res.data.restoredRows}`,
+          `Removed rows: ${res.data.removedRows}`
+        ].join('\n'), 'success');
+        await this.fetchStudentImportBatches();
+      } catch (err) {
+        const data = err.response && err.response.data;
+        this.showMessage(data && data.message ? data.message : this.tr('Restore failed.', '回復失敗。'), 'error');
+      } finally {
+        this.studentRollbackLoading = false;
+      }
+    },
+    async deleteStudentBatch(batch) {
+      if (!confirm(this.tr(
+        'Delete student import history? Current student data will not change.',
+        '確定刪除學生匯入記錄？現有學生資料不會改變。'
+      ))) return;
+
+      try {
+        await axios.delete(`/api/import/students/batches/${batch.batch_id}`, { headers: this.authHeaders() });
+        await this.fetchStudentImportBatches();
+      } catch (err) {
+        const data = err.response && err.response.data;
+        this.showMessage(data && data.message ? data.message : this.tr('Delete failed.', '刪除失敗。'), 'error');
+      }
+    },
+    downloadCsvTemplate() {
+      const timetableRows = [
+        'teacher,subject,class,room,day,period',
+        'T001,ENG,1A,101,Mon,Period 1'
+      ];
+      const studentRows = [
+        'regno,student_ch_name,student_eng_name,email,class,class_number,sex,status,ncs,x1,x2,x3',
+        '20260001,陳小明,CHAN SIU MING,20260001@example.edu.hk,1A,01,M,active,No,,,'
+      ];
+      const csv = (this.activeTab === 'timetable' ? timetableRows : studentRows).join('\r\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = this.activeTab === 'timetable'
+        ? 'timetable_template.csv'
+        : 'student_template.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
     async deleteBatch(batch) {
       const confirmed = confirm(this.tr(
         `Delete import history? This only deletes the record and snapshot not the current timetable.`,
@@ -409,6 +670,11 @@ export default {
         this.formatList('Missing room', data.missingRooms),
         this.formatList('Missing period', data.missingPeriods),
         this.formatList('Missing columns', data.missingColumns),
+        this.formatList('Duplicate student_id', data.duplicateStudentIds),
+        this.formatList('Duplicate REGNO', data.duplicateRegnos),
+        this.formatList('Duplicate email', data.duplicateEmails),
+        this.formatList('Duplicate class number', data.duplicateClassNumbers),
+        this.formatList('Missing elective', data.missingElectives),
         this.formatInvalidRows(data.invalidRows)
       ].filter(Boolean);
 
@@ -416,7 +682,7 @@ export default {
     },
     async uploadFile() {
       if (!this.file) {
-        this.showMessage(this.tr('Please choose an Excel file.', TEXT.chooseFile), 'error');
+        this.showMessage(this.tr('Please choose a CSV file.', TEXT.chooseFile), 'error');
         return;
       }
 
@@ -431,8 +697,11 @@ export default {
       this.uploading = true;
 
       try {
+        const endpoint = this.activeTab === 'timetable'
+          ? '/api/import/csv'
+          : '/api/import/students/file';
         const res = await axios.post(
-          '/api/import/excel',
+          endpoint,
           formData,
           {
             headers: {
@@ -442,16 +711,28 @@ export default {
           }
         );
 
-        this.showMessage([
-          res.data.message,
-          `Batch ID: ${res.data.batchId}`,
-          `Imported rows: ${res.data.insertedTimetable}`,
-          `Skipped rows: ${res.data.skippedRows}`,
-          `Snapshot rows: ${res.data.snapshotRows}`
-        ].join('\n'), 'success');
+        const resultLines = this.activeTab === 'timetable'
+          ? [
+            res.data.message,
+            `Batch ID: ${res.data.batchId}`,
+            `Imported rows: ${res.data.insertedTimetable}`,
+            `Skipped rows: ${res.data.skippedRows}`,
+            `Snapshot rows: ${res.data.snapshotRows}`
+          ]
+          : [
+            res.data.message,
+            `Added students: ${res.data.insertedStudents}`,
+            `Updated students: ${res.data.updatedStudents}`,
+            `Total rows: ${res.data.totalRows}`
+          ];
+        this.showMessage(resultLines.join('\n'), 'success');
         this.lastImportResult = res.data;
         this.clearFile();
-        await this.fetchImportBatches();
+        if (this.activeTab === 'timetable') {
+          await this.fetchImportBatches();
+        } else {
+          await this.fetchStudentImportBatches();
+        }
       } catch (err) {
         console.error('Import failed:', err);
         this.lastImportResult = null;
@@ -467,7 +748,22 @@ export default {
     }
   },
   mounted() {
-    this.fetchImportBatches();
+    const rawUser = localStorage.getItem('user');
+    if (rawUser) {
+      try {
+        const user = JSON.parse(rawUser);
+        this.userRole = String(user.role || '').trim().toLowerCase();
+        this.permissions = user.permissions || {};
+      } catch (error) {
+        console.error('Failed to read import permissions:', error);
+      }
+    }
+
+    if (!this.canImportTimetable && this.canManageStudents) {
+      this.activeTab = 'students';
+    }
+    if (this.canImportTimetable) this.fetchImportBatches();
+    if (this.canManageStudents) this.fetchStudentImportBatches();
   }
 };
 </script>
@@ -484,6 +780,33 @@ export default {
 .import-intro {
   max-width: 720px;
   margin: 0 0 24px;
+}
+
+.import-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.import-tabs button {
+  height: 46px;
+  border: 1px solid transparent;
+  border-bottom: 3px solid transparent;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.import-tabs button:hover {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.import-tabs button.active {
+  border-bottom-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
 }
 
 .eyebrow {
@@ -708,6 +1031,30 @@ button:disabled {
 
 .format-panel {
   padding: 24px;
+}
+
+.format-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.format-header h2 {
+  margin: 0;
+}
+
+.template-button {
+  height: 40px;
+  border: 1px solid var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  padding: 0 14px;
+}
+
+.template-button:hover {
+  background: #e0f1f2;
 }
 
 h2 {

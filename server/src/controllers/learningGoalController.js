@@ -117,11 +117,12 @@ export const getLearningGoalResults = async (req, res) => {
         c.class_name,
         s.class_number,
         s.student_ch_name,
+        s.student_eng_name,
         COALESCE(SUM(lgr.completed_goals), 0) AS completed_goals
       FROM student s
       JOIN class c ON s.class_id = c.class_id
       LEFT JOIN learning_goal_record lgr ON s.student_id = lgr.student_id
-      GROUP BY s.student_id, c.class_name, s.class_number, s.student_ch_name
+      GROUP BY s.student_id, c.class_name, s.class_number, s.student_ch_name, s.student_eng_name
       HAVING completed_goals > 0
       ORDER BY
         CAST(LEFT(c.class_name, 1) AS UNSIGNED),
@@ -138,6 +139,7 @@ export const getLearningGoalResults = async (req, res) => {
         class_name: row.class_name,
         class_number: row.class_number,
         student_ch_name: row.student_ch_name,
+        student_eng_name: row.student_eng_name,
         completed_goals: completedGoals,
         award: getAward(completedGoals),
         merit_offset_count: completedGoals

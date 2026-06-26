@@ -70,11 +70,19 @@ CREATE TABLE subject (
 -- 學生表（多對多選修科目）
 CREATE TABLE student (
     student_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    regno VARCHAR(50) NULL,
+    email VARCHAR(255) NULL,
     student_ch_name VARCHAR(255) NOT NULL,
     student_eng_name VARCHAR(255) NOT NULL,
     class_id BIGINT,
     class_number VARCHAR(2) NOT NULL,
     sex ENUM('M', 'F') NOT NULL,
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+    is_ncs BOOLEAN NOT NULL DEFAULT FALSE,
+    x1_subject_id BIGINT NULL,
+    x2_subject_id BIGINT NULL,
+    x3_subject_id BIGINT NULL,
+    INDEX idx_student_class_id (class_id),
     FOREIGN KEY (class_id) REFERENCES class(class_id) ON DELETE SET NULL
 );
 

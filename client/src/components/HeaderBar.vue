@@ -80,7 +80,7 @@
         <ul id="SubMenu3" class="sub-menu" style="display: none;">
           <li><router-link to="/editTeacher">{{ $t('nav.editTeacher') }}</router-link></li>
           <li v-if="canManageStudents"><router-link to="/StudentManagement">{{ $t('nav.studentManagement') }}</router-link></li>
-          <li v-if="canImportTimetable"><router-link to="/ImportTeacher">{{ $t('nav.importTeacher') }}</router-link></li>
+          <li v-if="canImportTimetable || canManageStudents"><router-link to="/ImportTeacher">{{ $t('nav.importTeacher') }}</router-link></li>
         </ul>
       </span>
     </div>

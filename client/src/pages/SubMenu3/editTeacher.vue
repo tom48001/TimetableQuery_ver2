@@ -217,7 +217,7 @@ export default {
           key: 'importTimetable',
           shortLabel: this.tr('Import', '導入'),
           label: this.tr('Import Timetable', '導入時間表'),
-          description: this.tr('Import timetable Excel files.', '可導入時間表 Excel。')
+          description: this.tr('Import timetable CSV files.', '可導入時間表 CSV。')
         }
       ];
     },

@@ -189,7 +189,7 @@ h2 {
 
 .free-table {
   width: 100%;
-  min-width: 960px;
+  min-width: 1080px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -226,10 +226,12 @@ h2 {
 }
 
 .teacher-col {
-  width: 120px;
+  width: 190px;
   color: var(--text);
   text-align: left !important;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .class-pill {

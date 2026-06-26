@@ -92,6 +92,14 @@
   font-weight: 800;
 }
 
+.name small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .center {
   text-align: center !important;
 }

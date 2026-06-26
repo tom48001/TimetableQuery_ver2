@@ -23,7 +23,7 @@ router.post('/:classId', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT class_id, class_name
+      SELECT class_id, class_name, grade_level
       FROM class
       ORDER BY
         CAST(LEFT(class_name, 1) AS UNSIGNED),

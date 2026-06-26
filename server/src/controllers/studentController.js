@@ -1,9 +1,11 @@
 import pool from '../db.js';
+import { ensureStudentAdminSchema } from './manageStudentController.js';
 
 // 查詢某班所有學生
 export const getStudentsByClassId = async (req, res) => {
   const { classId } = req.params;
   try {
+    await ensureStudentAdminSchema();
     const [students] = await pool.query(
       `SELECT 
         s.student_id, 
@@ -15,8 +17,8 @@ export const getStudentsByClassId = async (req, res) => {
         c.class_name
       FROM student s
       JOIN class c ON s.class_id = c.class_id
-      WHERE s.class_id = ?
-      ORDER BY s.student_ch_name`, 
+      WHERE s.class_id = ? AND s.status = 'active'
+      ORDER BY CAST(s.class_number AS UNSIGNED), s.class_number, s.student_ch_name`, 
       [classId]
     );
     res.json(students);
@@ -50,6 +52,7 @@ export const getStudentsByClassNSubject = async (req, res) => {
   const { classId, subjectId } = req.params;
 
   try {
+    await ensureStudentAdminSchema();
     const baseSql = `
       SELECT
         s.student_id,
@@ -61,7 +64,7 @@ export const getStudentsByClassNSubject = async (req, res) => {
         c.class_name
       FROM student s
       JOIN class c ON s.class_id = c.class_id
-      WHERE s.class_id = ?
+      WHERE s.class_id = ? AND s.status = 'active'
       ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name
     `;
 
@@ -91,8 +94,8 @@ export const getStudentsByClassNSubject = async (req, res) => {
         c.class_name
       FROM student s
       JOIN class c ON s.class_id = c.class_id
-      JOIN student_subject ss ON s.student_id = ss.student_id
-      WHERE s.class_id = ? AND ss.subject_id = ?
+      WHERE s.class_id = ? AND s.status = 'active'
+        AND ? IN (s.x1_subject_id, s.x2_subject_id, s.x3_subject_id)
       ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name
       `,
       [classId, subjectId]
@@ -114,6 +117,7 @@ export const getStudentsByClassNSubject = async (req, res) => {
 export const getStudentTimetable = async (req, res) => {
   const { studentId } = req.params;
   try {
+    await ensureStudentAdminSchema();
     const [rows] = await pool.query(`
       SELECT 
         t.teacher_name,
@@ -131,7 +135,7 @@ export const getStudentTimetable = async (req, res) => {
       JOIN subject sb ON tt.subject_id = sb.subject_id
       JOIN room r ON tt.room_id = r.room_id
       JOIN period p ON tt.period_id = p.period_id
-      WHERE s.student_id = ?
+      WHERE s.student_id = ? AND s.status = 'active'
       ORDER BY tt.day_of_week, tt.period_id
     `, [studentId]);
 
@@ -145,6 +149,7 @@ export const getStudentTimetable = async (req, res) => {
 // 查所有學生
 export const getStudents = async (req, res) => {
   try {
+    await ensureStudentAdminSchema();
     const [rows] = await pool.query(`
       SELECT 
         s.student_id, 
@@ -155,6 +160,7 @@ export const getStudents = async (req, res) => {
         c.class_name
       FROM student s
       JOIN class c ON s.class_id = c.class_id
+      WHERE s.status = 'active'
       ORDER BY
         CAST(LEFT(c.class_name, 1) AS UNSIGNED),
         FIELD(SUBSTRING(c.class_name, 2, 1), 'M', 'A', 'R', 'Y'),

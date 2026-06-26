@@ -23,7 +23,10 @@
             <tr v-for="row in nominationResults" :key="row.student_id">
               <td class="center">{{ row.class_name }}</td>
               <td>{{ row.student_id }}</td>
-              <td class="name">{{ row.student_ch_name || row.student_id }}</td>
+              <td class="name">
+                {{ row.student_ch_name || row.student_id }}
+                <small v-if="row.student_eng_name">{{ row.student_eng_name }}</small>
+              </td>
               <td>{{ teacherNames(row.teacher_names) }}</td>
               <td class="center">
                 <span class="count-badge">{{ teacherCount(row.teacher_names) }}</span>
@@ -97,7 +100,7 @@ export default {
 }
 
 .name-col {
-  width: 150px;
+  width: 190px;
 }
 
 .count-col {

@@ -32,7 +32,7 @@
                 v-model="selectedStudents[classId]"
               />
               <span class="student-number">{{ studentNumber(student) }}</span>
-              <span class="student-name">{{ student.student_name }}</span>
+              <span class="student-name">{{ studentDisplayName(student) }}</span>
             </label>
           </div>
         </section>
@@ -90,6 +90,12 @@ export default {
     },
     studentNumber(student) {
       return String(student.class_number || '').padStart(2, '0');
+    },
+    studentDisplayName(student) {
+      if (this.$lang.locale === 'en') {
+        return student.english_name || student.student_eng_name || student.student_name;
+      }
+      return student.student_name || student.student_ch_name || student.english_name;
     },
     className(classId) {
       const students = this.studentsByClass[classId] || [];
