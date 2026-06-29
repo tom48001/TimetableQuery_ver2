@@ -51,6 +51,9 @@ export const getClassScheduleById = async (req, res) => {
         c.class_name,
         r.room_name AS room,
         s.subject_name AS subject,
+        s.subject_name AS subject_name,
+        s.subject_name_zh,
+        s.subject_name_en,
         tt.day_of_week,
         tt.period
       FROM timetable tt

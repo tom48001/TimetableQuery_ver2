@@ -9,6 +9,25 @@
         <span class="summary-pill">{{ filteredStudents.length }} / {{ students.length }}</span>
       </header>
 
+      <section class="stats-grid">
+        <article class="stat-card">
+          <span>{{ tr('Active', '啟用') }}</span>
+          <strong>{{ activeCount }}</strong>
+        </article>
+        <article class="stat-card muted">
+          <span>{{ tr('Inactive', '停用') }}</span>
+          <strong>{{ inactiveCount }}</strong>
+        </article>
+        <article class="stat-card warn">
+          <span>{{ tr('Duplicates', '重複資料') }}</span>
+          <strong>{{ duplicateCount }}</strong>
+        </article>
+        <article class="stat-card teal">
+          <span>NCS</span>
+          <strong>{{ ncsCount }}</strong>
+        </article>
+      </section>
+
       <section class="toolbar-card">
         <button type="button" class="secondary-btn" @click="exportStudents">
           {{ tr('Export Student List', '匯出學生名單') }}
@@ -240,6 +259,18 @@ export default {
     paginatedStudents() {
       const start = (this.currentPage - 1) * this.pageSize;
       return this.filteredStudents.slice(start, start + this.pageSize);
+    },
+    activeCount() {
+      return this.students.filter(student => student.status === 'active').length;
+    },
+    inactiveCount() {
+      return this.students.filter(student => student.status === 'inactive').length;
+    },
+    duplicateCount() {
+      return this.students.filter(student => student.duplicate_regno || student.duplicate_email || student.duplicate_class_number).length;
+    },
+    ncsCount() {
+      return this.students.filter(student => student.is_ncs).length;
     }
   },
   watch: {
@@ -355,46 +386,335 @@ export default {
 </script>
 
 <style scoped>
-.student-admin-page { min-height: calc(100vh - 126px); padding: 34px 20px 64px; box-sizing: border-box; }
-.admin-panel { max-width: 1480px; margin: auto; padding: 26px; border: 1px solid var(--border); border-radius: 8px; background: #fff; box-shadow: var(--shadow); }
-.page-header, .toolbar-card, .pagination-bar, .actions { display: flex; align-items: center; gap: 10px; }
-.page-header { justify-content: space-between; }
-.page-header h1, h2 { margin: 0; color: var(--text); }
-.page-header p { margin: 6px 0 0; color: var(--text-muted); }
-.summary-pill, .status-pill { border-radius: 999px; padding: 6px 10px; font-weight: 800; }
-.summary-pill { background: var(--primary-soft); color: var(--primary-dark); }
-.toolbar-card, .form-section, .list-section { margin-top: 18px; padding: 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-soft); }
-.form-grid, .filter-grid { display: grid; gap: 10px; margin-top: 14px; }
-.form-grid { grid-template-columns: repeat(4, minmax(150px, 1fr)); }
-.filter-grid { grid-template-columns: minmax(260px, 2fr) repeat(5, minmax(125px, 1fr)); }
-label { display: grid; gap: 5px; color: var(--text-muted); font-size: 12px; font-weight: 800; }
-input, select { width: 100%; min-width: 90px; height: 40px; box-sizing: border-box; border: 1px solid var(--border-strong); border-radius: 6px; background: #fff; padding: 0 9px; }
-.checkbox-label { display: flex; align-items: center; align-self: end; height: 40px; }
-.checkbox-label input { width: 18px; height: 18px; }
-button { border-radius: 6px; cursor: pointer; font-weight: 800; padding: 0 14px; height: 40px; }
-.primary-btn { border: none; background: var(--primary); color: #fff; margin-top: 14px; }
-.secondary-btn, .status-btn { border: 1px solid var(--border-strong); background: #fff; color: var(--text); }
-.status-btn { color: #8c4029; }
-.compact { height: 32px; margin: 0; padding: 0 9px; }
-.table-wrap { margin-top: 14px; overflow: auto; max-height: 680px; }
-.student-table { width: 100%; min-width: 1680px; border-collapse: collapse; background: #fff; }
-.student-table th, .student-table td { border: 1px solid var(--border); padding: 8px; vertical-align: middle; }
-.student-table th { position: sticky; top: 0; z-index: 1; background: #edf5f7; white-space: nowrap; }
-.student-table tr.inactive { opacity: 0.62; background: #f5f5f5; }
-.name-cell { font-weight: 800; }
-.duplicate { background: #fff0ed; color: #9d3028; font-weight: 800; }
-.duplicate small { display: block; margin-top: 3px; }
-.status-pill.active { background: #e7f5ea; color: #22623a; }
-.status-pill.inactive { background: #eceff1; color: #5c6870; }
-.actions { flex-wrap: wrap; }
-.pagination-bar { justify-content: center; margin-top: 14px; }
-.empty-state { padding: 28px; text-align: center; color: var(--text-muted); }
-@media (max-width: 1000px) {
-  .form-grid, .filter-grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+.student-admin-page {
+  box-sizing: border-box;
+  min-height: calc(100vh - 126px);
+  padding: 34px 20px 64px;
 }
+
+.admin-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 253, 0.98));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 18px 45px rgba(25, 54, 69, 0.12);
+  margin: auto;
+  max-width: 1500px;
+  padding: 26px;
+}
+
+.page-header,
+.toolbar-card,
+.pagination-bar,
+.actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.page-header {
+  justify-content: space-between;
+}
+
+.page-header h1,
+h2 {
+  color: var(--text);
+  margin: 0;
+}
+
+.page-header h1 {
+  font-size: 34px;
+}
+
+.page-header p {
+  color: var(--text-muted);
+  font-weight: 700;
+  margin: 6px 0 0;
+}
+
+.summary-pill,
+.status-pill {
+  border-radius: 999px;
+  font-weight: 900;
+  padding: 6px 10px;
+}
+
+.summary-pill {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+
+.stats-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  margin-top: 18px;
+}
+
+.stat-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-left: 5px solid #2f855a;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(25, 54, 69, 0.07);
+  padding: 14px 16px;
+}
+
+.stat-card span {
+  color: var(--text-muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stat-card strong {
+  color: var(--text);
+  display: block;
+  font-size: 30px;
+  line-height: 1.1;
+  margin-top: 6px;
+}
+
+.stat-card.muted { border-left-color: #718096; }
+.stat-card.warn { border-left-color: #d97706; }
+.stat-card.teal { border-left-color: var(--primary); }
+
+.toolbar-card,
+.form-section,
+.list-section {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(25, 54, 69, 0.06);
+  margin-top: 18px;
+  padding: 18px;
+}
+
+.toolbar-card {
+  justify-content: flex-end;
+}
+
+.form-section {
+  background: linear-gradient(180deg, #ffffff, #f8fbfc);
+}
+
+.form-grid,
+.filter-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.form-grid {
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+}
+
+.filter-grid {
+  grid-template-columns: minmax(280px, 2fr) repeat(5, minmax(130px, 1fr));
+}
+
+label {
+  color: var(--text-muted);
+  display: grid;
+  font-size: 12px;
+  font-weight: 900;
+  gap: 6px;
+}
+
+input,
+select {
+  background: #fff;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-sizing: border-box;
+  height: 42px;
+  min-width: 90px;
+  padding: 0 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(11, 114, 133, 0.14);
+  outline: none;
+}
+
+.checkbox-label {
+  align-items: center;
+  align-self: end;
+  display: flex;
+  height: 42px;
+}
+
+.checkbox-label input {
+  height: 18px;
+  width: 18px;
+}
+
+button {
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 900;
+  height: 40px;
+  padding: 0 14px;
+}
+
+.primary-btn {
+  background: var(--primary);
+  border: none;
+  color: #fff;
+  margin-top: 14px;
+}
+
+.primary-btn:hover {
+  background: var(--primary-dark);
+}
+
+.secondary-btn,
+.status-btn {
+  background: #fff;
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+
+.secondary-btn:hover,
+.status-btn:hover {
+  background: var(--surface-soft);
+}
+
+.status-btn {
+  color: #8c4029;
+}
+
+.compact {
+  height: 32px;
+  margin: 0;
+  padding: 0 9px;
+}
+
+.table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-top: 14px;
+  max-height: 680px;
+  overflow: auto;
+}
+
+.student-table {
+  background: #fff;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 1680px;
+  width: 100%;
+}
+
+.student-table th,
+.student-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 9px 10px;
+  vertical-align: middle;
+}
+
+.student-table th {
+  background: #edf5f7;
+  box-shadow: inset 0 -1px 0 var(--border);
+  color: var(--text);
+  position: sticky;
+  text-align: left;
+  top: 0;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.student-table tbody tr:nth-child(even) {
+  background: #fbfdfe;
+}
+
+.student-table tbody tr:hover {
+  background: #f0f8fa;
+}
+
+.student-table tr.inactive {
+  background: #f5f5f5;
+  opacity: 0.66;
+}
+
+.name-cell {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.duplicate {
+  background: #fff0ed;
+  color: #9d3028;
+  font-weight: 900;
+}
+
+.duplicate small {
+  display: block;
+  margin-top: 3px;
+}
+
+.status-pill {
+  display: inline-flex;
+  min-width: 66px;
+  justify-content: center;
+}
+
+.status-pill.active {
+  background: #e7f5ea;
+  color: #22623a;
+}
+
+.status-pill.inactive {
+  background: #eceff1;
+  color: #5c6870;
+}
+
+.actions {
+  flex-wrap: wrap;
+}
+
+.pagination-bar {
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.empty-state {
+  color: var(--text-muted);
+  padding: 28px;
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+
+  .form-grid,
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
-  .admin-panel { padding: 16px; }
-  .page-header, .toolbar-card { align-items: stretch; flex-direction: column; }
-  .form-grid, .filter-grid { grid-template-columns: 1fr; }
+  .admin-panel {
+    padding: 16px;
+  }
+
+  .page-header,
+  .toolbar-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .stats-grid,
+  .form-grid,
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

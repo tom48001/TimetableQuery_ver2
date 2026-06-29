@@ -46,6 +46,8 @@ router.get('/schedule/:classId', async (req, res) => {
         t.teacher_name,
         s.subject_id,
         s.subject_name,
+        s.subject_name_zh,
+        s.subject_name_en,
         c.class_name,
         r.room_id,
         r.room_name,

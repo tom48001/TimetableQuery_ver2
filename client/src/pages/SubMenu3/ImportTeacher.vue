@@ -19,7 +19,7 @@
         :class="{ active: activeTab === 'students' }"
         @click="selectTab('students')"
       >
-        {{ tr('Import Student Data CSV / XLSX', '導入學生資料 CSV / XLSX') }}
+        {{ tr('Import Student Data CSV', '導入學生資料 CSV') }}
       </button>
     </nav>
 
@@ -30,7 +30,7 @@
           ref="fileInput"
           class="file-input"
           type="file"
-          :accept="activeTab === 'timetable' ? '.csv,text/csv' : '.csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
+          accept=".csv,text/csv"
           @change="handleFile"
         />
 
@@ -132,8 +132,8 @@
             </thead>
             <tbody>
               <tr>
-                <td>T001</td>
-                <td>ENG</td>
+                <td>CKW</td>
+                <td>English Language</td>
                 <td>1A</td>
                 <td>101</td>
                 <td>Mon</td>
@@ -147,34 +147,36 @@
           <table>
             <thead>
               <tr>
-                <th>regno</th>
-                <th>student_ch_name</th>
-                <th>student_eng_name</th>
-                <th>email</th>
-                <th>class</th>
-                <th>class_number</th>
-                <th>sex</th>
-                <th>status</th>
-                <th>ncs</th>
-                <th>x1</th>
-                <th>x2</th>
-                <th>x3</th>
+                <th>REGNO</th>
+                <th>級別</th>
+                <th>班別</th>
+                <th>學號</th>
+                <th>姓名</th>
+                <th>ENNAME</th>
+                <th>SEX</th>
+                <th>Email</th>
+                <th>NCS</th>
+                <th>Status</th>
+                <th>X1</th>
+                <th>X2</th>
+                <th>X3/M1/APL/OL</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>20260001</td>
+                <td>S4</td>
+                <td>A</td>
+                <td>1</td>
                 <td>陳小明</td>
                 <td>CHAN SIU MING</td>
-                <td>20260001@example.edu.hk</td>
-                <td>1A</td>
-                <td>01</td>
                 <td>M</td>
-                <td>active</td>
+                <td>s20260001@school.edu.hk</td>
                 <td>No</td>
-                <td></td>
-                <td></td>
-                <td></td>
+                <td>正常</td>
+                <td>PHY</td>
+                <td>CHEM</td>
+                <td>Math(M1)</td>
               </tr>
             </tbody>
           </table>
@@ -187,7 +189,7 @@
         </ul>
         <ul v-else>
           <li>{{ tr('REGNO identifies students for add or update.', '系統按 REGNO 新增或更新學生。') }}</li>
-          <li>{{ tr('Student import accepts CSV or XLSX.', '學生資料可使用 CSV 或 XLSX。') }}</li>
+          <li>{{ tr('Student import accepts CSV only.', '學生資料只接受 CSV。') }}</li>
           <li>{{ tr('sex must be M or F.', 'sex 必須為 M 或 F。') }}</li>
           <li>{{ tr('Students not listed in the CSV will not be deleted.', 'CSV 沒有列出的學生不會被刪除。') }}</li>
         </ul>
@@ -426,15 +428,11 @@ export default {
       this.messageType = '';
 
       if (!file) return;
-      const validFile = this.activeTab === 'timetable'
-        ? /\.csv$/i.test(file.name)
-        : /\.(csv|xlsx)$/i.test(file.name);
+      const validFile = /\.csv$/i.test(file.name);
       if (!validFile) {
         this.clearFile();
         this.showMessage(
-          this.activeTab === 'timetable'
-            ? this.tr('Please upload a .csv file.', TEXT.csvOnly)
-            : this.tr('Please upload a .csv or .xlsx file.', '請上載 .csv 或 .xlsx 檔案。'),
+          this.tr('Please upload a .csv file.', TEXT.csvOnly),
           'error'
         );
         return;
@@ -618,11 +616,13 @@ export default {
     downloadCsvTemplate() {
       const timetableRows = [
         'teacher,subject,class,room,day,period',
-        'T001,ENG,1A,101,Mon,Period 1'
+        'CKW,Chinese Language,1A,101,Mon,Period 1',
+        'LCW,English Language,2M,412,Tue,P2'
       ];
       const studentRows = [
-        'regno,student_ch_name,student_eng_name,email,class,class_number,sex,status,ncs,x1,x2,x3',
-        '20260001,陳小明,CHAN SIU MING,20260001@example.edu.hk,1A,01,M,active,No,,,'
+        'REGNO,級別,班別,學號,ClsNo,姓名,ENNAME,SEX,社別,Email,NCS,Status,語言組別,X1,X2,X3/M1/APL/OL,SUPP CLASS,數學/Maths,公社,退選科目,備註',
+        '20260001,S4,A,1,1,陳小明,CHAN SIU MING,M,Red,s20260001@school.edu.hk,N,正常,,PHY,CHEM,Math(M1),,,,,',
+        '20260002,S4,A,2,2,李美玲,LEE MEI LING,F,Blue,s20260002@school.edu.hk,Y,正常,,BIO,ECON,JAP,,,,,'
       ];
       const csv = (this.activeTab === 'timetable' ? timetableRows : studentRows).join('\r\n');
       const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });

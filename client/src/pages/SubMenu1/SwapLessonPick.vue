@@ -132,7 +132,7 @@ export default {
       );
     },
     subjectLabel(lesson) {
-      return formatSubjectLabel({ subject_id: lesson.subject_id, subject_name: lesson.subject_name || lesson.subject }, this.$lang.locale);
+      return formatSubjectLabel(lesson, this.$lang.locale);
     },
     isSelected(lesson) {
       return this.selectedLessonIds.some(id => Number(id) === Number(lesson.timetable_id));
@@ -155,7 +155,9 @@ export default {
             classId: lesson.class_id,
             className: lesson.class_name,
             subject: lesson.subject || lesson.subject_name,
-            subjectId: lesson.subject_id
+            subjectId: lesson.subject_id,
+            subjectNameZh: lesson.subject_name_zh,
+            subjectNameEn: lesson.subject_name_en
           })))
         }
       });

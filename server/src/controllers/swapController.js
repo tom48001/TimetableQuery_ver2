@@ -14,7 +14,10 @@ export const getTeacherLessons = async (req, res) => {
          c.class_name,
          c.class_id,
          s.subject_name AS subject,
+         s.subject_name AS subject_name,
          s.subject_id,
+         s.subject_name_zh,
+         s.subject_name_en,
          tt.day_of_week AS day,
          tt.period_id AS period
        FROM timetable tt

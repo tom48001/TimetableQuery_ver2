@@ -108,7 +108,9 @@ export default {
         classId: this.$route.query.classId,
         className: this.$route.query.className,
         subject: this.$route.query.subject,
-        subjectId: this.$route.query.subjectId
+        subjectId: this.$route.query.subjectId,
+        subjectNameZh: this.$route.query.subjectNameZh,
+        subjectNameEn: this.$route.query.subjectNameEn
       }];
     }
   },
@@ -163,7 +165,9 @@ export default {
     lessonSubjectLabel(lesson) {
       return formatSubjectLabel({
         subject_id: lesson.subjectId,
-        subject_name: lesson.subject || '-'
+        subject_name: lesson.subject || '-',
+        subject_name_zh: lesson.subjectNameZh,
+        subject_name_en: lesson.subjectNameEn
       }, this.$lang.locale);
     },
     lessonLabel(lesson) {

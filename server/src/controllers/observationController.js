@@ -23,6 +23,8 @@ export const getObservationSchedule = async (req, res) => {
          c.class_name,
          s.subject_id,
          s.subject_name,
+         s.subject_name_zh,
+         s.subject_name_en,
          r.room_id,
          r.room_name
        FROM timetable tt

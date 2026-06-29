@@ -28,6 +28,8 @@ router.get('/schedule/:roomId', async (req, res) => {
         c.class_name AS class_name,
         s.subject_id,
         s.subject_name AS subject_name,
+        s.subject_name_zh,
+        s.subject_name_en,
         p.period_name,
         p.start_time,
         p.end_time,

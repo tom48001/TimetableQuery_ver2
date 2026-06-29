@@ -26,6 +26,8 @@ export const getTeachersSchedule = async (req, res) => {
         r.room_name,
         s.subject_id,
         s.subject_name,
+        s.subject_name_zh,
+        s.subject_name_en,
         t.day_of_week AS day,
         p.period_id AS period,
         p.period_name

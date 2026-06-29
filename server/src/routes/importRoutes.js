@@ -27,7 +27,7 @@ const STUDENT_COLUMN_ALIASES = {
   email: ['email', 'student_email', 'email_address', '電郵', '電郵地址'],
   grade: ['grade', 'grade_level', 'form', 'form_level', '級別', '年級'],
   class: ['class', 'class_name', '班別', '班級'],
-  class_number: ['class_number', 'class_no', 'classnum', 'class_index', 'student_no', 'student_number', '班號', '學號', '班別學號'],
+  class_number: ['class_number', 'class_no', 'classnum', 'clsno', 'cls_no', 'class_index', 'student_no', 'student_number', '班號', '學號', '班別學號'],
   sex: ['sex', 'gender', '性別'],
   status: ['status', 'student_status', '狀態'],
   ncs: ['ncs', 'is_ncs', 'ncs_status'],
@@ -651,14 +651,14 @@ router.post(
       if (!req.file) {
         return res.status(400).json({
           code: 'MISSING_FILE',
-          message: 'Please upload a CSV or XLSX file.'
+          message: 'Please upload a CSV file.'
         });
       }
 
-      if (!/\.(csv|xlsx)$/i.test(req.file.originalname)) {
+      if (!/\.csv$/i.test(req.file.originalname)) {
         return res.status(400).json({
           code: 'INVALID_FILE_TYPE',
-          message: 'Please upload a .csv or .xlsx file.'
+          message: 'Please upload a .csv file.'
         });
       }
 
@@ -670,7 +670,7 @@ router.post(
       if (rows.length === 0) {
         return res.status(400).json({
           code: 'MISSING_COLUMNS',
-          message: 'No worksheet contains all required student columns.',
+          message: 'CSV does not contain all required student columns.',
           requiredColumns: REQUIRED_STUDENT_COLUMNS
         });
       }
