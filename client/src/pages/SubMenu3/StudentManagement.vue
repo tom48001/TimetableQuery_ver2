@@ -52,6 +52,7 @@
             </select>
           </label>
           <label><span>{{ tr('Class No.', '班別學號') }} *</span><input v-model.trim="newStudent.class_number" maxlength="3" /></label>
+          <label><span>ClsNo</span><input v-model.trim="newStudent.class_code" /></label>
           <label>
             <span>{{ tr('Sex', '性別') }}</span>
             <select v-model="newStudent.sex"><option>F</option><option>M</option></select>
@@ -60,16 +61,30 @@
             <span>Status</span>
             <select v-model="newStudent.status"><option value="active">Active</option><option value="inactive">Inactive</option></select>
           </label>
-          <label class="checkbox-label"><input v-model="newStudent.is_ncs" type="checkbox" /><span>NCS</span></label>
-          <label v-for="slot in electiveSlots" :key="slot.key">
-            <span>{{ slot.label }}</span>
-            <select v-model="newStudent[slot.key]">
-              <option value="">-</option>
-              <option v-for="subject in electiveSubjects" :key="subject.subject_id" :value="subject.subject_id">
-                {{ subject.subject_name }}
-              </option>
+          <label>
+            <span>NCS</span>
+            <select v-model="newStudent.is_ncs">
+              <option v-for="option in ncsOptions" :key="option" :value="option">{{ option }}</option>
             </select>
           </label>
+          <label><span>{{ tr('Citizenship', '公社') }}</span><select v-model="newStudent.citizenship"><option v-for="option in citizenshipOptions" :key="option" :value="option">{{ option }}</option></select></label>
+          <template v-if="usesDse(newStudent)">
+            <label v-for="slot in electiveSlots" :key="slot.key">
+              <span>{{ slot.label }}</span>
+              <select v-model="newStudent[slot.key]">
+                <option value="">-</option>
+                <option v-for="subject in electiveSubjects" :key="subject.subject_id" :value="subject.subject_id">
+                  {{ subject.subject_name }}
+                </option>
+              </select>
+            </label>
+          </template>
+          <label><span>{{ tr('House', '社別') }}</span><select v-model="newStudent.house"><option v-for="option in houseOptions" :key="option" :value="option">{{ option }}</option></select></label>
+          <label><span>{{ tr('Language Group', '語言組別') }}</span><select v-model="newStudent.language_group"><option v-for="option in languageGroupOptions" :key="option" :value="option">{{ option }}</option></select></label>
+          <label><span>SUPP CLASS</span><select v-model="newStudent.supp_class"><option v-for="option in suppClassOptions" :key="option" :value="option">{{ option }}</option></select></label>
+          <label><span>{{ tr('Maths', '數學/Maths') }}</span><select v-model="newStudent.maths_group"><option v-for="option in mathsOptions" :key="option" :value="option">{{ option }}</option></select></label>
+          <label><span>{{ tr('Dropped Subjects', '退選科目') }}</span><input v-model.trim="newStudent.dropped_subjects" /></label>
+          <label class="wide-field"><span>{{ tr('Remarks', '備註') }}</span><input v-model.trim="newStudent.remarks" /></label>
         </div>
         <button type="button" class="primary-btn" @click="addStudent">{{ tr('Add Student', '新增學生') }}</button>
       </section>
@@ -118,9 +133,12 @@
           <table v-if="paginatedStudents.length" class="student-table">
             <thead>
               <tr>
-                <th>REGNO</th><th>ID</th><th>{{ tr('Class', '班別') }}</th><th>{{ tr('No.', '學號') }}</th>
+                <th>REGNO</th><th>ID</th><th>{{ tr('Class', '班別') }}</th><th>{{ tr('No.', '學號') }}</th><th>ClsNo</th>
                 <th>{{ tr('Chinese Name', '中文名') }}</th><th>{{ tr('English Name', '英文名') }}</th><th>Email</th>
-                <th>Status</th><th>NCS</th><th>X1</th><th>X2</th><th>X3</th><th>{{ tr('Action', '操作') }}</th>
+                <th>Status</th><th>NCS</th><th>X1</th><th>X2</th><th>X3</th>
+                <th>{{ tr('House', '社別') }}</th><th>{{ tr('Language', '語言') }}</th><th>SUPP</th>
+                <th>{{ tr('Maths', '數學') }}</th><th>{{ tr('Citizenship', '公社') }}</th>
+                <th>{{ tr('Dropped', '退選') }}</th><th>{{ tr('Remarks', '備註') }}</th><th class="action-cell">{{ tr('Action', '操作') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -130,18 +148,27 @@
                   <td>{{ student.student_id }}</td>
                   <td><select v-model="editStudent.class_id"><option v-for="item in classes" :key="item.class_id" :value="item.class_id">{{ item.class_name }}</option></select></td>
                   <td><input v-model.trim="editStudent.class_number" /></td>
+                  <td><input v-model.trim="editStudent.class_code" /></td>
                   <td><input v-model.trim="editStudent.student_ch_name" /></td>
                   <td><input v-model.trim="editStudent.student_eng_name" /></td>
                   <td><input v-model.trim="editStudent.email" type="email" /></td>
                   <td><select v-model="editStudent.status"><option value="active">Active</option><option value="inactive">Inactive</option></select></td>
-                  <td><input v-model="editStudent.is_ncs" type="checkbox" /></td>
+                  <td><select v-model="editStudent.is_ncs"><option v-for="option in ncsOptions" :key="option" :value="option">{{ option }}</option></select></td>
                   <td v-for="slot in electiveSlots" :key="slot.key">
-                    <select v-model="editStudent[slot.key]">
+                    <select v-if="usesDse(editStudent)" v-model="editStudent[slot.key]">
                       <option value="">-</option>
                       <option v-for="subject in electiveSubjects" :key="subject.subject_id" :value="subject.subject_id">{{ subject.subject_name }}</option>
                     </select>
+                    <span v-else>-</span>
                   </td>
-                  <td class="actions">
+                  <td><select v-model="editStudent.house"><option v-for="option in houseOptions" :key="option" :value="option">{{ option }}</option></select></td>
+                  <td><select v-model="editStudent.language_group"><option v-for="option in languageGroupOptions" :key="option" :value="option">{{ option }}</option></select></td>
+                  <td><select v-model="editStudent.supp_class"><option v-for="option in suppClassOptions" :key="option" :value="option">{{ option }}</option></select></td>
+                  <td><select v-model="editStudent.maths_group"><option v-for="option in mathsOptions" :key="option" :value="option">{{ option }}</option></select></td>
+                  <td><select v-model="editStudent.citizenship"><option v-for="option in citizenshipOptions" :key="option" :value="option">{{ option }}</option></select></td>
+                  <td><input v-model.trim="editStudent.dropped_subjects" /></td>
+                  <td><input v-model.trim="editStudent.remarks" /></td>
+                  <td class="actions action-cell">
                     <button type="button" class="primary-btn compact" @click="saveStudent(student)">{{ tr('Save', '儲存') }}</button>
                     <button type="button" class="secondary-btn compact" @click="cancelEdit">{{ tr('Cancel', '取消') }}</button>
                   </td>
@@ -151,14 +178,19 @@
                   <td>{{ student.student_id }}</td>
                   <td>{{ student.class_name || '-' }}</td>
                   <td :class="{ duplicate: student.duplicate_class_number }">{{ student.class_number }}<small v-if="student.duplicate_class_number">{{ tr('Duplicate', '重複') }}</small></td>
+                  <td>{{ student.class_code || '-' }}</td>
                   <td class="name-cell">{{ student.student_ch_name }}</td>
                   <td>{{ student.student_eng_name }}</td>
                   <td :class="{ duplicate: student.duplicate_email }">{{ student.email || '-' }}<small v-if="student.duplicate_email">{{ tr('Duplicate', '重複') }}</small></td>
                   <td><span class="status-pill" :class="student.status">{{ student.status }}</span></td>
-                  <td>{{ student.is_ncs ? 'Yes' : 'No' }}</td>
+                  <td>{{ student.is_ncs ? 'Y' : 'N' }}</td>
                   <td>{{ student.x1_subject_name || '-' }}</td><td>{{ student.x2_subject_name || '-' }}</td><td>{{ student.x3_subject_name || '-' }}</td>
-                  <td class="actions">
+                  <td>{{ student.house || '-' }}</td><td>{{ student.language_group || '-' }}</td><td>{{ student.supp_class || '-' }}</td>
+                  <td>{{ student.maths_group || '-' }}</td><td>{{ student.citizenship || '-' }}</td>
+                  <td>{{ student.dropped_subjects || '-' }}</td><td>{{ student.remarks || '-' }}</td>
+                  <td class="actions action-cell">
                     <button type="button" class="secondary-btn compact" @click="startEdit(student)">{{ tr('Edit', '編輯') }}</button>
+                    <button type="button" class="danger-btn compact" @click="deleteStudent(student)">{{ tr('Delete', '刪除') }}</button>
                     <button type="button" class="status-btn compact" @click="toggleStatus(student)">
                       {{ student.status === 'active' ? tr('Deactivate', '停用') : tr('Activate', '啟用') }}
                     </button>
@@ -191,12 +223,20 @@ function blankStudent() {
     student_eng_name: '',
     class_id: '',
     class_number: '',
+    class_code: '',
     sex: 'F',
     status: 'active',
-    is_ncs: false,
+    is_ncs: 'N',
     x1_subject_id: '',
     x2_subject_id: '',
-    x3_subject_id: ''
+    x3_subject_id: '',
+    house: '紅社',
+    language_group: '英文組(EMI)',
+    supp_class: '無',
+    maths_group: '核心課程(英文)',
+    citizenship: '公民、經濟與社會',
+    dropped_subjects: '',
+    remarks: ''
   };
 }
 
@@ -222,7 +262,13 @@ export default {
         { key: 'x1_subject_id', label: 'X1' },
         { key: 'x2_subject_id', label: 'X2' },
         { key: 'x3_subject_id', label: 'X3' }
-      ]
+      ],
+      languageGroupOptions: ['英文組(EMI)', '純英文組(EMI)', '中文組(CMI)'],
+      houseOptions: ['紅社', '藍社', '黃社', '綠社'],
+      ncsOptions: ['N', 'Y'],
+      mathsOptions: ['核心課程(英文)', '核心課程(中文)'],
+      citizenshipOptions: ['公民、經濟與社會', '修讀 (DSE)'],
+      suppClassOptions: ['無', '中文提升班', '數學試前補底', '英文拔尖班']
     };
   },
   computed: {
@@ -237,7 +283,9 @@ export default {
       return this.students.filter(student => {
         const matchesSearch = !keyword || [
           student.regno, student.student_id, student.class_number, student.student_ch_name,
-          student.student_eng_name, student.email
+          student.student_eng_name, student.email, student.class_code, student.house,
+          student.language_group, student.supp_class, student.maths_group,
+          student.citizenship, student.dropped_subjects, student.remarks
         ].some(value => String(value || '').toLowerCase().includes(keyword));
         const matchesGrade = !this.gradeFilter || student.grade_level === this.gradeFilter;
         const matchesClass = !this.classFilter || String(student.class_id) === this.classFilter;
@@ -284,6 +332,21 @@ export default {
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     authHeaders() { return { Authorization: `Bearer ${localStorage.getItem('token')}` }; },
+    usesDse(student) {
+      return String((student && student.citizenship) || '').trim() === '修讀 (DSE)';
+    },
+    ncsValue(value) {
+      return value ? 'Y' : 'N';
+    },
+    studentPayload(student) {
+      const payload = { ...student };
+      if (!this.usesDse(payload)) {
+        payload.x1_subject_id = '';
+        payload.x2_subject_id = '';
+        payload.x3_subject_id = '';
+      }
+      return payload;
+    },
     async loadClasses() {
       const res = await axios.get('/api/classes', { headers: this.authHeaders() });
       this.classes = res.data;
@@ -308,7 +371,7 @@ export default {
     async addStudent() {
       if (!this.validate(this.newStudent)) return alert(this.tr('Please fill in all required fields.', '請填寫所有必填欄位。'));
       try {
-        await axios.post('/api/students/admin', this.newStudent, { headers: this.authHeaders() });
+        await axios.post('/api/students/admin', this.studentPayload(this.newStudent), { headers: this.authHeaders() });
         this.newStudent = blankStudent();
         await this.loadStudents();
       } catch (error) {
@@ -324,23 +387,48 @@ export default {
         student_eng_name: student.student_eng_name,
         class_id: student.class_id,
         class_number: student.class_number,
+        class_code: student.class_code || '',
         sex: student.sex,
         status: student.status,
-        is_ncs: Boolean(student.is_ncs),
+        is_ncs: this.ncsValue(student.is_ncs),
         x1_subject_id: student.x1_subject_id || '',
         x2_subject_id: student.x2_subject_id || '',
-        x3_subject_id: student.x3_subject_id || ''
+        x3_subject_id: student.x3_subject_id || '',
+        house: student.house || '',
+        language_group: student.language_group || '',
+        supp_class: student.supp_class || '',
+        maths_group: student.maths_group || '',
+        citizenship: student.citizenship || '',
+        dropped_subjects: student.dropped_subjects || '',
+        remarks: student.remarks || ''
       };
     },
     cancelEdit() { this.editingStudentId = null; this.editStudent = null; },
     async saveStudent(student) {
       if (!this.validate(this.editStudent)) return alert(this.tr('Please fill in all required fields.', '請填寫所有必填欄位。'));
       try {
-        await axios.put(`/api/students/admin/${student.student_id}`, this.editStudent, { headers: this.authHeaders() });
+        await axios.put(`/api/students/admin/${student.student_id}`, this.studentPayload(this.editStudent), { headers: this.authHeaders() });
         this.cancelEdit();
         await this.loadStudents();
       } catch (error) {
         alert(this.errorMessage(error, this.tr('Failed to update student.', '更新學生失敗。')));
+      }
+    },
+    async deleteStudent(student) {
+      const name = this.$lang.locale === 'en'
+        ? (student.student_eng_name || student.student_ch_name || student.student_id)
+        : (student.student_ch_name || student.student_eng_name || student.student_id);
+      if (!confirm(this.tr(
+        `Delete ${name}? This cannot be undone.`,
+        `確定刪除 ${name}？此操作不能復原。`
+      ))) return;
+
+      try {
+        await axios.delete(`/api/students/admin/${student.student_id}`, { headers: this.authHeaders() });
+        if (this.editingStudentId === student.student_id) this.cancelEdit();
+        await this.loadStudents();
+      } catch (error) {
+        alert(this.errorMessage(error, this.tr('Failed to delete student.', '刪除學生失敗。')));
       }
     },
     async toggleStatus(student) {
@@ -359,12 +447,19 @@ export default {
       return `"${text.replace(/"/g, '""')}"`;
     },
     exportStudents() {
-      const headers = ['regno', 'student_id', 'student_ch_name', 'student_eng_name', 'email', 'grade', 'class', 'class_number', 'sex', 'status', 'ncs', 'x1', 'x2', 'x3'];
+      const headers = [
+        'regno', 'student_id', 'student_ch_name', 'student_eng_name', 'email',
+        'grade', 'class', 'class_number', 'class_code', 'sex', 'status', 'ncs',
+        'x1', 'x2', 'x3', 'house', 'language_group', 'supp_class',
+        'maths_group', 'citizenship', 'dropped_subjects', 'remarks'
+      ];
       const lines = this.filteredStudents.map(student => [
         student.regno, student.student_id, student.student_ch_name, student.student_eng_name,
-        student.email, student.grade_level, student.class_name, student.class_number, student.sex,
+        student.email, student.grade_level, student.class_name, student.class_number, student.class_code, student.sex,
         student.status, student.is_ncs ? 'Yes' : 'No', student.x1_subject_name,
-        student.x2_subject_name, student.x3_subject_name
+        student.x2_subject_name, student.x3_subject_name, student.house,
+        student.language_group, student.supp_class, student.maths_group,
+        student.citizenship, student.dropped_subjects, student.remarks
       ].map(this.csvValue).join(','));
       const blob = new Blob(['\uFEFF' + [headers.join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -510,6 +605,10 @@ h2 {
   grid-template-columns: repeat(4, minmax(150px, 1fr));
 }
 
+.wide-field {
+  grid-column: span 2;
+}
+
 .filter-grid {
   grid-template-columns: minmax(280px, 2fr) repeat(5, minmax(130px, 1fr));
 }
@@ -574,7 +673,8 @@ button {
 }
 
 .secondary-btn,
-.status-btn {
+.status-btn,
+.danger-btn {
   background: #fff;
   border: 1px solid var(--border-strong);
   color: var(--text);
@@ -587,6 +687,15 @@ button {
 
 .status-btn {
   color: #8c4029;
+}
+
+.danger-btn {
+  border-color: #d48a8a;
+  color: #a42d2d;
+}
+
+.danger-btn:hover {
+  background: #fff1f1;
 }
 
 .compact {
@@ -607,7 +716,7 @@ button {
   background: #fff;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 1680px;
+  min-width: 2600px;
   width: 100%;
 }
 
@@ -629,7 +738,29 @@ button {
   z-index: 1;
 }
 
+.student-table .action-cell {
+  background: inherit;
+  box-shadow: -8px 0 12px rgba(18, 38, 53, 0.06);
+  min-width: 210px;
+  position: sticky;
+  right: 0;
+  z-index: 2;
+}
+
+.student-table th.action-cell {
+  background: #edf5f7;
+  z-index: 3;
+}
+
+.student-table td.action-cell {
+  background: #fff;
+}
+
 .student-table tbody tr:nth-child(even) {
+  background: #fbfdfe;
+}
+
+.student-table tbody tr:nth-child(even) td.action-cell {
   background: #fbfdfe;
 }
 
@@ -637,9 +768,17 @@ button {
   background: #f0f8fa;
 }
 
+.student-table tbody tr:hover td.action-cell {
+  background: #f0f8fa;
+}
+
 .student-table tr.inactive {
   background: #f5f5f5;
   opacity: 0.66;
+}
+
+.student-table tr.inactive td.action-cell {
+  background: #f5f5f5;
 }
 
 .name-cell {
@@ -676,6 +815,7 @@ button {
 
 .actions {
   flex-wrap: wrap;
+  gap: 6px;
 }
 
 .pagination-bar {
@@ -715,6 +855,10 @@ button {
   .form-grid,
   .filter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .wide-field {
+    grid-column: auto;
   }
 }
 </style>

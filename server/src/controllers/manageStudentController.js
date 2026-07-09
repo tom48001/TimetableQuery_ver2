@@ -38,6 +38,14 @@ export async function ensureStudentAdminSchema() {
   await addColumnIfMissing('x1_subject_id BIGINT NULL');
   await addColumnIfMissing('x2_subject_id BIGINT NULL');
   await addColumnIfMissing('x3_subject_id BIGINT NULL');
+  await addColumnIfMissing('class_code VARCHAR(20) NULL');
+  await addColumnIfMissing('house VARCHAR(50) NULL');
+  await addColumnIfMissing('language_group VARCHAR(100) NULL');
+  await addColumnIfMissing('supp_class VARCHAR(100) NULL');
+  await addColumnIfMissing('maths_group VARCHAR(100) NULL');
+  await addColumnIfMissing('citizenship VARCHAR(100) NULL');
+  await addColumnIfMissing('dropped_subjects VARCHAR(255) NULL');
+  await addColumnIfMissing('remarks TEXT NULL');
 
   const [classNumberIndexes] = await db.query(
     "SHOW INDEX FROM student WHERE Key_name = 'unique_class_number'"
@@ -72,7 +80,15 @@ function studentPayload(body) {
     is_ncs: normalizeBoolean(body.is_ncs),
     x1_subject_id: Number(body.x1_subject_id) || null,
     x2_subject_id: Number(body.x2_subject_id) || null,
-    x3_subject_id: Number(body.x3_subject_id) || null
+    x3_subject_id: Number(body.x3_subject_id) || null,
+    class_code: normalizeText(body.class_code) || null,
+    house: normalizeText(body.house) || null,
+    language_group: normalizeText(body.language_group) || null,
+    supp_class: normalizeText(body.supp_class) || null,
+    maths_group: normalizeText(body.maths_group) || null,
+    citizenship: normalizeText(body.citizenship) || null,
+    dropped_subjects: normalizeText(body.dropped_subjects) || null,
+    remarks: normalizeText(body.remarks) || null
   };
 }
 
@@ -158,6 +174,14 @@ export const getManagedStudents = async (req, res) => {
         s.x1_subject_id,
         s.x2_subject_id,
         s.x3_subject_id,
+        s.class_code,
+        s.house,
+        s.language_group,
+        s.supp_class,
+        s.maths_group,
+        s.citizenship,
+        s.dropped_subjects,
+        s.remarks,
         c.class_name,
         c.grade_level,
         x1.subject_name AS x1_subject_name,
@@ -213,12 +237,15 @@ export const createManagedStudent = async (req, res) => {
     const [result] = await db.query(
       `INSERT INTO student
         (regno, email, student_ch_name, student_eng_name, class_id, class_number, sex,
-         status, is_ncs, x1_subject_id, x2_subject_id, x3_subject_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         status, is_ncs, x1_subject_id, x2_subject_id, x3_subject_id,
+         class_code, house, language_group, supp_class, maths_group, citizenship, dropped_subjects, remarks)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         student.regno, student.email, student.student_ch_name, student.student_eng_name,
         student.class_id, student.class_number, student.sex, student.status, student.is_ncs,
-        student.x1_subject_id, student.x2_subject_id, student.x3_subject_id
+        student.x1_subject_id, student.x2_subject_id, student.x3_subject_id,
+        student.class_code, student.house, student.language_group, student.supp_class,
+        student.maths_group, student.citizenship, student.dropped_subjects, student.remarks
       ]
     );
 
@@ -243,12 +270,17 @@ export const updateManagedStudent = async (req, res) => {
       `UPDATE student
        SET regno = ?, email = ?, student_ch_name = ?, student_eng_name = ?,
            class_id = ?, class_number = ?, sex = ?, status = ?, is_ncs = ?,
-           x1_subject_id = ?, x2_subject_id = ?, x3_subject_id = ?
+           x1_subject_id = ?, x2_subject_id = ?, x3_subject_id = ?,
+           class_code = ?, house = ?, language_group = ?, supp_class = ?,
+           maths_group = ?, citizenship = ?, dropped_subjects = ?, remarks = ?
        WHERE student_id = ?`,
       [
         student.regno, student.email, student.student_ch_name, student.student_eng_name,
         student.class_id, student.class_number, student.sex, student.status, student.is_ncs,
-        student.x1_subject_id, student.x2_subject_id, student.x3_subject_id, studentId
+        student.x1_subject_id, student.x2_subject_id, student.x3_subject_id,
+        student.class_code, student.house, student.language_group, student.supp_class,
+        student.maths_group, student.citizenship, student.dropped_subjects, student.remarks,
+        studentId
       ]
     );
 
@@ -257,6 +289,21 @@ export const updateManagedStudent = async (req, res) => {
   } catch (error) {
     console.error('Failed to update student:', error);
     res.status(500).json({ error: 'Failed to update student.' });
+  }
+};
+
+export const deleteManagedStudent = async (req, res) => {
+  const studentId = Number(req.params.studentId);
+  if (!studentId) return res.status(400).json({ error: 'Invalid student id.' });
+
+  try {
+    await ensureStudentAdminSchema();
+    const [result] = await db.query('DELETE FROM student WHERE student_id = ?', [studentId]);
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Student not found.' });
+    res.json({ message: 'Student deleted successfully.' });
+  } catch (error) {
+    console.error('Failed to delete student:', error);
+    res.status(500).json({ error: 'Failed to delete student.' });
   }
 };
 

@@ -14,6 +14,7 @@ import {
   getElectiveSubjects,
   createManagedStudent,
   updateManagedStudent,
+  deleteManagedStudent,
   setManagedStudentStatus
 } from '../controllers/manageStudentController.js';
 
@@ -24,6 +25,7 @@ router.get('/admin/list', ensureJWT, requirePermission('manageStudents'), getMan
 router.get('/admin/elective-subjects', ensureJWT, requirePermission('manageStudents'), getElectiveSubjects);
 router.post('/admin', ensureJWT, requirePermission('manageStudents'), createManagedStudent);
 router.put('/admin/:studentId', ensureJWT, requirePermission('manageStudents'), updateManagedStudent);
+router.delete('/admin/:studentId', ensureJWT, requirePermission('manageStudents'), deleteManagedStudent);
 router.patch('/admin/:studentId/status', ensureJWT, requirePermission('manageStudents'), setManagedStudentStatus);
 
 router.get('/by-class/:classId/subject/:subjectId', ensureJWT, canReadStudentData, getStudentsByClassNSubject);

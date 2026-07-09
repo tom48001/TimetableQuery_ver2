@@ -1,6 +1,28 @@
 import pool from '../db.js';
 import { ensureStudentAdminSchema } from './manageStudentController.js';
 
+function normaliseClassListSql(alias) {
+  return `
+  REPLACE(
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(${alias}.class_name, '#', ''),
+          '／',
+          '/'
+        ),
+        '/',
+        ','
+      ),
+      ' ',
+      ''
+    ),
+    '，',
+    ','
+  )
+`;
+}
+
 // 查詢某班所有學生
 export const getStudentsByClassId = async (req, res) => {
   const { classId } = req.params;
@@ -17,7 +39,14 @@ export const getStudentsByClassId = async (req, res) => {
         c.class_name
       FROM student s
       JOIN class c ON s.class_id = c.class_id
-      WHERE s.class_id = ? AND s.status = 'active'
+      JOIN class selected_class
+        ON selected_class.class_id = ?
+       AND (
+          s.class_id = selected_class.class_id
+          OR FIND_IN_SET(REPLACE(c.class_name, ' ', ''), ${normaliseClassListSql('selected_class')}) > 0
+          OR REPLACE(selected_class.class_name, ' ', '') IN (c.grade_level, REPLACE(c.grade_level, 'F', 'S'))
+        )
+      WHERE s.status = 'active'
       ORDER BY CAST(s.class_number AS UNSIGNED), s.class_number, s.student_ch_name`, 
       [classId]
     );
@@ -133,12 +162,23 @@ export const getStudentTimetable = async (req, res) => {
         p.period_name AS period
       FROM student s
       JOIN class c ON s.class_id = c.class_id
-      JOIN timetable tt ON c.class_id = tt.class_id
+      JOIN timetable tt ON TRUE
+      JOIN class tc
+        ON tt.class_id = tc.class_id
+       AND (
+          tt.class_id = s.class_id
+          OR FIND_IN_SET(REPLACE(c.class_name, ' ', ''), ${normaliseClassListSql('tc')}) > 0
+          OR REPLACE(tc.class_name, ' ', '') IN (c.grade_level, REPLACE(c.grade_level, 'F', 'S'))
+        )
       JOIN teacher t ON tt.teacher_id = t.teacher_id
       JOIN subject sb ON tt.subject_id = sb.subject_id
       JOIN room r ON tt.room_id = r.room_id
       JOIN period p ON tt.period_id = p.period_id
       WHERE s.student_id = ? AND s.status = 'active'
+        AND (
+          COALESCE(sb.is_elective, FALSE) = FALSE
+          OR sb.subject_id IN (s.x1_subject_id, s.x2_subject_id, s.x3_subject_id)
+        )
       ORDER BY tt.day_of_week, tt.period_id
     `, [studentId]);
 

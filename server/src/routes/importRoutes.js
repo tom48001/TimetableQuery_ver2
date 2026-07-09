@@ -20,6 +20,15 @@ const REQUIRED_STUDENT_COLUMNS = [
   'sex'
 ];
 
+const TIMETABLE_COLUMN_ALIASES = {
+  teacher: ['abbreviation', 'abbr', 'teacher_code', 'teacher', '教師代號', '教師簡稱', '簡稱'],
+  subject: ['subject', 'subject_name', '科目'],
+  class: ['class', 'class_name', '班別', '班級', '級別'],
+  room: ['room', 'room_name', '課室', '房間'],
+  day: ['day', 'weekday', 'day_of_week', '星期', '上課日'],
+  period: ['period', '節數', '課節']
+};
+
 const STUDENT_COLUMN_ALIASES = {
   regno: ['regno', 'reg_no', 'registration_no', 'registration_number', 'student_regno'],
   student_ch_name: ['student_ch_name', 'chinese_name', 'chi_name', 'ch_name', 'name_ch', '姓名', '中文名', '中文姓名'],
@@ -27,13 +36,21 @@ const STUDENT_COLUMN_ALIASES = {
   email: ['email', 'student_email', 'email_address', '電郵', '電郵地址'],
   grade: ['grade', 'grade_level', 'form', 'form_level', '級別', '年級'],
   class: ['class', 'class_name', '班別', '班級'],
-  class_number: ['class_number', 'class_no', 'classnum', 'clsno', 'cls_no', 'class_index', 'student_no', 'student_number', '班號', '學號', '班別學號'],
+  class_number: ['class_number', 'class_no', 'classnum', 'class_index', 'student_no', 'student_number', '班號', '學號', '班別學號'],
   sex: ['sex', 'gender', '性別'],
   status: ['status', 'student_status', '狀態'],
   ncs: ['ncs', 'is_ncs', 'ncs_status'],
   x1: ['x1', 'elective_x1', 'subject_x1'],
   x2: ['x2', 'elective_x2', 'subject_x2'],
-  x3: ['x3', 'x3_m1_apl_ol', 'elective_x3', 'subject_x3']
+  x3: ['x3', 'x3_m1_apl_ol', 'elective_x3', 'subject_x3'],
+  class_code: ['clsno', 'cls_no', 'class_code'],
+  house: ['house', '社別'],
+  language_group: ['language_group', '語言組別'],
+  supp_class: ['supp_class', 'supplementary_class', 'support_class', '支援班', '補課班'],
+  maths_group: ['maths', 'math', '數學_maths', '數學'],
+  citizenship: ['citizenship', 'citizenship_social_development', '公社'],
+  dropped_subjects: ['dropped_subjects', 'withdrawn_subjects', '退選科目'],
+  remarks: ['remarks', 'remark', 'notes', '備註']
 };
 
 const dayMap = {
@@ -54,7 +71,25 @@ const dayMap = {
   friday: 'Fri',
   fri: 'Fri',
   saturday: 'Sat',
-  sat: 'Sat'
+  sat: 'Sat',
+  '星期一': 'Mon',
+  '週一': 'Mon',
+  '周一': 'Mon',
+  '星期二': 'Tue',
+  '週二': 'Tue',
+  '周二': 'Tue',
+  '星期三': 'Wed',
+  '週三': 'Wed',
+  '周三': 'Wed',
+  '星期四': 'Thu',
+  '週四': 'Thu',
+  '周四': 'Thu',
+  '星期五': 'Fri',
+  '週五': 'Fri',
+  '周五': 'Fri',
+  '星期六': 'Sat',
+  '週六': 'Sat',
+  '周六': 'Sat'
 };
 
 const subjectAliasMap = {
@@ -63,6 +98,8 @@ const subjectAliasMap = {
   MATHS: 'Mathematics',
   BIO: 'Biology'
 };
+
+const NON_TIMETABLE_SUBJECTS = new Set(['OFF', 'CLPC', 'CLPE']);
 
 function normalizeDay(day) {
   if (day === undefined || day === null || day === '') return null;
@@ -86,6 +123,13 @@ function normalizeSubject(subject) {
   return subjectAliasMap[raw.toUpperCase()] || raw;
 }
 
+function isSkippableNonTimetableRow({ subject, className, roomName }) {
+  return Boolean(subject) &&
+    !className &&
+    !roomName &&
+    NON_TIMETABLE_SUBJECTS.has(subject.toString().trim().toUpperCase());
+}
+
 function normalizeColumnName(value) {
   return String(value || '')
     .replace(/^\uFEFF/, '')
@@ -95,18 +139,26 @@ function normalizeColumnName(value) {
     .replace(/^_+|_+$/g, '');
 }
 
-export function normalizeStudentRow(sourceRow) {
+function normalizeAliasedRow(sourceRow, aliasesByField) {
   const normalizedSource = Object.fromEntries(
     Object.entries(sourceRow).map(([key, value]) => [normalizeColumnName(key), value])
   );
 
   return Object.fromEntries(
-    Object.entries(STUDENT_COLUMN_ALIASES).map(([field, aliases]) => {
+    Object.entries(aliasesByField).map(([field, aliases]) => {
       const matchedAlias = aliases.map(normalizeColumnName)
         .find(alias => Object.prototype.hasOwnProperty.call(normalizedSource, alias));
       return [field, matchedAlias ? normalizedSource[matchedAlias] : ''];
     })
   );
+}
+
+export function normalizeTimetableRow(sourceRow) {
+  return normalizeAliasedRow(sourceRow, TIMETABLE_COLUMN_ALIASES);
+}
+
+export function normalizeStudentRow(sourceRow) {
+  return normalizeAliasedRow(sourceRow, STUDENT_COLUMN_ALIASES);
 }
 
 export function studentSheetRows(workbook) {
@@ -191,6 +243,14 @@ async function ensureImportHistoryTables(connOrPool = pool) {
   `);
 }
 
+async function addColumnIfMissing(connOrPool, tableName, definition) {
+  try {
+    await connOrPool.query(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`);
+  } catch (error) {
+    if (error.code !== 'ER_DUP_FIELDNAME' && error.errno !== 1060) throw error;
+  }
+}
+
 async function ensureStudentImportHistoryTables(connOrPool = pool) {
   await connOrPool.query(`
     CREATE TABLE IF NOT EXISTS student_import_batches (
@@ -225,10 +285,27 @@ async function ensureStudentImportHistoryTables(connOrPool = pool) {
       x1_subject_id BIGINT NULL,
       x2_subject_id BIGINT NULL,
       x3_subject_id BIGINT NULL,
+      class_code VARCHAR(20) NULL,
+      house VARCHAR(50) NULL,
+      language_group VARCHAR(100) NULL,
+      supp_class VARCHAR(100) NULL,
+      maths_group VARCHAR(100) NULL,
+      citizenship VARCHAR(100) NULL,
+      dropped_subjects VARCHAR(255) NULL,
+      remarks TEXT NULL,
       FOREIGN KEY (batch_id) REFERENCES student_import_batches(batch_id) ON DELETE CASCADE,
       INDEX idx_student_import_history_batch (batch_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  await addColumnIfMissing(connOrPool, 'student_import_history', 'class_code VARCHAR(20) NULL');
+  await addColumnIfMissing(connOrPool, 'student_import_history', 'house VARCHAR(50) NULL');
+  await addColumnIfMissing(connOrPool, 'student_import_history', 'language_group VARCHAR(100) NULL');
+  await addColumnIfMissing(connOrPool, 'student_import_history', 'supp_class VARCHAR(100) NULL');
+  await addColumnIfMissing(connOrPool, 'student_import_history', 'maths_group VARCHAR(100) NULL');
+  await addColumnIfMissing(connOrPool, 'student_import_history', 'citizenship VARCHAR(100) NULL');
+  await addColumnIfMissing(connOrPool, 'student_import_history', 'dropped_subjects VARCHAR(255) NULL');
+  await addColumnIfMissing(connOrPool, 'student_import_history', 'remarks TEXT NULL');
 }
 
 async function logFailedImport(fileName, user, code, message, skippedRows = 0) {
@@ -451,8 +528,11 @@ router.post(
         });
       }
 
-      const columns = Object.keys(rows[0]).map(column => column.trim());
-      const missingColumns = REQUIRED_COLUMNS.filter(column => !columns.includes(column));
+      const columns = Object.keys(rows[0]).map(normalizeColumnName);
+      const missingColumns = REQUIRED_COLUMNS.filter(column => (
+        !TIMETABLE_COLUMN_ALIASES[column].map(normalizeColumnName)
+          .some(alias => columns.includes(alias))
+      ));
       if (missingColumns.length) {
         return respondImportError(req, res, 400, {
           code: 'MISSING_COLUMNS',
@@ -467,25 +547,32 @@ router.post(
 
       const invalidRows = [];
       let insertedStagingRows = 0;
+      let skippedNonTimetableRows = 0;
 
       for (const [index, row] of rows.entries()) {
         const rowNumber = index + 2;
-        const teacherCode = row.teacher?.toString().trim();
-        const subject = row.subject ? normalizeSubject(row.subject) : null;
-        const className = row.class?.toString().trim();
-        const roomName = row.room?.toString().trim();
-        const day = normalizeDay(row.day);
-        const period = normalizePeriod(row.period);
+        const normalizedRow = normalizeTimetableRow(row);
+        const teacherCode = normalizedRow.teacher?.toString().trim();
+        const subject = normalizedRow.subject ? normalizeSubject(normalizedRow.subject) : null;
+        const className = normalizedRow.class?.toString().trim();
+        const roomName = normalizedRow.room?.toString().trim();
+        const day = normalizeDay(normalizedRow.day);
+        const period = normalizePeriod(normalizedRow.period);
+
+        if (isSkippableNonTimetableRow({ subject, className, roomName })) {
+          skippedNonTimetableRows += 1;
+          continue;
+        }
 
         if (!teacherCode || !subject || !className || !roomName || !day || !period) {
           invalidRows.push({
             row: rowNumber,
-            teacher: row.teacher,
-            subject: row.subject,
-            class: row.class,
-            room: row.room,
-            day: row.day,
-            period: row.period
+            teacher: normalizedRow.teacher,
+            subject: normalizedRow.subject,
+            class: normalizedRow.class,
+            room: normalizedRow.room,
+            day: normalizedRow.day,
+            period: normalizedRow.period
           });
           continue;
         }
@@ -566,7 +653,7 @@ router.post(
         `INSERT INTO import_batches
           (file_name, imported_by_user_id, imported_by_name, status, skipped_rows)
          VALUES (?, ?, ?, 'success', ?)`,
-        [req.file.originalname, userIdFromRequest(req), await importUserName(conn, req.user), invalidRows.length]
+        [req.file.originalname, userIdFromRequest(req), await importUserName(conn, req.user), invalidRows.length + skippedNonTimetableRows]
       );
       const batchId = batchResult.insertId;
 
@@ -617,7 +704,8 @@ router.post(
         message: 'Timetable imported successfully.',
         batchId,
         insertedTimetable: insertResult.affectedRows,
-        skippedRows: invalidRows.length,
+        skippedRows: invalidRows.length + skippedNonTimetableRows,
+        skippedNonTimetableRows,
         snapshotRows: snapshotResult.affectedRows
       });
     } catch (err) {
@@ -705,7 +793,15 @@ router.post(
           is_ncs: ['1', 'true', 'yes', 'y', 'ncs'].includes(String(row.ncs || '').trim().toLowerCase()),
           x1: String(row.x1 || '').trim(),
           x2: String(row.x2 || '').trim(),
-          x3: String(row.x3 || '').trim()
+          x3: String(row.x3 || '').trim(),
+          class_code: String(row.class_code || '').trim(),
+          house: String(row.house || '').trim(),
+          language_group: String(row.language_group || '').trim(),
+          supp_class: String(row.supp_class || '').trim(),
+          maths_group: String(row.maths_group || '').trim(),
+          citizenship: String(row.citizenship || '').trim(),
+          dropped_subjects: String(row.dropped_subjects || '').trim(),
+          remarks: String(row.remarks || '').trim()
         };
       });
 
@@ -820,7 +916,9 @@ router.post(
           const [beforeRows] = await conn.query(
             `SELECT student_id, regno, email, student_ch_name, student_eng_name,
                     class_id, class_number, sex, status, is_ncs,
-                    x1_subject_id, x2_subject_id, x3_subject_id
+                    x1_subject_id, x2_subject_id, x3_subject_id,
+                    class_code, house, language_group, supp_class,
+                    maths_group, citizenship, dropped_subjects, remarks
              FROM student WHERE student_id = ?`,
             [existingStudentId]
           );
@@ -829,20 +927,26 @@ router.post(
             `INSERT INTO student_import_history
               (batch_id, student_id, was_existing, regno, email, student_ch_name,
                student_eng_name, class_id, class_number, sex, status, is_ncs,
-               x1_subject_id, x2_subject_id, x3_subject_id)
-             VALUES (?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               x1_subject_id, x2_subject_id, x3_subject_id,
+               class_code, house, language_group, supp_class,
+               maths_group, citizenship, dropped_subjects, remarks)
+             VALUES (?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               batchId, before.student_id, before.regno, before.email, before.student_ch_name,
               before.student_eng_name, before.class_id, before.class_number, before.sex,
               before.status, before.is_ncs, before.x1_subject_id, before.x2_subject_id,
-              before.x3_subject_id
+              before.x3_subject_id, before.class_code, before.house, before.language_group,
+              before.supp_class, before.maths_group, before.citizenship,
+              before.dropped_subjects, before.remarks
             ]
           );
           await conn.query(
             `UPDATE student
              SET regno = ?, email = ?, student_ch_name = ?, student_eng_name = ?, class_id = ?,
                  class_number = ?, sex = ?, status = ?, is_ncs = ?,
-                 x1_subject_id = ?, x2_subject_id = ?, x3_subject_id = ?
+                 x1_subject_id = ?, x2_subject_id = ?, x3_subject_id = ?,
+                 class_code = ?, house = ?, language_group = ?, supp_class = ?,
+                 maths_group = ?, citizenship = ?, dropped_subjects = ?, remarks = ?
              WHERE student_id = ?`,
             [
               row.regno,
@@ -857,6 +961,14 @@ router.post(
               subjectMap.get(row.x1.toUpperCase()) || null,
               subjectMap.get(row.x2.toUpperCase()) || null,
               subjectMap.get(row.x3.toUpperCase()) || null,
+              row.class_code || null,
+              row.house || null,
+              row.language_group || null,
+              row.supp_class || null,
+              row.maths_group || null,
+              row.citizenship || null,
+              row.dropped_subjects || null,
+              row.remarks || null,
               existingStudentId
             ]
           );
@@ -865,8 +977,10 @@ router.post(
           const [insertedResult] = await conn.query(
             `INSERT INTO student
               (regno, email, student_ch_name, student_eng_name, class_id, class_number, sex,
-               status, is_ncs, x1_subject_id, x2_subject_id, x3_subject_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               status, is_ncs, x1_subject_id, x2_subject_id, x3_subject_id,
+               class_code, house, language_group, supp_class, maths_group, citizenship,
+               dropped_subjects, remarks)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               row.regno,
               row.email || null,
@@ -879,7 +993,15 @@ router.post(
               row.is_ncs,
               subjectMap.get(row.x1.toUpperCase()) || null,
               subjectMap.get(row.x2.toUpperCase()) || null,
-              subjectMap.get(row.x3.toUpperCase()) || null
+              subjectMap.get(row.x3.toUpperCase()) || null,
+              row.class_code || null,
+              row.house || null,
+              row.language_group || null,
+              row.supp_class || null,
+              row.maths_group || null,
+              row.citizenship || null,
+              row.dropped_subjects || null,
+              row.remarks || null
             ]
           );
           await conn.query(
@@ -1027,12 +1149,17 @@ router.post('/students/rollback/:batchId', ensureJWT, requirePermission('manageS
         `UPDATE student
          SET regno = ?, email = ?, student_ch_name = ?, student_eng_name = ?,
              class_id = ?, class_number = ?, sex = ?, status = ?, is_ncs = ?,
-             x1_subject_id = ?, x2_subject_id = ?, x3_subject_id = ?
+             x1_subject_id = ?, x2_subject_id = ?, x3_subject_id = ?,
+             class_code = ?, house = ?, language_group = ?, supp_class = ?,
+             maths_group = ?, citizenship = ?, dropped_subjects = ?, remarks = ?
          WHERE student_id = ?`,
         [
           row.regno, row.email, row.student_ch_name, row.student_eng_name,
           row.class_id, row.class_number, row.sex, row.status, row.is_ncs,
-          row.x1_subject_id, row.x2_subject_id, row.x3_subject_id, row.student_id
+          row.x1_subject_id, row.x2_subject_id, row.x3_subject_id,
+          row.class_code, row.house, row.language_group, row.supp_class,
+          row.maths_group, row.citizenship, row.dropped_subjects, row.remarks,
+          row.student_id
         ]
       );
       restoredRows += restored.affectedRows;
