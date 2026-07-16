@@ -4,7 +4,7 @@
       <header class="page-header">
         <div>
           <h1>{{ tr('Split Lesson Groups', '分組課設定') }}</h1>
-          <p>{{ tr('Assign students when the same class, subject, day, and period has multiple teachers or rooms.', '同一班同一科同日同節有多位老師或房間時，可在此分配學生組別。') }}</p>
+          <p>{{ tr('Assign once for lessons with the same grade, class, subject, and number of groups.', '相同級別、班別、科目及小組數量只需分配一次，所有相同課節會自動套用。') }}</p>
         </div>
         <button type="button" class="secondary-btn" :disabled="loadingGroups" @click="fetchGroups">
           {{ tr('Reload', '重新載入') }}
@@ -60,9 +60,9 @@
             :class="{ active: selectedGroup && groupKey(selectedGroup) === groupKey(group) }"
             @click="selectGroup(group)"
           >
-            <strong>{{ group.class_name }} · {{ subjectLabel(group) }}</strong>
-            <span>{{ dayLabel(group.day_of_week) }} · {{ group.period_name }}</span>
-            <small>{{ group.group_count }} {{ tr('groups', '組') }} · {{ group.assigned_students || 0 }}/{{ group.student_count || '?' }} {{ tr('assigned', '已分配') }}</small>
+            <strong>{{ gradeLabel(group.grade_level) }} · {{ group.class_name }}</strong>
+            <span>{{ subjectLabel(group) }}</span>
+            <small>{{ group.group_count }} {{ tr('groups', '組') }}</small>
           </button>
           <p v-if="!loadingGroups && !groups.length" class="empty-message">
             {{ tr('No split lessons found.', '暫時沒有分組課。') }}
@@ -77,8 +77,7 @@
           <template v-else-if="selectedGroup">
             <div class="selected-title">
               <div>
-                <h2>{{ selectedGroup.class_name }} · {{ subjectLabel(selectedGroup) }}</h2>
-                <p>{{ dayLabel(selectedGroup.day_of_week) }} · {{ selectedGroup.period_name }}</p>
+                <h2>{{ gradeLabel(selectedGroup.grade_level) }} · {{ selectedGroup.class_name }} · {{ subjectLabel(selectedGroup) }} · {{ selectedGroup.group_count }} {{ tr('groups', '組') }}</h2>
               </div>
               <button type="button" class="primary-btn" :disabled="saving" @click="saveAssignments">
                 {{ saving ? tr('Saving...', '儲存中...') : tr('Save Assignments', '儲存分組') }}
@@ -90,6 +89,9 @@
                 <strong>{{ lesson.teacher_name }}</strong>
                 <span>{{ lesson.room_name }}</span>
                 <small>{{ assignmentCount(lesson.timetable_id) }} {{ tr('students', '學生') }}</small>
+                <button type="button" class="assign-all-btn" @click="assignAllTo(lesson.timetable_id)">
+                  {{ tr('Select all students', '選擇全部學生') }}
+                </button>
               </div>
             </div>
 
@@ -123,7 +125,12 @@
                       {{ lesson.teacher_name }}<br />
                       <small>{{ lesson.room_name }}</small>
                     </th>
-                    <th>{{ tr('Unassigned', '未分配') }}</th>
+                    <th>
+                      {{ tr('Unassigned', '未分配') }}<br />
+                      <button type="button" class="assign-all-btn compact" @click="assignAllTo(null)">
+                        {{ tr('Select all', '全部選擇') }}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -210,10 +217,10 @@ export default {
         const className = String(group.class_name || '');
         const haystack = [
           className,
+          group.grade_level,
           this.classSearchText(className),
           this.subjectLabel(group),
-          this.dayLabel(group.day_of_week),
-          group.period_name
+          this.groupScheduleLabel(group)
         ].join(' ').toLowerCase();
         const matchesKeyword = !keyword || haystack.includes(keyword);
         const matchesGrade = !this.selectedGrade || className.startsWith(this.selectedGrade);
@@ -281,11 +288,28 @@ export default {
       };
       return labels[day] || day;
     },
+    gradeLabel(grade) {
+      const value = String(grade || '').trim();
+      const match = value.match(/(\d+)/);
+      return match ? `S${match[1]}` : (value || '-');
+    },
     groupKey(group) {
-      return [group.class_id, group.subject_id, group.day_of_week, group.period_id].join('-');
+      return [group.class_id, group.subject_id, group.family_signature || `${group.day_of_week}-${group.period_id}`].join('-');
+    },
+    groupScheduleLabel(group) {
+      const occurrences = Array.isArray(group.occurrences) ? group.occurrences : [];
+      if (!occurrences.length) return `${this.dayLabel(group.day_of_week)} · ${group.period_name}`;
+      return occurrences
+        .map(item => `${this.dayLabel(item.day_of_week)} · ${item.period_name}`)
+        .join(this.$lang.locale === 'en' ? ', ' : '、');
     },
     assignmentCount(timetableId) {
       return Object.values(this.assignments).filter(value => Number(value) === Number(timetableId)).length;
+    },
+    assignAllTo(timetableId) {
+      this.filteredStudents.forEach(student => {
+        this.$set(this.assignments, student.student_id, timetableId);
+      });
     },
     showMessage(message, type) {
       this.message = message;
@@ -554,6 +578,29 @@ p {
   border-radius: 6px;
   background: #eef6ff;
   padding: 12px;
+}
+
+.assign-all-btn {
+  min-height: 34px;
+  height: auto;
+  border: 1px solid #b8cad3;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--primary-dark);
+  font-size: 12px;
+  margin-top: 7px;
+  padding: 7px 10px;
+}
+
+.assign-all-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.assign-all-btn.compact {
+  min-height: 28px;
+  margin-top: 5px;
+  padding: 4px 7px;
 }
 
 .table-wrap {

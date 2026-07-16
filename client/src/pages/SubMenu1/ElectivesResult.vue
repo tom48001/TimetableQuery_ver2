@@ -1,47 +1,51 @@
 <template>
-  <div class="electives-container">
-    <h1>{{ tr('Elective Timetable', '選修科時間表') }}</h1>
+  <main class="electives-container">
+    <header class="summary-card">
+      <h1>{{ tr('Elective Timetable', '選修科時間表') }}</h1>
+      <div class="summary-tags">
+        <span>{{ tr('Form', '級別') }}: {{ selectedForm }}</span>
+        <span>{{ tr('Subject', '科目') }}: {{ subjectLabel(electiveSubject) }}</span>
+        <span>{{ tr('Students', '學生人數') }}: {{ groupedStudents.length }}</span>
+      </div>
+    </header>
 
-    <div class="summary-card">
-      <span>{{ tr('Form', '級別') }}: {{ selectedForm }}</span>
-      <span>{{ tr('Subject', '科目') }}: {{ subjectLabel(electiveSubject) }}</span>
-      <span>{{ tr('Students', '學生') }}: {{ groupedStudents.length }}</span>
-    </div>
+    <div class="elective-layout">
+      <aside class="student-card">
+        <h2>{{ tr('Student List', '學生名單') }}</h2>
+        <div class="student-table-wrap">
+          <table class="student-table">
+            <thead><tr><th>{{ tr('Class', '班別') }}</th><th>{{ tr('No.', '編號') }}</th><th>{{ tr('Name', '姓名') }}</th></tr></thead>
+            <tbody>
+              <tr v-for="student in groupedStudents" :key="student.student_id">
+                <td>{{ student.class_name }}</td><td>{{ student.class_number }}</td>
+                <td class="name-cell">{{ studentName(student) }}<small v-if="$lang.locale !== 'en' && student.student_eng_name">{{ student.student_eng_name }}</small></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </aside>
 
-    <div class="table-wrap">
-      <table class="electives-result">
-        <thead>
-          <tr>
-            <th>{{ tr('Class', '班別') }}</th>
-            <th>{{ tr('No.', '編號') }}</th>
-            <th>{{ tr('Name', '姓名') }}</th>
-            <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="student in groupedStudents" :key="student.student_id">
-            <td>{{ student.class_name }}</td>
-            <td>{{ student.class_number }}</td>
-            <td class="name-cell">
-              {{ studentName(student) }}
-              <small v-if="$lang.locale !== 'en' && student.student_eng_name">{{ student.student_eng_name }}</small>
-            </td>
-            <td v-for="day in days" :key="`${student.student_id}-${day}`">
-              <div v-if="student.schedule[day] && student.schedule[day].length">
-                <div v-for="lesson in student.schedule[day]" :key="lesson.key" class="lesson-chip">
-                  <strong>{{ periodLabel(lesson.period_name) }}</strong>
-                  <span>{{ lesson.teacher_name || '-' }}</span>
-                  <span>{{ roomLabel(lesson.room_name) }}</span>
-                  <small v-if="lesson.timetable_class_name && lesson.timetable_class_name !== student.class_name">
-                    {{ lesson.timetable_class_name }}
-                  </small>
-                </div>
-              </div>
-              <span v-else class="empty-cell">—</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <section class="master-card">
+        <div class="master-heading"><h2>{{ tr('Master Timetable (Mon–Fri)', '主時間表（星期一至五）') }}</h2><span class="legend-dot"></span><small>{{ tr('Elective lesson', '選修課') }}</small></div>
+        <div class="table-wrap">
+          <table class="master-table">
+            <thead><tr><th>{{ tr('Period', '課節') }}</th><th v-for="day in days" :key="day">{{ dayLabel(day) }}</th></tr></thead>
+            <tbody>
+              <tr v-for="period in periodNumbers" :key="period">
+                <th>{{ periodLabel(`Period ${period}`) }}</th>
+                <td v-for="day in days" :key="`${day}-${period}`">
+                  <div v-for="lesson in lessonsAt(day, period)" :key="lesson.key" class="lesson-chip">
+                    <small>{{ periodLabel(lesson.period_name) }}</small>
+                    <strong>{{ subjectLabel(electiveSubject) }}</strong>
+                    <span>{{ roomLabel(lesson.room_name) }}</span>
+                    <span>{{ lesson.teacher_name || '-' }}</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
 
     <p v-if="loaded && groupedStudents.length === 0" class="empty-message">
@@ -51,7 +55,7 @@
     <p v-else-if="loaded && !hasAnyLesson" class="empty-message">
       {{ tr('Students were found, but no matching timetable lessons were found for this elective.', '已找到修讀此科的學生，但未找到對應的選修科時間表課堂。') }}
     </p>
-  </div>
+  </main>
 </template>
 
 <script>
@@ -116,6 +120,27 @@ export default {
         return student;
       });
     },
+    masterLessons() {
+      const lessons = new Map();
+      this.studentElectives.forEach(row => {
+        if (!row.timetable_id || !row.day_of_week) return;
+        const key = [row.timetable_id, row.day_of_week, row.period_id || row.period_name].join('-');
+        if (!lessons.has(key)) {
+          lessons.set(key, {
+            key,
+            day_of_week: row.day_of_week,
+            period_name: row.period_name,
+            period_id: Number(row.period_id) || Number(String(row.period_name || '').replace(/\D/g, '')),
+            teacher_name: row.teacher_name,
+            room_name: row.room_name
+          });
+        }
+      });
+      return Array.from(lessons.values());
+    },
+    periodNumbers() {
+      return Array.from({ length: 10 }, (_, index) => index + 1);
+    },
     hasAnyLesson() {
       return this.groupedStudents.some(student => (
         this.days.some(day => student.schedule[day] && student.schedule[day].length)
@@ -156,6 +181,13 @@ export default {
       const number = String(periodName).replace(/[^0-9]/g, '');
       if (!number) return periodName;
       return this.$lang.locale === 'en' ? `P${number}` : `第${number}節`;
+    },
+    lessonsAt(day, displayedPeriod) {
+      return this.masterLessons.filter(lesson => {
+        const actualPeriod = Number(lesson.period_id);
+        const mappedPeriod = actualPeriod === 11 ? 9 : (actualPeriod === 12 ? 10 : actualPeriod);
+        return lesson.day_of_week === day && mappedPeriod === displayedPeriod;
+      });
     },
     async fetchElectives() {
       const res = await axios.post('/api/subjects/list', {
@@ -295,5 +327,171 @@ h1 {
   margin: 16px 0 0;
   padding: 18px;
   text-align: center;
+}
+
+.electives-container {
+  background: #f7fafb;
+  max-width: 1240px;
+  padding: 24px 20px 48px;
+}
+
+.summary-card {
+  display: block;
+  border-radius: 14px;
+  box-shadow: 0 3px 8px rgba(25, 54, 69, 0.1);
+  margin-bottom: 28px;
+  padding: 22px 24px;
+}
+
+.summary-card h1 {
+  font-size: 28px;
+  margin: 0 0 10px;
+  text-align: left;
+}
+
+.summary-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summary-tags span {
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.elective-layout {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.7fr) minmax(620px, 1.5fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.student-card,
+.master-card {
+  border: 1px solid #d1e0e5;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(25, 54, 69, 0.1);
+  overflow: hidden;
+}
+
+.student-card h2,
+.master-heading {
+  min-height: 54px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 17px 20px;
+}
+
+.student-card h2,
+.master-heading h2 {
+  color: var(--text);
+  font-size: 16px;
+  margin: 0;
+}
+
+.student-table-wrap {
+  max-height: 560px;
+  overflow: auto;
+}
+
+.student-table,
+.master-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.student-table th,
+.student-table td {
+  border-top: 1px solid #e5edf0;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.student-table th {
+  background: #f3f8fa;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.master-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid #e5edf0;
+}
+
+.master-heading h2 {
+  margin-right: auto;
+}
+
+.master-heading small {
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border: 1px solid #76bcc8;
+  border-radius: 50%;
+  background: #e7f5f7;
+}
+
+.master-table {
+  min-width: 690px;
+  table-layout: fixed;
+}
+
+.master-table th,
+.master-table td {
+  height: 72px;
+  border: 1px solid #dce7eb;
+  box-sizing: border-box;
+  padding: 6px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.master-table thead th {
+  height: 52px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+}
+
+.master-table thead th:first-child,
+.master-table tbody th {
+  width: 76px;
+  background: #f3f8fa;
+  color: var(--text-muted);
+}
+
+.master-table .lesson-chip {
+  margin: 0;
+  padding: 8px 5px;
+}
+
+.master-table .lesson-chip + .lesson-chip {
+  margin-top: 5px;
+}
+
+.master-table .lesson-chip strong,
+.master-table .lesson-chip span,
+.master-table .lesson-chip small {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .elective-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .student-card {
+    max-height: 420px;
+  }
 }
 </style>

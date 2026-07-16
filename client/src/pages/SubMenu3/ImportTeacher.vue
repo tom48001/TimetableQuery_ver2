@@ -483,10 +483,6 @@ export default {
       const page = Math.min(this.historyPage, this.historyTotalPages);
       const start = (page - 1) * this.historyPageSize + 1;
       const end = Math.min(start + this.historyPageSize - 1, this.importBatches.length);
-      return this.tr(
-        `Showing ${start} to ${end} of ${this.importBatches.length} records`,
-        `顯示 ${start} 到 ${end} 筆記錄`
-      );
     }
   },
   methods: {

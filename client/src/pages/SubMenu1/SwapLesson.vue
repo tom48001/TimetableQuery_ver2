@@ -1,7 +1,7 @@
 <template>
   <main class="swap-page">
     <section class="swap-panel">
-      <header class="page-header"><div><h1>{{ tr('Teacher to Swap', '需要調課老師') }}</h1></div><span class="count-badge">{{ teachers.length }} {{ tr('teachers', '老師') }}</span></header>
+      <header class="page-header"><div><h1>{{ tr('Teacher to Swap', '需要調課老師') }}</h1></div><span class="count-badge"></span></header>
       <label class="search-box"><span>{{ tr('Search teacher', '搜尋老師') }}</span><input v-model.trim="searchText" type="text" :placeholder="tr('Enter teacher name...', '輸入老師名稱...')" /></label>
       <div class="teacher-list" v-if="filteredTeachers.length">
         <label v-for="teacher in filteredTeachers" :key="teacher.teacher_id" class="teacher-row" :class="{ selected: selectedTeacherId === teacher.teacher_id }">

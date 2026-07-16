@@ -1,12 +1,6 @@
 <template>
   <main class="result-page">
     <div class="page-shell">
-      <nav class="breadcrumb">{{ tr('Swap Request', '調課申請') }} <span>›</span> <strong>{{ tr('Available Teachers', '可供調課的老師') }}</strong></nav>
-      <header class="page-header">
-        <h1>{{ tr('Available Swap Teachers', '可供調課的老師') }}</h1>
-        <span class="count-badge">{{ filteredTeachers.length }} {{ tr('teachers', '老師') }}</span>
-      </header>
-
       <div class="result-layout">
         <section class="result-content">
           <div class="request-summary">
@@ -25,7 +19,6 @@
           <div v-else-if="filteredTeachers.length" class="teacher-list">
             <article v-for="teacher in filteredTeachers" :key="teacher.teacher_id" class="teacher-card">
               <div class="teacher-card-top">
-                <span class="teacher-avatar">{{ teacherInitials(teacher.teacher_name) }}</span>
                 <span class="reason-row">
                   <small v-for="reason in reasonParts(teacher.match_reason)" :key="reason" class="reason-badge" :class="reasonClass(reason)">{{ reason }}</small>
                 </span>
@@ -82,12 +75,14 @@ export default {
   computed: {
     filteredTeachers() {
       const keyword = this.searchText.toLowerCase();
+      const matchFilters = [];
+      if (this.filters.available) matchFilters.push('free');
+      if (this.filters.sameSubject) matchFilters.push('same-subject');
+      if (this.filters.sameClass) matchFilters.push('same-class');
+
       return sortTeachersByName(this.availableTeachers.filter(teacher => {
-        if (!this.filters.available) return false;
         if (keyword && !String(teacher.teacher_name || '').toLowerCase().includes(keyword)) return false;
-        if (this.filters.sameSubject && !this.hasReason(teacher, 'same-subject')) return false;
-        if (this.filters.sameClass && !this.hasReason(teacher, 'same-class')) return false;
-        return true;
+        return matchFilters.some(type => this.hasReason(teacher, type));
       }));
     },
     selectedLessons() {
@@ -443,12 +438,12 @@ h1 {
 
 /* Card layout for the available-teacher result. */
 .result-page {
-  background: #fff;
-  padding: 28px 24px 64px;
+  background: #f8fafc;
+  padding: 6px 0 28px;
 }
 
 .page-shell {
-  max-width: 1230px;
+  max-width: 1120px;
   margin: 0 auto;
 }
 
@@ -481,23 +476,23 @@ h1 {
 
 .result-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 370px;
-  gap: 40px;
+  grid-template-columns: minmax(0, 3fr) minmax(260px, 1.08fr);
+  gap: 28px;
   align-items: start;
 }
 
 .request-summary {
-  min-height: 220px;
+  min-height: 194px;
   display: flex;
-  align-items: center;
-  gap: 40px;
+  align-items: flex-start;
   border: 0;
-  border-radius: 30px;
-  background: linear-gradient(105deg, #0757c9 0%, #0757c9 72%, #2360cf 72%, #2360cf 100%);
-  box-shadow: 0 12px 24px rgba(15, 67, 160, 0.2);
-  color: #fff;
-  margin: 0 0 40px;
-  padding: 28px 42px;
+  border-radius: 22px;
+  background: #eef4ff;
+  box-shadow: 0 4px 8px rgba(15, 23, 42, 0.12);
+  color: #172033;
+  box-sizing: border-box;
+  margin: 0 0 36px;
+  padding: 32px 30px;
 }
 
 .summary-avatar {
@@ -519,30 +514,32 @@ h1 {
 
 .summary-label {
   display: block;
-  color: #bcd2ff;
-  font-size: 14px;
-  font-weight: 800;
-  margin: 0 0 8px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 10px;
 }
 
 .summary-name {
   display: block;
-  font-size: clamp(22px, 2.4vw, 32px);
+  font-size: clamp(24px, 2.5vw, 32px);
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
 .lesson-summary-list {
-  gap: 6px;
+  gap: 7px;
   list-style: none;
   margin: 24px 0 0;
   padding: 0;
+  font-size: 15px;
+  font-weight: 800;
 }
 
 .teacher-list {
   max-height: none;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  gap: 14px;
   overflow: visible;
   border: 0;
   background: transparent;
@@ -551,18 +548,19 @@ h1 {
 }
 
 .teacher-card {
-  min-height: 154px;
-  border: 1px solid #cbd5e1;
-  border-radius: 11px;
+  min-height: 128px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   background: #fff;
+  box-shadow: 0 2px 3px rgba(15, 23, 42, 0.09);
   box-sizing: border-box;
-  padding: 20px;
+  padding: 20px 22px;
 }
 
 .teacher-card-top {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   margin-bottom: 18px;
 }
@@ -586,18 +584,18 @@ h1 {
 
 .teacher-name {
   color: #0f172a;
-  font-size: 15px;
+  font-size: 16px;
   overflow-wrap: anywhere;
 }
 
 .teacher-description {
-  color: #475569;
+  color: #94a3b8;
   font-size: 13px;
   margin-top: 5px;
 }
 
 .reason-row {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .reason-badge {
@@ -614,9 +612,10 @@ h1 {
   display: grid;
   gap: 16px;
   border: 1px solid #cbd5e1;
-  border-radius: 30px;
-  box-shadow: 0 2px 3px rgba(15, 23, 42, 0.05);
-  padding: 30px 32px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
+  padding: 28px 28px;
 }
 
 .filter-panel h2 {
@@ -646,13 +645,14 @@ h1 {
 }
 
 .reset-button {
-  height: 56px;
+  height: 50px;
   border: 0;
   border-radius: 10px;
-  background: #dbeafe;
-  color: #0f172a;
+  background: #0f7f8d;
+  color: #fff;
   font-size: 15px;
-  margin-top: 26px;
+  margin-top: 6px;
+  font-weight: 800;
 }
 
 @media (max-width: 980px) {
@@ -661,9 +661,9 @@ h1 {
 }
 
 @media (max-width: 720px) {
-  .result-page { padding: 22px 14px 48px; }
+  .result-page { padding: 12px 14px 48px; }
   .page-header { margin-bottom: 24px; }
-  .request-summary { min-height: 0; align-items: flex-start; gap: 18px; border-radius: 20px; padding: 24px 20px; }
+  .request-summary { min-height: 0; align-items: flex-start; border-radius: 18px; padding: 24px 20px; }
   .summary-avatar { width: 64px; height: 64px; flex-basis: 64px; border-radius: 12px; font-size: 18px; }
   .teacher-list { grid-template-columns: 1fr; }
   .filter-panel { padding: 24px 20px; }

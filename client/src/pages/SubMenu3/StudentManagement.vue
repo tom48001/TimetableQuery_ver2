@@ -222,10 +222,6 @@ export default {
       if (!this.filteredStudents.length) return this.tr('No students', '沒有學生');
       const start = (this.currentPage - 1) * this.pageSize + 1;
       const end = Math.min(start + this.pageSize - 1, this.filteredStudents.length);
-      return this.tr(
-        `Showing ${start} to ${end} of ${this.filteredStudents.length} students`,
-        `顯示 ${start} 至 ${end} 名學生，共 ${this.filteredStudents.length} 名`
-      );
     },
     pageItems() {
       const pages = [];
