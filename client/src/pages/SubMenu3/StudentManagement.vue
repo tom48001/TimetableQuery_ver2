@@ -1,131 +1,56 @@
 <template>
   <main class="student-admin-page">
     <section class="admin-panel">
-      <header class="page-header">
-        <div>
-          <h1>{{ tr('Student Management', '學生管理') }}</h1>
-          <p>{{ tr('Manage profiles, status and elective subjects.', '管理學生資料、狀態及選修科。') }}</p>
-        </div>
-        <span class="summary-pill">{{ filteredStudents.length }} / {{ students.length }}</span>
-      </header>
-
-      <section class="stats-grid">
-        <article class="stat-card">
-          <span>{{ tr('Active', '啟用') }}</span>
-          <strong>{{ activeCount }}</strong>
-        </article>
-        <article class="stat-card muted">
-          <span>{{ tr('Inactive', '停用') }}</span>
-          <strong>{{ inactiveCount }}</strong>
-        </article>
-        <article class="stat-card warn">
-          <span>{{ tr('Duplicates', '重複資料') }}</span>
-          <strong>{{ duplicateCount }}</strong>
-        </article>
-        <article class="stat-card teal">
-          <span>NCS</span>
-          <strong>{{ ncsCount }}</strong>
-        </article>
-      </section>
-
-      <section class="toolbar-card">
-        <button type="button" class="secondary-btn" @click="exportStudents">
-          {{ tr('Export Student List', '匯出學生名單') }}
-        </button>
-        <button type="button" class="secondary-btn" @click="loadStudents">
-          {{ tr('Reload', '重新載入') }}
-        </button>
-      </section>
-
-      <section class="form-section">
-        <h2>{{ tr('Add Student', '新增學生') }}</h2>
-        <div class="form-grid">
-          <label><span>REGNO *</span><input v-model.trim="newStudent.regno" /></label>
-          <label><span>Email</span><input v-model.trim="newStudent.email" type="email" /></label>
-          <label><span>{{ tr('Chinese Name', '中文名') }} *</span><input v-model.trim="newStudent.student_ch_name" /></label>
-          <label><span>{{ tr('English Name', '英文名') }} *</span><input v-model.trim="newStudent.student_eng_name" /></label>
-          <label>
-            <span>{{ tr('Class', '班別') }} *</span>
-            <select v-model="newStudent.class_id">
-              <option value="">{{ tr('Select class', '選擇班別') }}</option>
-              <option v-for="item in classes" :key="item.class_id" :value="item.class_id">{{ item.class_name }}</option>
-            </select>
-          </label>
-          <label><span>{{ tr('Class No.', '班別學號') }} *</span><input v-model.trim="newStudent.class_number" maxlength="3" /></label>
-          <label><span>ClsNo</span><input v-model.trim="newStudent.class_code" /></label>
-          <label>
-            <span>{{ tr('Sex', '性別') }}</span>
-            <select v-model="newStudent.sex"><option>F</option><option>M</option></select>
-          </label>
-          <label>
-            <span>Status</span>
-            <select v-model="newStudent.status"><option value="active">Active</option><option value="inactive">Inactive</option></select>
-          </label>
-          <label>
-            <span>NCS</span>
-            <select v-model="newStudent.is_ncs">
-              <option v-for="option in ncsOptions" :key="option" :value="option">{{ option }}</option>
-            </select>
-          </label>
-          <label><span>{{ tr('Citizenship', '公社') }}</span><select v-model="newStudent.citizenship"><option v-for="option in citizenshipOptions" :key="option" :value="option">{{ option }}</option></select></label>
-          <template v-if="usesDse(newStudent)">
-            <label v-for="slot in electiveSlots" :key="slot.key">
-              <span>{{ slot.label }}</span>
-              <select v-model="newStudent[slot.key]">
-                <option value="">-</option>
-                <option v-for="subject in electiveSubjects" :key="subject.subject_id" :value="subject.subject_id">
-                  {{ subject.subject_name }}
-                </option>
-              </select>
-            </label>
-          </template>
-          <label><span>{{ tr('House', '社別') }}</span><select v-model="newStudent.house"><option v-for="option in houseOptions" :key="option" :value="option">{{ option }}</option></select></label>
-          <label><span>{{ tr('Language Group', '語言組別') }}</span><select v-model="newStudent.language_group"><option v-for="option in languageGroupOptions" :key="option" :value="option">{{ option }}</option></select></label>
-          <label><span>SUPP CLASS</span><select v-model="newStudent.supp_class"><option v-for="option in suppClassOptions" :key="option" :value="option">{{ option }}</option></select></label>
-          <label><span>{{ tr('Maths', '數學/Maths') }}</span><select v-model="newStudent.maths_group"><option v-for="option in mathsOptions" :key="option" :value="option">{{ option }}</option></select></label>
-          <label><span>{{ tr('Dropped Subjects', '退選科目') }}</span><input v-model.trim="newStudent.dropped_subjects" /></label>
-          <label class="wide-field"><span>{{ tr('Remarks', '備註') }}</span><input v-model.trim="newStudent.remarks" /></label>
-        </div>
-        <button type="button" class="primary-btn" @click="addStudent">{{ tr('Add Student', '新增學生') }}</button>
-      </section>
-
       <section class="list-section">
-        <div class="filter-grid">
-          <label>
-            <span>{{ tr('Search', '搜尋') }}</span>
-            <input v-model.trim="searchText" :placeholder="tr('REGNO, student ID, name or email', 'REGNO、學號、姓名或 Email')" />
-          </label>
-          <label>
-            <span>{{ tr('Grade', '級別') }}</span>
+        <div class="list-toolbar">
+          <div class="list-title-wrap">
+            <h1>{{ tr('Student List', '學生列表') }}</h1>
+          </div>
+          <div class="list-actions">
+            <button type="button" class="primary-btn compact-action" @click="$router.push({ name: 'AddStudent' })">
+              {{ tr('Add Student', '新增學生') }}
+            </button>
+            <button type="button" class="secondary-btn compact-action" @click="exportStudents">
+              {{ tr('Export', '匯出') }}
+            </button>
+            <button type="button" class="secondary-btn compact-action" @click="loadStudents">
+              {{ tr('Reload', '重新載入') }}
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-strip">
+          <label class="filter-select">
+            <span class="filter-icon">≡</span>
             <select v-model="gradeFilter">
               <option value="">{{ tr('All grades', '全部級別') }}</option>
               <option v-for="grade in gradeLevels" :key="grade">{{ grade }}</option>
             </select>
           </label>
-          <label>
-            <span>{{ tr('Class', '班別') }}</span>
+          <label class="filter-select">
             <select v-model="classFilter">
               <option value="">{{ tr('All classes', '全部班別') }}</option>
               <option v-for="item in filteredClasses" :key="item.class_id" :value="String(item.class_id)">{{ item.class_name }}</option>
             </select>
           </label>
-          <label>
-            <span>Status</span>
-            <select v-model="statusFilter"><option value="">All</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+          <label class="filter-select small-filter">
+            <select v-model="statusFilter"><option value="">{{ tr('All status', '全部狀態') }}</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
           </label>
-          <label>
-            <span>NCS</span>
-            <select v-model="ncsFilter"><option value="">All</option><option value="yes">NCS</option><option value="no">Non-NCS</option></select>
+          <label class="filter-select small-filter">
+            <select v-model="ncsFilter"><option value="">NCS</option><option value="yes">NCS</option><option value="no">Non-NCS</option></select>
           </label>
-          <label>
-            <span>{{ tr('Duplicates', '重複資料') }}</span>
+          <label class="filter-select duplicate-filter">
             <select v-model="duplicateFilter">
-              <option value="">{{ tr('All', '全部') }}</option>
+              <option value="">{{ tr('Duplicates', '重複資料') }}</option>
               <option value="any">{{ tr('Any duplicate', '任何重複') }}</option>
               <option value="regno">REGNO</option>
               <option value="email">Email</option>
               <option value="class_number">{{ tr('Class No.', '班別學號') }}</option>
             </select>
+          </label>
+          <label class="search-pill">
+            <span class="search-icon">⌕</span>
+            <input v-model.trim="searchText" :placeholder="tr('REGNO, student ID, name or Email', 'REGNO、學號、姓名或 Email')" />
           </label>
         </div>
 
@@ -189,11 +114,11 @@
                   <td>{{ student.maths_group || '-' }}</td><td>{{ student.citizenship || '-' }}</td>
                   <td>{{ student.dropped_subjects || '-' }}</td><td>{{ student.remarks || '-' }}</td>
                   <td class="actions action-cell">
-                    <button type="button" class="secondary-btn compact" @click="startEdit(student)">{{ tr('Edit', '編輯') }}</button>
-                    <button type="button" class="danger-btn compact" @click="deleteStudent(student)">{{ tr('Delete', '刪除') }}</button>
+                    <button type="button" class="edit-btn compact" @click="startEdit(student)">{{ tr('Edit', '編輯') }}</button>
                     <button type="button" class="status-btn compact" @click="toggleStatus(student)">
                       {{ student.status === 'active' ? tr('Deactivate', '停用') : tr('Activate', '啟用') }}
                     </button>
+                    <button type="button" class="danger-btn compact" @click="deleteStudent(student)">{{ tr('Delete', '刪除') }}</button>
                   </td>
                 </template>
               </tr>
@@ -203,9 +128,20 @@
         </div>
 
         <div v-if="filteredStudents.length" class="pagination-bar">
-          <button class="secondary-btn" :disabled="currentPage === 1" @click="currentPage -= 1">{{ tr('Previous', '上一頁') }}</button>
-          <span>{{ currentPage }} / {{ totalPages }}</span>
-          <button class="secondary-btn" :disabled="currentPage === totalPages" @click="currentPage += 1">{{ tr('Next', '下一頁') }}</button>
+          <span class="page-range">{{ pageRangeLabel }}</span>
+          <button class="pager-btn" :disabled="currentPage === 1" @click="currentPage -= 1">‹</button>
+          <button
+            v-for="item in pageItems"
+            :key="item.key"
+            type="button"
+            class="pager-btn"
+            :class="{ active: item.page === currentPage, ellipsis: item.ellipsis }"
+            :disabled="item.ellipsis"
+            @click="item.page && (currentPage = item.page)"
+          >
+            {{ item.label }}
+          </button>
+          <button class="pager-btn" :disabled="currentPage === totalPages" @click="currentPage += 1">›</button>
         </div>
       </section>
     </section>
@@ -215,31 +151,6 @@
 <script>
 import axios from 'axios';
 
-function blankStudent() {
-  return {
-    regno: '',
-    email: '',
-    student_ch_name: '',
-    student_eng_name: '',
-    class_id: '',
-    class_number: '',
-    class_code: '',
-    sex: 'F',
-    status: 'active',
-    is_ncs: 'N',
-    x1_subject_id: '',
-    x2_subject_id: '',
-    x3_subject_id: '',
-    house: '紅社',
-    language_group: '英文組(EMI)',
-    supp_class: '無',
-    maths_group: '核心課程(英文)',
-    citizenship: '公民、經濟與社會',
-    dropped_subjects: '',
-    remarks: ''
-  };
-}
-
 export default {
   name: 'StudentManagement',
   data() {
@@ -247,7 +158,6 @@ export default {
       students: [],
       classes: [],
       electiveSubjects: [],
-      newStudent: blankStudent(),
       editingStudentId: null,
       editStudent: null,
       searchText: '',
@@ -308,17 +218,34 @@ export default {
       const start = (this.currentPage - 1) * this.pageSize;
       return this.filteredStudents.slice(start, start + this.pageSize);
     },
-    activeCount() {
-      return this.students.filter(student => student.status === 'active').length;
+    pageRangeLabel() {
+      if (!this.filteredStudents.length) return this.tr('No students', '沒有學生');
+      const start = (this.currentPage - 1) * this.pageSize + 1;
+      const end = Math.min(start + this.pageSize - 1, this.filteredStudents.length);
+      return this.tr(
+        `Showing ${start} to ${end} of ${this.filteredStudents.length} students`,
+        `顯示 ${start} 至 ${end} 名學生，共 ${this.filteredStudents.length} 名`
+      );
     },
-    inactiveCount() {
-      return this.students.filter(student => student.status === 'inactive').length;
-    },
-    duplicateCount() {
-      return this.students.filter(student => student.duplicate_regno || student.duplicate_email || student.duplicate_class_number).length;
-    },
-    ncsCount() {
-      return this.students.filter(student => student.is_ncs).length;
+    pageItems() {
+      const pages = [];
+      const addPage = page => {
+        if (page >= 1 && page <= this.totalPages && !pages.includes(page)) pages.push(page);
+      };
+      addPage(1);
+      addPage(this.currentPage - 1);
+      addPage(this.currentPage);
+      addPage(this.currentPage + 1);
+      addPage(this.totalPages);
+      pages.sort((a, b) => a - b);
+      const items = [];
+      pages.forEach((page, index) => {
+        if (index > 0 && page - pages[index - 1] > 1) {
+          items.push({ key: `ellipsis-${page}`, label: '...', ellipsis: true });
+        }
+        items.push({ key: `page-${page}`, label: String(page), page });
+      });
+      return items;
     }
   },
   watch: {
@@ -367,16 +294,6 @@ export default {
     validate(student) {
       return student.regno && student.student_ch_name && student.student_eng_name &&
         student.class_id && student.class_number;
-    },
-    async addStudent() {
-      if (!this.validate(this.newStudent)) return alert(this.tr('Please fill in all required fields.', '請填寫所有必填欄位。'));
-      try {
-        await axios.post('/api/students/admin', this.studentPayload(this.newStudent), { headers: this.authHeaders() });
-        this.newStudent = blankStudent();
-        await this.loadStudents();
-      } catch (error) {
-        alert(this.errorMessage(error, this.tr('Failed to add student.', '新增學生失敗。')));
-      }
     },
     startEdit(student) {
       this.editingStudentId = student.student_id;
@@ -484,220 +401,174 @@ export default {
 .student-admin-page {
   box-sizing: border-box;
   min-height: calc(100vh - 126px);
-  padding: 34px 20px 64px;
+  padding: 26px 20px 56px;
+  background: #f8f9ff;
+  font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .admin-panel {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 253, 0.98));
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 18px 45px rgba(25, 54, 69, 0.12);
   margin: auto;
   max-width: 1500px;
-  padding: 26px;
 }
 
-.page-header,
-.toolbar-card,
-.pagination-bar,
-.actions {
+.list-section {
+  background: #ffffff;
+  border: 1px solid rgba(190, 201, 200, 0.42);
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(15, 35, 52, 0.06);
+  overflow: hidden;
+}
+
+.list-toolbar {
   align-items: center;
   display: flex;
-  gap: 10px;
-}
-
-.page-header {
+  gap: 16px;
   justify-content: space-between;
+  padding: 28px 32px 12px;
 }
 
-.page-header h1,
-h2 {
-  color: var(--text);
+.list-title-wrap {
+  border-left: 5px solid #0b7787;
+  padding-left: 14px;
+}
+
+h1 {
+  color: #0b1c30;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
   margin: 0;
 }
 
-.page-header h1 {
-  font-size: 34px;
-}
-
-.page-header p {
-  color: var(--text-muted);
-  font-weight: 700;
-  margin: 6px 0 0;
-}
-
-.summary-pill,
-.status-pill {
-  border-radius: 999px;
-  font-weight: 900;
-  padding: 6px 10px;
-}
-
-.summary-pill {
-  background: var(--primary-soft);
-  color: var(--primary-dark);
-}
-
-.stats-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(4, minmax(140px, 1fr));
-  margin-top: 18px;
-}
-
-.stat-card {
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-left: 5px solid #2f855a;
-  border-radius: 12px;
-  box-shadow: 0 10px 24px rgba(25, 54, 69, 0.07);
-  padding: 14px 16px;
-}
-
-.stat-card span {
-  color: var(--text-muted);
-  display: block;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.stat-card strong {
-  color: var(--text);
-  display: block;
-  font-size: 30px;
-  line-height: 1.1;
-  margin-top: 6px;
-}
-
-.stat-card.muted { border-left-color: #718096; }
-.stat-card.warn { border-left-color: #d97706; }
-.stat-card.teal { border-left-color: var(--primary); }
-
-.toolbar-card,
-.form-section,
-.list-section {
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(25, 54, 69, 0.06);
-  margin-top: 18px;
-  padding: 18px;
-}
-
-.toolbar-card {
+.list-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: flex-end;
 }
 
-.form-section {
-  background: linear-gradient(180deg, #ffffff, #f8fbfc);
+.filter-strip {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 0 32px 22px;
 }
 
-.form-grid,
-.filter-grid {
-  display: grid;
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.form-grid {
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
-}
-
-.wide-field {
-  grid-column: span 2;
-}
-
-.filter-grid {
-  grid-template-columns: minmax(280px, 2fr) repeat(5, minmax(130px, 1fr));
-}
-
-label {
-  color: var(--text-muted);
-  display: grid;
-  font-size: 12px;
-  font-weight: 900;
-  gap: 6px;
-}
-
-input,
-select {
-  background: #fff;
-  border: 1px solid var(--border-strong);
+.filter-select,
+.search-pill {
+  align-items: center;
+  background: #eff4ff;
+  border: 1px solid #e0e8f3;
   border-radius: 8px;
   box-sizing: border-box;
+  color: #4e616f;
+  display: flex;
+  gap: 8px;
   height: 42px;
-  min-width: 90px;
-  padding: 0 10px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  min-width: 150px;
+  padding: 0 12px;
+}
+
+.filter-select select,
+.search-pill input {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: #34495a;
+  font-size: 13px;
+  font-weight: 900;
+  height: 100%;
+  outline: 0;
+  padding: 0;
   width: 100%;
 }
 
-input:focus,
-select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(11, 114, 133, 0.14);
-  outline: none;
+.filter-select {
+  position: relative;
 }
 
-.checkbox-label {
-  align-items: center;
-  align-self: end;
-  display: flex;
-  height: 42px;
+.filter-select::after {
+  color: #5d6f7d;
+  content: "⌄";
+  font-size: 13px;
+  pointer-events: none;
 }
 
-.checkbox-label input {
-  height: 18px;
-  width: 18px;
+.filter-icon,
+.search-icon {
+  color: #5d6f7d;
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.search-pill {
+  min-width: 330px;
 }
 
 button {
+  border: 0;
   border-radius: 8px;
   cursor: pointer;
+  font-size: 13px;
   font-weight: 900;
-  height: 40px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 12px;
 }
 
 .primary-btn {
-  background: var(--primary);
-  border: none;
+  background: #00616d;
   color: #fff;
-  margin-top: 14px;
 }
 
 .primary-btn:hover {
-  background: var(--primary-dark);
+  background: #0b7787;
 }
 
 .secondary-btn,
+.edit-btn,
 .status-btn,
 .danger-btn {
-  background: #fff;
-  border: 1px solid var(--border-strong);
-  color: var(--text);
+  background: #eff4ff;
+  color: #34495a;
 }
 
-.secondary-btn:hover,
-.status-btn:hover {
-  background: var(--surface-soft);
+.secondary-btn:hover {
+  background: #e5eeff;
+}
+
+.edit-btn {
+  background: #e7f5fb;
+  color: #00616d;
+}
+
+.edit-btn:hover {
+  background: #d9eff8;
 }
 
 .status-btn {
-  color: #8c4029;
+  background: #fff1df;
+  color: #9a4f0f;
+}
+
+.status-btn:hover {
+  background: #ffe7c2;
 }
 
 .danger-btn {
-  border-color: #d48a8a;
+  background: #ffe2e2;
   color: #a42d2d;
 }
 
 .danger-btn:hover {
-  background: #fff1f1;
+  background: #ffd2d2;
 }
 
+.compact-action,
 .compact {
   height: 32px;
   margin: 0;
@@ -705,9 +576,6 @@ button {
 }
 
 .table-wrap {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  margin-top: 14px;
   max-height: 680px;
   overflow: auto;
 }
@@ -722,25 +590,31 @@ button {
 
 .student-table th,
 .student-table td {
-  border-bottom: 1px solid var(--border);
-  padding: 9px 10px;
+  border-bottom: 1px solid #edf2f7;
+  border-left: 0;
+  border-right: 0;
+  color: #173044;
+  padding: 18px 20px;
   vertical-align: middle;
 }
 
 .student-table th {
-  background: #edf5f7;
-  box-shadow: inset 0 -1px 0 var(--border);
-  color: var(--text);
+  background: #eff4ff;
+  box-shadow: inset 0 -1px 0 #dbe5ef;
+  color: #35495b;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
   position: sticky;
   text-align: left;
+  text-transform: uppercase;
   top: 0;
   white-space: nowrap;
-  z-index: 1;
+  z-index: 4;
 }
 
 .student-table .action-cell {
   background: inherit;
-  box-shadow: -8px 0 12px rgba(18, 38, 53, 0.06);
   min-width: 210px;
   position: sticky;
   right: 0;
@@ -748,8 +622,30 @@ button {
 }
 
 .student-table th.action-cell {
-  background: #edf5f7;
+  background: #eff4ff;
   z-index: 3;
+}
+
+.student-table input,
+.student-table select {
+  background: #eff4ff;
+  border: 1px solid #dbe5ef;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #173044;
+  font-size: 13px;
+  font-weight: 800;
+  height: 36px;
+  min-width: 90px;
+  outline: 0;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.student-table input:focus,
+.student-table select:focus {
+  border-color: #00616d;
+  box-shadow: 0 0 0 3px rgba(0, 97, 109, 0.14);
 }
 
 .student-table td.action-cell {
@@ -757,55 +653,65 @@ button {
 }
 
 .student-table tbody tr:nth-child(even) {
-  background: #fbfdfe;
+  background: #ffffff;
 }
 
 .student-table tbody tr:nth-child(even) td.action-cell {
-  background: #fbfdfe;
+  background: #ffffff;
 }
 
 .student-table tbody tr:hover {
-  background: #f0f8fa;
+  background: #f7fafc;
 }
 
 .student-table tbody tr:hover td.action-cell {
-  background: #f0f8fa;
+  background: #f7fafc;
 }
 
 .student-table tr.inactive {
-  background: #f5f5f5;
+  background: #f8fafc;
   opacity: 0.66;
 }
 
 .student-table tr.inactive td.action-cell {
-  background: #f5f5f5;
+  background: #f8fafc;
 }
 
 .name-cell {
-  color: var(--text);
+  color: #0b1c30;
   font-weight: 900;
 }
 
 .duplicate {
-  background: #fff0ed;
+  background: transparent;
   color: #9d3028;
   font-weight: 900;
 }
 
 .duplicate small {
-  display: block;
-  margin-top: 3px;
+  background: #ffd7d7;
+  border-radius: 999px;
+  color: #9d3028;
+  display: inline-flex;
+  font-size: 10px;
+  margin-left: 6px;
+  padding: 2px 5px;
 }
 
 .status-pill {
+  border-radius: 999px;
   display: inline-flex;
-  min-width: 66px;
+  font-size: 10px;
+  font-weight: 900;
   justify-content: center;
+  min-width: 54px;
+  padding: 5px 8px;
+  text-transform: uppercase;
 }
 
 .status-pill.active {
-  background: #e7f5ea;
-  color: #22623a;
+  background: #e8f0f1;
+  color: #00616d;
 }
 
 .status-pill.inactive {
@@ -814,51 +720,80 @@ button {
 }
 
 .actions {
+  align-items: center;
+  display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
 .pagination-bar {
+  align-items: center;
+  background: #eff4ff;
+  color: #34495a;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 16px 32px;
+}
+
+.page-range {
+  font-size: 13px;
+  font-weight: 800;
+  margin-right: auto;
+}
+
+.pager-btn {
+  align-items: center;
+  background: transparent;
+  color: #34495a;
+  display: inline-flex;
+  height: 34px;
   justify-content: center;
-  margin-top: 14px;
+  min-width: 34px;
+  padding: 0 8px;
+}
+
+.pager-btn.active {
+  background: #00616d;
+  color: #ffffff;
+}
+
+.pager-btn:disabled:not(.ellipsis) {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.pager-btn.ellipsis {
+  cursor: default;
 }
 
 .empty-state {
-  color: var(--text-muted);
+  color: #4e616f;
+  font-weight: 900;
   padding: 28px;
   text-align: center;
 }
 
 @media (max-width: 1100px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(140px, 1fr));
-  }
-
-  .form-grid,
-  .filter-grid {
-    grid-template-columns: repeat(2, minmax(150px, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .admin-panel {
-    padding: 16px;
-  }
-
-  .page-header,
-  .toolbar-card {
+  .list-toolbar,
+  .filter-strip {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .stats-grid,
-  .form-grid,
-  .filter-grid {
-    grid-template-columns: 1fr;
+  .list-actions {
+    justify-content: flex-start;
   }
 
-  .wide-field {
-    grid-column: auto;
+  .filter-select,
+  .search-pill {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .student-admin-page {
+    padding: 16px 10px 40px;
   }
 }
 </style>

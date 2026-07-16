@@ -48,6 +48,14 @@
   padding: 8px 13px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .table-wrap {
   margin: 0 auto;
   overflow-x: auto;
@@ -136,5 +144,10 @@
 
   .summary-pill {
     margin-top: 14px;
+  }
+
+  .header-actions {
+    align-items: flex-start;
+    justify-content: flex-start;
   }
 }

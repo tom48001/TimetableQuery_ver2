@@ -9,7 +9,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(label, index) in periodLabels" :key="index">
+        <tr v-for="(label, index) in periodLabels" :key="index" :class="periodRowClass(index + 1)">
           <th v-html="label"></th>
           <td v-for="day in days" :key="day">
             <div
@@ -18,9 +18,9 @@
               class="cell-entry"
               :class="{ 'red-entry': item.period_name === 'Period 11' || item.period_name === 'Period 12' }"
             >
-              <strong>{{ $t('common.lessonTeacher') }}: {{ item.teacher_name }}</strong><br />
-              {{ item.class_name }} | {{ displaySubject(item) }}<br />
-              {{ displayRoom(item.room_name) }}
+              <span class="teacher-line">{{ $t('common.lessonTeacher') }}: {{ item.teacher_name }}</span>
+              <strong class="lesson-line">{{ item.class_name }} | {{ displaySubject(item) }}</strong>
+              <span class="room-line">{{ displayRoom(item.room_name) }}</span>
             </div>
           </td>
         </tr>
@@ -74,6 +74,9 @@ export default {
       const label = this.$lang.locale === 'en' ? `Period ${period}` : `\u7b2c${period}\u7bc0`;
       const redLine = redTime ? `<br><span class="red-time">\u7d05 (${redTime})</span>` : '';
       return `${label}<br><small>(${time})${redLine}</small>`;
+    },
+    periodRowClass(periodNumber) {
+      return [3, 4, 7, 8, 11, 12].includes(periodNumber) ? 'period-row-blue' : 'period-row-purple';
     },
     async getTeacherId() {
       const token = localStorage.getItem('token');
@@ -165,11 +168,48 @@ export default {
   background-color: #f0f0f0;
 }
 
+.timetable tbody tr.period-row-purple th,
+.timetable tbody tr.period-row-purple td {
+  background-color: #eef4ff;
+  color: var(--text);
+}
+
+.timetable tbody tr.period-row-purple .teacher-line,
+.timetable tbody tr.period-row-purple .room-line {
+  color: #64748b;
+}
+
+.timetable tbody tr.period-row-purple .cell-entry + .cell-entry {
+  border-top-color: #64748b;
+}
+
+.timetable tbody tr.period-row-purple .red-entry {
+  background-color: #eef4ff;
+}
+
+.timetable tbody tr.period-row-blue th,
+.timetable tbody tr.period-row-blue td {
+  background-color: #ffffff;
+}
+
 .cell-entry {
-  background-color: #eef6ff;
-  margin-bottom: 6px;
-  padding: 4px;
-  border-radius: 4px;
+  background-color: transparent;
+  padding: 8px 4px;
+}
+
+.cell-entry + .cell-entry {
+  border-top: 1px dashed #64748b;
+}
+
+.teacher-line,
+.lesson-line,
+.room-line {
+  display: block;
+}
+
+.teacher-line,
+.room-line {
+  color: #64748b;
 }
 
 .red-entry {

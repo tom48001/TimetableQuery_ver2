@@ -5,7 +5,7 @@
         <div>
           <h1>{{ tr('Best Learning Attitude Results', '最佳學習態度學生提名結果') }}</h1>
         </div>
-        <span class="summary-pill">{{ BLAResults.length }} {{ tr('records', '項記錄') }}</span>
+        <div class="header-actions"><span class="summary-pill">{{ BLAResults.length }} {{ tr('records', '項記錄') }}</span><ResetNominationsButton @reset="fetchBLA" /></div>
       </header>
 
       <div class="table-wrap">
@@ -50,8 +50,10 @@
 <script>
 import axios from 'axios';
 import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
+import ResetNominationsButton from './ResetNominationsButton.vue';
 
 export default {
+  components: { ResetNominationsButton },
   data() {
     return {
       BLAResults: [],

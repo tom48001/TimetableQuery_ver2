@@ -9,18 +9,32 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(label, index) in periodLabels" :key="index">
+        <tr v-for="(label, index) in periodLabels" :key="index" :class="periodRowClass(index + 1)">
           <th v-html="label"></th>
           <td v-for="day in days" :key="day">
             <div
               v-for="item in getCell(day, index + 1)"
               :key="cellKey(item)"
               class="cell-entry"
-              :class="{ 'red-entry': periodName(item) === 'Period 11' || periodName(item) === 'Period 12' }"
+              :class="{ 'red-entry': periodName(item) === 'Period 11' || periodName(item) === 'Period 12', 'elective-summary': item.isElectiveSummary }"
+              @click="item.isElectiveSummary && toggleElectiveCell(item.key)"
             >
-              <strong>{{ tr('Teacher', '\u8001\u5e2b') }}: {{ item.teacher_name }}</strong><br />
-              {{ item.class_name }} | {{ subjectLabel(item) }}<br />
-              {{ roomLabel(item.room_name) }}
+              <template v-if="item.isElectiveSummary">
+                <strong>{{ tr('Elective Lessons', '選修課') }}</strong><br />
+                {{ item.class_name }} | {{ item.subjectCount }} {{ tr('subjects', '科') }} · {{ item.teacherCount }} {{ tr('teachers', '老師') }}<br />
+                <small>{{ isElectiveCellExpanded(item.key) ? tr('Click to collapse', '按一下收起') : tr('Click to view details', '按一下查看細項') }}</small>
+                <div v-if="isElectiveCellExpanded(item.key)" class="elective-detail-list">
+                  <div v-for="detail in item.details" :key="cellKey(detail)" class="elective-detail">
+                    <strong>{{ detail.teacher_name }}</strong>
+                    <span>{{ subjectLabel(detail) }} · {{ roomLabel(detail.room_name) }}</span>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <span class="teacher-line">{{ tr('Teacher', '\u8001\u5e2b') }}: {{ item.teacher_name }}</span>
+                <strong class="lesson-line">{{ item.class_name }} | {{ subjectLabel(item) }}</strong>
+                <span class="room-line">{{ roomLabel(item.room_name) }}</span>
+              </template>
             </div>
           </td>
         </tr>
@@ -42,7 +56,8 @@ export default {
     return {
       loaded: false,
       schedule: [],
-      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      expandedElectiveCells: {}
     };
   },
   computed: {
@@ -89,8 +104,34 @@ export default {
     periodName(item) {
       return item.period_name || item.period || '';
     },
+    periodRowClass(periodNumber) {
+      return [3, 4, 7, 8, 11, 12].includes(periodNumber) ? 'period-row-blue' : 'period-row-purple';
+    },
     cellKey(item) {
+      if (item.isElectiveSummary) return item.key;
       return [item.teacher_id || item.teacher_name, this.periodName(item), item.class_name, item.subject_name || item.subject].join('-');
+    },
+    shouldCollapseElectives(lessons) {
+      return lessons.length >= 2 && lessons.every(item => Boolean(Number(item.is_elective)));
+    },
+    electiveSummary(day, periodIndex, lessons) {
+      const subjects = new Set(lessons.map(item => this.subjectLabel(item)));
+      const teachers = new Set(lessons.map(item => item.teacher_name).filter(Boolean));
+      const classNames = Array.from(new Set(lessons.map(item => item.class_name).filter(Boolean)));
+      return {
+        isElectiveSummary: true,
+        key: ['elective', day, periodIndex].join('-'),
+        class_name: classNames.join('/') || '-',
+        subjectCount: subjects.size,
+        teacherCount: teachers.size,
+        details: lessons
+      };
+    },
+    toggleElectiveCell(key) {
+      this.$set(this.expandedElectiveCells, key, !this.expandedElectiveCells[key]);
+    },
+    isElectiveCellExpanded(key) {
+      return Boolean(this.expandedElectiveCells[key]);
     },
     async fetchSchedule() {
       try {
@@ -118,6 +159,10 @@ export default {
 
       if (periodIndex === 10) {
         result = result.concat(this.schedule.filter(item => (item.day || item.day_of_week) === day && this.periodName(item) === 'Period 12'));
+      }
+
+      if (this.shouldCollapseElectives(result)) {
+        return [this.electiveSummary(day, periodIndex, result)];
       }
 
       return result;
@@ -161,20 +206,86 @@ h1 {
   font-weight: 800;
 }
 
+.timetable tbody tr.period-row-purple th,
+.timetable tbody tr.period-row-purple td {
+  background-color: #eef4ff;
+  color: var(--text);
+}
+
+.timetable tbody tr.period-row-purple .teacher-line,
+.timetable tbody tr.period-row-purple .room-line {
+  color: #64748b;
+}
+
+.timetable tbody tr.period-row-purple .cell-entry + .cell-entry {
+  border-top-color: #64748b;
+}
+
+.timetable tbody tr.period-row-purple .red-entry,
+.timetable tbody tr.period-row-purple .elective-summary {
+  background-color: #eef4ff;
+  border-color: #64748b;
+}
+
+.timetable tbody tr.period-row-purple .elective-summary small {
+  color: #64748b;
+}
+
+.timetable tbody tr.period-row-blue th,
+.timetable tbody tr.period-row-blue td {
+  background-color: #ffffff;
+}
+
 .cell-entry {
-  background-color: #eef6ff;
-  margin-bottom: 6px;
-  padding: 7px 4px;
-  border-radius: 4px;
+  background-color: transparent;
+  padding: 8px 4px;
   line-height: 1.35;
 }
 
-.cell-entry:last-child {
-  margin-bottom: 0;
+.cell-entry + .cell-entry {
+  border-top: 1px dashed #64748b;
+}
+
+.teacher-line,
+.lesson-line,
+.room-line {
+  display: block;
+}
+
+.teacher-line,
+.room-line {
+  color: #64748b;
 }
 
 .red-entry {
   background-color: #ffeaea;
+}
+
+.elective-summary {
+  background-color: #f0f7f4;
+  border: 1px solid #b7d8c7;
+  cursor: pointer;
+}
+
+.elective-summary small {
+  color: var(--text-muted);
+}
+
+.elective-detail-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  text-align: left;
+}
+
+.elective-detail {
+  border-top: 1px solid #cfe5d8;
+  padding-top: 6px;
+}
+
+.elective-detail strong,
+.elective-detail span {
+  display: block;
 }
 
 .empty-message {

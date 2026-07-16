@@ -5,7 +5,7 @@
         <div>
           <h1>{{ tr('Conduct Award Results', '操行獎提名統計結果') }}</h1>
         </div>
-        <span class="summary-pill">{{ nominationResults.length }} {{ tr('records', '項記錄') }}</span>
+        <div class="header-actions"><span class="summary-pill">{{ nominationResults.length }} {{ tr('records', '項記錄') }}</span><ResetNominationsButton @reset="fetchConductResults" /></div>
       </header>
 
       <div class="table-wrap">
@@ -45,8 +45,10 @@
 
 <script>
 import axios from 'axios';
+import ResetNominationsButton from './ResetNominationsButton.vue';
 
 export default {
+  components: { ResetNominationsButton },
   data() {
     return {
       nominationResults: [],

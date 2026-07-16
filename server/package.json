@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "nodemon src/app.js",
-    "lint": "eslint \"**/*.js\" --fix"
+    "lint": "eslint \"**/*.js\" --fix",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",

@@ -11,7 +11,7 @@
         <label for="classSelect">{{ tr('Class', '班別') }}</label>
         <select id="classSelect" v-model="selectedClassId" @change="fetchSelectedClassStudents">
           <option value="">{{ tr('Select class', '選擇班別') }}</option>
-          <option v-for="cls in classList" :key="cls.class_id" :value="cls.class_id">
+          <option v-for="cls in regularClasses" :key="cls.class_id" :value="cls.class_id">
             {{ cls.class_name }}
           </option>
         </select>
@@ -77,9 +77,17 @@ export default {
       saving: false
     };
   },
+  computed: {
+    regularClasses() {
+      return this.classList.filter(cls => this.isRegularClass(cls.class_name));
+    }
+  },
   methods: {
     tr(en, zh) {
       return this.$lang.locale === 'en' ? en : zh;
+    },
+    isRegularClass(className) {
+      return /^[1-6][AMRY]$/.test(String(className || '').trim().toUpperCase());
     },
     studentCode(student) {
       const className = student.class_name || '';

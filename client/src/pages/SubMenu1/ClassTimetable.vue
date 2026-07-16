@@ -41,15 +41,21 @@ export default {
     return { classList: [], selectedClass: '', searchText: '' };
   },
   computed: {
+    regularClasses() {
+      return this.classList.filter(cls => this.isRegularClass(cls.class_name));
+    },
     filteredClasses() {
       const keyword = this.searchText.toLowerCase();
-      if (!keyword) return this.classList;
-      return this.classList.filter(cls => String(cls.class_name || '').toLowerCase().includes(keyword));
+      if (!keyword) return this.regularClasses;
+      return this.regularClasses.filter(cls => String(cls.class_name || '').toLowerCase().includes(keyword));
     }
   },
   mounted() { this.loadClassList(); },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    isRegularClass(className) {
+      return /^[1-6][AMRY]$/.test(String(className || '').trim().toUpperCase());
+    },
     async loadClassList() {
       const token = localStorage.getItem('token');
       const res = await axios.get('/api/classes', { headers: { Authorization: `Bearer ${token}` } });

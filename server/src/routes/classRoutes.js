@@ -5,6 +5,28 @@ import { requireAnyPermission } from '../auth/permissions.js';
 
 const router = express.Router();
 
+function normaliseClassListSql(alias) {
+  return `
+  REPLACE(
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(${alias}.class_name, '#', ''),
+          '／',
+          '/'
+        ),
+        '/',
+        ','
+      ),
+      ' ',
+      ''
+    ),
+    '，',
+    ','
+  )
+`;
+}
+
 router.use(ensureJWT);
 router.use(requireAnyPermission(['timetable', 'nominations', 'manageStudents']));
 
@@ -48,6 +70,7 @@ router.get('/schedule/:classId', async (req, res) => {
         s.subject_name,
         s.subject_name_zh,
         s.subject_name_en,
+        s.is_elective,
         c.class_name,
         r.room_id,
         r.room_name,
@@ -57,9 +80,15 @@ router.get('/schedule/:classId', async (req, res) => {
       JOIN teacher t ON tt.teacher_id = t.teacher_id
       JOIN subject s ON tt.subject_id = s.subject_id
       JOIN class c ON tt.class_id = c.class_id
+      JOIN class selected_class
+        ON selected_class.class_id = ?
+       AND (
+          tt.class_id = selected_class.class_id
+          OR FIND_IN_SET(REPLACE(selected_class.class_name, ' ', ''), ${normaliseClassListSql('c')}) > 0
+          OR REPLACE(c.class_name, ' ', '') IN (selected_class.grade_level, REPLACE(selected_class.grade_level, 'F', 'S'))
+        )
       JOIN room r ON tt.room_id = r.room_id
       JOIN period p ON tt.period_id = p.period_id
-      WHERE tt.class_id = ?
       ORDER BY
         FIELD(tt.day_of_week, 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'),
         p.start_time`,

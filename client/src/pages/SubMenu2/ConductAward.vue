@@ -3,7 +3,7 @@
     <h1>{{ tr('Conduct Award Nomination', '操行獎提名') }}</h1>
     <h1>{{ tr('Select Class', '選擇班別') }}</h1>
     <div class="class-grid">
-      <label v-for="cls in classList" :key="cls.class_id" class="class-option" :class="{ selected: selectedClass.includes(cls.class_id) }">
+      <label v-for="cls in regularClasses" :key="cls.class_id" class="class-option" :class="{ selected: selectedClass.includes(cls.class_id) }">
         <input type="checkbox" :value="cls.class_id" v-model="selectedClass" />
         {{ cls.class_name }}
       </label>
@@ -15,8 +15,16 @@
 import axios from 'axios';
 export default {
   data() { return { classList: [], selectedClass: [] }; },
+  computed: {
+    regularClasses() {
+      return this.classList.filter(cls => this.isRegularClass(cls.class_name));
+    }
+  },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    isRegularClass(className) {
+      return /^[1-6][AMRY]$/.test(String(className || '').trim().toUpperCase());
+    },
     async fetchClasses() { const token = localStorage.getItem('token'); const res = await axios.get('/api/classes', { headers: { Authorization: `Bearer ${token}` } }); this.classList = res.data; },
     goNext() { if (this.selectedClass.length === 0) { alert(this.tr('Please select at least one class.', '請選擇最少一個班別。')); return; } this.selectedClass.sort((a, b) => a - b); this.$router.push({ name: 'ConductAwardVote', query: { selectedClass: JSON.stringify(this.selectedClass) } }); }
   },

@@ -37,6 +37,7 @@ const messages = {
     roomTimetable: { zh: '\u5404\u623f\u9593\u4e0a\u8ab2\u6642\u9593\u8868', en: 'Room Timetable' },
     electives: { zh: '\u53ef\u89c0\u8ab2\u8ab2\u8868', en: 'Elective Timetable' },
     studentTimetable: { zh: '\u67e5\u95b1\u5b78\u751f\u4e0a\u8ab2\u6642\u9593\u8868', en: 'Student Timetable' },
+    lessonGroups: { zh: '\u5206\u7d44\u8ab2\u8a2d\u5b9a', en: 'Split Lesson Groups' },
     bla: { zh: '\u6700\u4f73\u5b78\u7fd2\u614b\u5ea6\u63d0\u540d', en: 'Best Learning Attitude Nomination' },
     blaResult: { zh: '\u6700\u4f73\u5b78\u7fd2\u614b\u5ea6\u5b78\u751f\u63d0\u540d\u7d50\u679c', en: 'Best Learning Attitude Results' },
     conductAward: { zh: '\u64cd\u884c\u734e\u63d0\u540d', en: 'Conduct Award Nomination' },

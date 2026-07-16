@@ -1,5 +1,6 @@
 import pool from '../db.js';
 import { ensureStudentAdminSchema } from './manageStudentController.js';
+import { ensureLessonGroupSchema } from './lessonGroupController.js';
 
 function normaliseClassListSql(alias) {
   return `
@@ -147,6 +148,7 @@ export const getStudentTimetable = async (req, res) => {
   const { studentId } = req.params;
   try {
     await ensureStudentAdminSchema();
+    await ensureLessonGroupSchema();
     const [rows] = await pool.query(`
       SELECT 
         t.teacher_name,
@@ -174,10 +176,38 @@ export const getStudentTimetable = async (req, res) => {
       JOIN subject sb ON tt.subject_id = sb.subject_id
       JOIN room r ON tt.room_id = r.room_id
       JOIN period p ON tt.period_id = p.period_id
+      LEFT JOIN (
+        SELECT class_id, subject_id, day_of_week, period_id, COUNT(*) AS split_count
+        FROM timetable
+        GROUP BY class_id, subject_id, day_of_week, period_id
+        HAVING COUNT(*) > 1
+      ) split_group
+        ON split_group.class_id = tt.class_id
+       AND split_group.subject_id = tt.subject_id
+       AND split_group.day_of_week = tt.day_of_week
+       AND split_group.period_id = tt.period_id
+      LEFT JOIN student_lesson_group selected_group
+        ON selected_group.student_id = s.student_id
+       AND selected_group.timetable_id = tt.timetable_id
       WHERE s.student_id = ? AND s.status = 'active'
         AND (
           COALESCE(sb.is_elective, FALSE) = FALSE
           OR sb.subject_id IN (s.x1_subject_id, s.x2_subject_id, s.x3_subject_id)
+        )
+        AND (
+          split_group.split_count IS NULL
+          OR selected_group.timetable_id IS NOT NULL
+          OR NOT EXISTS (
+            SELECT 1
+            FROM student_lesson_group existing_group
+            JOIN timetable assigned_tt
+              ON existing_group.timetable_id = assigned_tt.timetable_id
+            WHERE existing_group.student_id = s.student_id
+              AND assigned_tt.class_id = tt.class_id
+              AND assigned_tt.subject_id = tt.subject_id
+              AND assigned_tt.day_of_week = tt.day_of_week
+              AND assigned_tt.period_id = tt.period_id
+          )
         )
       ORDER BY tt.day_of_week, tt.period_id
     `, [studentId]);

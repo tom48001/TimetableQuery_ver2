@@ -15,6 +15,7 @@
 </template>
 <script>
 import axios from 'axios';
+function sortTeachersByName(teachers) { return [...teachers].sort((a, b) => String(a.teacher_name || '').localeCompare(String(b.teacher_name || ''), 'en', { sensitivity: 'base' })); }
 export default {
   data() { return { teachers: [], selectedTeacherId: null, searchText: '' }; },
   computed: {
@@ -23,7 +24,7 @@ export default {
   },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
-    async fetchTeachers() { try { const token = localStorage.getItem('token'); const res = await axios.get('/api/teachers/list', { headers: { Authorization: `Bearer ${token}` } }); this.teachers = res.data; } catch (err) { console.error('Failed to load teachers:', err); alert(this.tr('Failed to load teachers.', '載入老師列表失敗。')); } },
+    async fetchTeachers() { try { const token = localStorage.getItem('token'); const res = await axios.get('/api/teachers/list', { headers: { Authorization: `Bearer ${token}` } }); this.teachers = sortTeachersByName(res.data); } catch (err) { console.error('Failed to load teachers:', err); alert(this.tr('Failed to load teachers.', '載入老師列表失敗。')); } },
     goNext() { if (!this.selectedTeacherId) { alert(this.tr('Please select a teacher.', '請選擇老師。')); return; } this.$router.push({ name: 'SwapLessonPick', query: { teacherId: this.selectedTeacherId, teacherName: this.selectedTeacherName } }); }
   },
   mounted() { this.fetchTeachers(); }

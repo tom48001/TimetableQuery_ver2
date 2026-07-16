@@ -24,6 +24,7 @@ import SwapLesson from '@/pages/SubMenu1/SwapLesson.vue'
 import SwapLessonPick from '@/pages/SubMenu1/SwapLessonPick.vue'
 import SwapLessonResult from '@/pages/SubMenu1/SwapLessonResult.vue'
 import StudentSelector from '@/pages/SubMenu1/StudentSelector.vue'
+import LessonGroups from '@/pages/SubMenu1/LessonGroups.vue'
 
 import BLA from '@/pages/SubMenu2/BLA.vue'
 import BLAvote from '@/pages/SubMenu2/BLAvote.vue'
@@ -40,6 +41,7 @@ import LearningGoalResult from '@/pages/SubMenu2/LearningGoalResult.vue'
 import editTeacher from '@/pages/SubMenu3/editTeacher.vue'
 import ImportTeacher from '@/pages/SubMenu3/ImportTeacher.vue'
 import StudentManagement from '@/pages/SubMenu3/StudentManagement.vue'
+import AddStudent from '@/pages/SubMenu3/AddStudent.vue'
 
 Vue.use(Router)
 
@@ -178,6 +180,12 @@ const router = new Router({
       meta: { show: true, requiresAuth: true }
     },
     {
+      path: '/LessonGroups',
+      name: 'LessonGroups',
+      component: LessonGroups,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
       path: '/ConductAward',
       name: 'ConductAward',
       component: ConductAward,
@@ -262,6 +270,12 @@ const router = new Router({
       meta: { show: true, requiredPermission: 'manageStudents' }
     },
     {
+      path: '/StudentManagement/Add',
+      name: 'AddStudent',
+      component: AddStudent,
+      meta: { show: true, requiredPermission: 'manageStudents' }
+    },
+    {
       path: '/*',
       redirect: '/login'
     }
@@ -272,7 +286,7 @@ const timetableRouteNames = new Set([
   'TeacherTimetable', 'TeacherTimetableResult', 'ClassObservation', 'ClassObservationResult',
   'ClassTimetable', 'ClassTimetableResult', 'Electives', 'ElectivesResult', 'FreeTeacher',
   'FreeTeacherResult', 'RoomTimetable', 'RoomTimetableResult', 'StdTimetable', 'StdTimetableResult',
-  'SwapLesson', 'SwapLessonPick', 'SwapLessonResult', 'StudentSelector'
+  'SwapLesson', 'SwapLessonPick', 'SwapLessonResult', 'StudentSelector', 'LessonGroups'
 ])
 
 const nominationRouteNames = new Set([

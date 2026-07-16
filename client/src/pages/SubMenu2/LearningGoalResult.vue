@@ -5,7 +5,7 @@
         <div>
           <h1>{{ tr('Learning Goal Award Scheme Results (First Term)', '學習目標獎勵計劃結果（上學期）') }}</h1>
         </div>
-        <span class="summary-pill">{{ results.length }} {{ tr('records', '項記錄') }}</span>
+        <div class="header-actions"><span class="summary-pill">{{ results.length }} {{ tr('records', '項記錄') }}</span><ResetNominationsButton @reset="fetchResults" /></div>
       </header>
 
       <div class="table-wrap">
@@ -49,6 +49,7 @@
 
 <script>
 import axios from 'axios';
+import ResetNominationsButton from './ResetNominationsButton.vue';
 
 const AWARD_LABELS = {
   '紀念品': 'Souvenir',
@@ -58,6 +59,7 @@ const AWARD_LABELS = {
 };
 
 export default {
+  components: { ResetNominationsButton },
   data() {
     return {
       results: [],

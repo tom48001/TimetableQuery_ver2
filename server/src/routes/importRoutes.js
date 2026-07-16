@@ -6,6 +6,7 @@ import pool from '../db.js';
 import { ensureJWT } from '../auth/auth.js';
 import { requirePermission } from '../auth/permissions.js';
 import { ensureStudentAdminSchema } from '../controllers/manageStudentController.js';
+import { readGroupFile, parseStudentId } from '../utils/groupImport.js';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
@@ -96,10 +97,31 @@ const subjectAliasMap = {
   ENG: 'English',
   MATH: 'Mathematics',
   MATHS: 'Mathematics',
-  BIO: 'Biology'
+  PHY: '物理',
+  PHYSICS: '物理',
+  CHEM: '化學',
+  CHEMISTRY: '化學',
+  BIO: '生物',
+  BIOLOGY: '生物',
+  ECON: '經濟',
+  ECONOMICS: '經濟',
+  ICT: '資訊及通訊科技',
+  BAFS: '企業、會計與財務概論',
+  JAP: '日語',
+  JAPANESE: '日語',
+  CLIT: '中國文學',
+  CHIST: '中國歷史',
+  GEOG: '地理',
+  HIST: '歷史',
+  'MATH(M1)': '數學延伸單元一',
+  MATHM1: '數學延伸單元一'
 };
 
 const NON_TIMETABLE_SUBJECTS = new Set(['OFF', 'CLPC', 'CLPE']);
+
+function isTimetableImportFile(fileName) {
+  return /\.(csv|xlsx|xls)$/i.test(String(fileName || ''));
+}
 
 function normalizeDay(day) {
   if (day === undefined || day === null || day === '') return null;
@@ -185,6 +207,35 @@ export function studentSheetRows(workbook) {
       .map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ''])));
   }
   return [];
+}
+
+export function timetableSheetRows(workbook) {
+  return workbook.SheetNames.flatMap(sheetName => {
+    const matrix = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      header: 1,
+      defval: '',
+      raw: false
+    });
+
+    const headerIndex = matrix.slice(0, 20).findIndex(row => {
+      const normalizedHeaders = row.map(normalizeColumnName);
+      return REQUIRED_COLUMNS.every(column =>
+        TIMETABLE_COLUMN_ALIASES[column].map(normalizeColumnName)
+          .some(alias => normalizedHeaders.includes(alias))
+      );
+    });
+
+    if (headerIndex < 0) return [];
+
+    const headers = matrix[headerIndex].map(value => String(value || '').trim());
+    return matrix.slice(headerIndex + 1)
+      .filter(row => row.some(value => String(value || '').trim()))
+      .map((row, index) => ({
+        ...Object.fromEntries(headers.map((header, columnIndex) => [header, row[columnIndex] ?? ''])),
+        __sheetName: sheetName,
+        __rowNumber: headerIndex + index + 2
+      }));
+  });
 }
 
 function normalizeSchoolClass(grade, className) {
@@ -505,26 +556,25 @@ router.post(
       if (!req.file) {
         return res.status(400).json({
           code: 'MISSING_FILE',
-          message: 'Please upload a CSV file.'
+          message: 'Please upload a CSV or Excel file.'
         });
       }
 
       await ensureImportHistoryTables(conn);
 
-      if (!/\.csv$/i.test(req.file.originalname)) {
+      if (!isTimetableImportFile(req.file.originalname)) {
         return respondImportError(req, res, 400, {
           code: 'INVALID_FILE_TYPE',
-          message: 'Please upload a .csv file.'
+          message: 'Please upload a .csv, .xlsx, or .xls file.'
         });
       }
 
       const workbook = xlsx.read(fs.readFileSync(req.file.path), { type: 'buffer' });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = xlsx.utils.sheet_to_json(firstSheet, { defval: '' });
+      const rows = timetableSheetRows(workbook);
       if (rows.length === 0) {
         return respondImportError(req, res, 400, {
           code: 'EMPTY_FILE',
-          message: 'CSV file is empty.'
+          message: 'Timetable file is empty or no valid timetable sheets were found.'
         });
       }
 
@@ -536,7 +586,7 @@ router.post(
       if (missingColumns.length) {
         return respondImportError(req, res, 400, {
           code: 'MISSING_COLUMNS',
-          message: 'CSV is missing required columns.',
+          message: 'Timetable file is missing required columns.',
           requiredColumns: REQUIRED_COLUMNS,
           missingColumns
         });
@@ -550,7 +600,7 @@ router.post(
       let skippedNonTimetableRows = 0;
 
       for (const [index, row] of rows.entries()) {
-        const rowNumber = index + 2;
+        const rowNumber = row.__rowNumber || index + 2;
         const normalizedRow = normalizeTimetableRow(row);
         const teacherCode = normalizedRow.teacher?.toString().trim();
         const subject = normalizedRow.subject ? normalizeSubject(normalizedRow.subject) : null;
@@ -590,7 +640,7 @@ router.post(
         await conn.rollback();
         return respondImportError(req, res, 400, {
           code: 'NO_VALID_ROWS',
-          message: 'No valid timetable rows were found in the CSV file.',
+          message: 'No valid timetable rows were found in the file.',
           invalidRows
         });
       }
@@ -644,7 +694,7 @@ router.post(
         await conn.rollback();
         return respondImportError(req, res, 400, {
           code: 'IMPORT_VALIDATION_FAILED',
-          message: 'Import failed. Please fix the CSV file or database reference data first.',
+          message: 'Import failed. Please fix the timetable file or database reference data first.',
           ...importErrors
         });
       }
@@ -791,9 +841,9 @@ router.post(
           sex: String(row.sex || '').trim().toUpperCase(),
           status: normalizeStudentStatus(row.status),
           is_ncs: ['1', 'true', 'yes', 'y', 'ncs'].includes(String(row.ncs || '').trim().toLowerCase()),
-          x1: String(row.x1 || '').trim(),
-          x2: String(row.x2 || '').trim(),
-          x3: String(row.x3 || '').trim(),
+          x1: row.x1 ? normalizeSubject(row.x1) : '',
+          x2: row.x2 ? normalizeSubject(row.x2) : '',
+          x3: row.x3 ? normalizeSubject(row.x3) : '',
           class_code: String(row.class_code || '').trim(),
           house: String(row.house || '').trim(),
           language_group: String(row.language_group || '').trim(),
@@ -1183,6 +1233,85 @@ router.post('/students/rollback/:batchId', ensureJWT, requirePermission('manageS
     await conn.rollback();
     console.error('Rollback student import error:', error);
     res.status(500).json({ code: 'DATABASE_ERROR', message: error.message || 'Student rollback failed.' });
+  } finally {
+    conn.release();
+  }
+});
+
+router.post('/groups/preview', ensureJWT, requirePermission('manageStudents'), upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ code: 'MISSING_FILE', message: 'Please upload an Excel or CSV file.' });
+    if (!/\.(csv|xlsx|xls)$/i.test(req.file.originalname)) {
+      return res.status(400).json({ code: 'INVALID_FILE_TYPE', message: 'Please upload a .csv, .xlsx, or .xls file.' });
+    }
+    const preview = readGroupFile(fs.readFileSync(req.file.path));
+    const noGroupsFound = preview.records.length === 0 && preview.issues.every(issue => issue.message === 'No group headers or student records were found.');
+    if (noGroupsFound) {
+      return res.json({ code: 'NO_GROUP_SHEETS', records: [], issues: [], hasErrors: false, hasGroups: false });
+    }
+    return res.status(preview.hasErrors ? 422 : 200).json({
+      code: preview.hasErrors ? 'GROUP_IMPORT_VALIDATION_FAILED' : 'GROUP_IMPORT_PREVIEW_READY',
+      ...preview,
+      hasGroups: true
+    });
+  } catch (error) {
+    console.error('Group import preview error:', error);
+    return res.status(400).json({ code: 'INVALID_GROUP_FILE', message: error.message || 'Could not read the group file.' });
+  } finally {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+  }
+});
+
+router.post('/groups/save', ensureJWT, requirePermission('manageStudents'), async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const records = Array.isArray(req.body.records) ? req.body.records : [];
+    if (!records.length) return res.status(400).json({ code: 'EMPTY_GROUP_IMPORT', message: 'No group records were provided.' });
+    const invalidRecords = records.filter(record => (
+      !parseStudentId(record.studentKey) ||
+      !/^Group\d+$/.test(String(record.groupCode || '')) ||
+      record.validationStatus === 'error'
+    ));
+    if (invalidRecords.length) {
+      return res.status(422).json({ code: 'GROUP_IMPORT_VALIDATION_FAILED', message: 'Fix all group import errors before saving.', invalidRecords });
+    }
+
+    await ensureStudentAdminSchema();
+    const [classes] = await conn.query('SELECT class_id, class_name FROM class');
+    const classMap = new Map(classes.map(row => [String(row.class_name).trim().toUpperCase(), row.class_id]));
+    const resolved = [];
+    const missingStudents = [];
+    for (const record of records) {
+      const parsed = parseStudentId(record.studentKey);
+      const classId = classMap.get(parsed.className);
+      if (!classId) {
+        missingStudents.push({ studentKey: parsed.studentKey, message: `Class ${parsed.className} was not found.` });
+        continue;
+      }
+      const [students] = await conn.query(
+        'SELECT student_id FROM student WHERE class_id = ? AND class_number = ? LIMIT 1',
+        [classId, parsed.studentNo.padStart(2, '0')]
+      );
+      if (!students.length) {
+        missingStudents.push({ studentKey: parsed.studentKey, message: `Student ${parsed.studentKey} was not found.` });
+      } else {
+        resolved.push({ studentId: students[0].student_id, groupCode: record.groupCode });
+      }
+    }
+    if (missingStudents.length) {
+      return res.status(422).json({ code: 'GROUP_STUDENTS_NOT_FOUND', message: 'Some students could not be matched by class and student number.', missingStudents });
+    }
+
+    await conn.beginTransaction();
+    for (const record of resolved) {
+      await conn.query('UPDATE student SET language_group = ? WHERE student_id = ?', [record.groupCode, record.studentId]);
+    }
+    await conn.commit();
+    return res.json({ code: 'GROUP_IMPORT_SAVED', message: 'Group records imported successfully.', updatedRows: resolved.length });
+  } catch (error) {
+    await conn.rollback();
+    console.error('Group import save error:', error);
+    return res.status(500).json({ code: 'DATABASE_ERROR', message: 'Failed to save group records.' });
   } finally {
     conn.release();
   }

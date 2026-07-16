@@ -44,6 +44,12 @@ const WEEKDAY_LABELS = {
   en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 };
 
+function sortTeachersByName(teachers) {
+  return [...teachers].sort((a, b) =>
+    String(a.teacher_name || '').localeCompare(String(b.teacher_name || ''), 'en', { sensitivity: 'base' })
+  );
+}
+
 export default {
   data() {
     return {
@@ -80,10 +86,10 @@ export default {
       return this.periods.map(period => this.periodText(period)).join(this.$lang.locale === 'en' ? ', ' : '\u3001');
     },
     freeTeachers() {
-      return this.teachers.filter(teacher => (
+      return sortTeachersByName(this.teachers.filter(teacher => (
         this.periods.length > 0 &&
         this.periods.every(periodNumber => !this.classAt(teacher, periodNumber))
-      ));
+      )));
     }
   },
   methods: {
@@ -114,7 +120,7 @@ export default {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        this.teachers = res.data;
+        this.teachers = sortTeachersByName(res.data);
       } catch (err) {
         console.error('Failed to load free teacher day schedule:', err);
         alert(this.tr('Failed to load free teachers.', '\u8f09\u5165\u7a7a\u5802\u8001\u5e2b\u5931\u6557\u3002'));

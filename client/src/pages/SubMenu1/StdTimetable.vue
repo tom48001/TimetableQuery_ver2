@@ -10,7 +10,7 @@
       <section class="selector-section">
         <h2>{{ tr('Class', '班別') }}</h2>
         <div class="class-grid">
-          <label v-for="cls in classes" :key="cls.class_id" class="option-card" :class="{ selected: selectedClass === cls.class_id }">
+          <label v-for="cls in regularClasses" :key="cls.class_id" class="option-card" :class="{ selected: selectedClass === cls.class_id }">
             <input type="radio" :value="cls.class_id" v-model="selectedClass" @change="fetchStudents" />
             {{ cls.class_name }}
           </label>
@@ -44,6 +44,9 @@ export default {
   name: 'StudentTimetable',
   data() { return { classes: [], selectedClass: '', students: [], selectedStudent: '', studentSearch: '' }; },
   computed: {
+    regularClasses() {
+      return this.classes.filter(cls => this.isRegularClass(cls.class_name));
+    },
     filteredStudents() {
       const keyword = this.studentSearch.toLowerCase();
       const students = keyword ? this.students.filter(student => {
@@ -68,6 +71,9 @@ export default {
   },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    isRegularClass(className) {
+      return /^[1-6][AMRY]$/.test(String(className || '').trim().toUpperCase());
+    },
     studentNumber(student) { return String(student.class_number || '').padStart(2, '0'); },
     studentDisplayName(student) {
       if (this.$lang.locale === 'en') {

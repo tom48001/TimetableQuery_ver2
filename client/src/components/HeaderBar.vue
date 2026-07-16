@@ -51,6 +51,7 @@
           <li><router-link to="/RoomTimetable">{{ $t('nav.roomTimetable') }}</router-link></li>
           <li><router-link to="/Electives">{{ $t('nav.electives') }}</router-link></li>
           <li><router-link to="/StdTimetable">{{ $t('nav.studentTimetable') }}</router-link></li>
+          <li><router-link to="/LessonGroups">{{ $t('nav.lessonGroups') }}</router-link></li>
         </ul>
       </span>
 

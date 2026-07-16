@@ -5,65 +5,82 @@
         <div>
           <h1>{{ tr('User Management', '使用者管理') }}</h1>
         </div>
-        <span class="summary-pill">{{ filteredTeachers.length }} / {{ teachers.length }} {{ tr('users', '使用者') }}</span>
+        <div class="header-tools">
+          <label class="header-search">
+            <span class="ui-icon icon-search"></span>
+            <input
+              ref="userSearchInput"
+              v-model.trim="searchText"
+              type="search"
+              name="user-management-search"
+              autocomplete="new-password"
+              spellcheck="false"
+              data-lpignore="true"
+              data-form-type="other"
+              :readonly="searchReadonly"
+              @focus="searchReadonly = false"
+              :placeholder="tr('Search name, email or role...', '搜尋姓名、Email或角色...')"
+            />
+          </label>
+        </div>
       </header>
 
-      <details class="permission-help">
-        <summary>{{ tr('Permission Guide', '權限說明') }}</summary>
-        <div class="permission-guide-grid">
-          <span v-for="permission in permissionOptions" :key="permission.key">
-            <strong>{{ permission.shortLabel }}</strong> {{ permission.description }}
-          </span>
-        </div>
-      </details>
-
       <section class="add-section">
-        <div class="section-toolbar">
-          <h2>{{ tr('Add User', '新增使用者') }}</h2>
+        <div class="add-header">
+          <div class="card-title">
+            <span class="title-icon ui-icon icon-person-add"></span>
+            <h2>{{ tr('Add User', '新增使用者') }}</h2>
+          </div>
         </div>
+
         <div class="form-grid">
-          <input v-model.trim="newTeacher.user_name" :placeholder="tr('Name', '姓名')" />
-          <input v-model.trim="newTeacher.email" placeholder="Email" />
-          <input v-model="newTeacher.password" type="password" :placeholder="tr('Password', '密碼')" />
-          <select v-model="newTeacher.role" @change="applyDefaultPermissions(newTeacher)">
-            <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
-          </select>
-          <button class="primary-btn" @click="addTeacher">{{ tr('Add', '新增') }}</button>
+          <label>
+            <span>{{ tr('Name', '姓名') }}</span>
+            <input v-model.trim="newTeacher.user_name" :placeholder="tr('Enter name', '輸入姓名')" />
+          </label>
+          <label>
+            <span>Email</span>
+            <input
+              ref="newUserEmailInput"
+              v-model.trim="newTeacher.email"
+              name="new-user-email-field"
+              autocomplete="new-password"
+              data-lpignore="true"
+              data-form-type="other"
+              placeholder="email@school.edu"
+            />
+          </label>
+          <label>
+            <span>{{ tr('Role', '角色') }}</span>
+            <select v-model="newTeacher.role" @change="applyDefaultPermissions(newTeacher)">
+              <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
+            </select>
+          </label>
+          <label>
+            <span>{{ tr('Password', '密碼') }}</span>
+            <input v-model="newTeacher.password" type="password" placeholder="••••••••" />
+          </label>
         </div>
         <p v-if="newTeacher.role === 'manager'" class="manager-permission-note">{{ tr('Managers always have all permissions.', 'Manager 會自動擁有所有權限。') }}</p>
-        <div class="permission-toggle-grid compact">
-          <label v-for="permission in permissionOptions" :key="permission.key" class="permission-toggle" :class="{ active: newTeacher.permissions[permission.key], locked: newTeacher.role === 'manager' }">
-            <input type="checkbox" v-model="newTeacher.permissions[permission.key]" :disabled="newTeacher.role === 'manager'" />
-            <span class="permission-mark"></span>
-            <span>{{ permission.shortLabel }}</span>
-          </label>
+
+        <div class="permission-save-row">
+          <div>
+            <h3>{{ tr('Permission Assignment', '權限分配') }}</h3>
+            <div class="permission-toggle-grid compact">
+              <label v-for="permission in visiblePermissionOptions" :key="permission.key" class="permission-toggle" :class="{ active: newTeacher.permissions[permission.key], locked: newTeacher.role === 'manager' }">
+                <input type="checkbox" v-model="newTeacher.permissions[permission.key]" :disabled="newTeacher.role === 'manager'" />
+                <span class="ui-icon permission-icon" :class="permission.iconClass"></span>
+                <span>{{ permission.shortLabel }}</span>
+              </label>
+            </div>
+          </div>
+          <button class="primary-btn save-btn" @click="addTeacher"><span class="ui-icon icon-save"></span>{{ tr('Save', '儲存') }}</button>
         </div>
       </section>
 
       <section class="table-section">
-        <div class="section-toolbar">
-          <div>
-            <h2>{{ tr('Existing Users', '現有使用者') }}</h2>
-            <p class="section-note">{{ tr('Search, filter and edit users.', '可搜尋、篩選，再逐個使用者修改。') }}</p>
-          </div>
-          <button class="secondary-btn" @click="fetchTeachers">{{ tr('Reload', '重新載入') }}</button>
-        </div>
-
-        <div class="filter-panel">
-          <input v-model.trim="searchText" :placeholder="tr('Search name or email...', '搜尋姓名或 email...')" />
-          <select v-model="selectedRole">
-            <option value="">{{ tr('All roles', '全部角色') }}</option>
-            <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
-          </select>
-          <select v-model="selectedPermission">
-            <option value="">{{ tr('All permissions', '全部權限') }}</option>
-            <option v-for="permission in permissionOptions" :key="permission.key" :value="permission.key">
-              {{ permission.label }}
-            </option>
-          </select>
-          <button class="secondary-btn" @click="clearFilters">{{ tr('Clear', '清除') }}</button>
-        </div>
-        <div class="list-status">
+        <div class="table-header">
+          <h2>{{ tr('Teacher', '老師') }}</h2>
         </div>
 
         <div class="table-wrap">
@@ -79,27 +96,60 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="teacher in paginatedTeachers" :key="teacher.user_id">
-                <td><input v-model.trim="teacher.user_name" /></td>
-                <td><input v-model.trim="teacher.email" /></td>
-                <td>
-                  <select v-model="teacher.role" @change="applyDefaultPermissions(teacher)">
-                    <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
-                  </select>
-                </td>
-                <td class="permission-cell">
-                  <span v-if="teacher.role === 'manager'" class="manager-permission-note table-note">{{ tr('Manager has all permissions', 'Manager 已有全部權限') }}</span>
-                  <label v-for="permission in permissionOptions" :key="permission.key" class="permission-toggle table-toggle" :class="{ active: teacher.permissions[permission.key], locked: teacher.role === 'manager' }" :title="permission.label">
-                    <input type="checkbox" v-model="teacher.permissions[permission.key]" :disabled="teacher.role === 'manager'" />
-                    <span class="permission-mark"></span>
-                    <span>{{ permission.shortLabel }}</span>
-                  </label>
-                </td>
-                <td><input v-model="teacher.newPassword" :placeholder="tr('Optional', '可留空')" /></td>
-                <td class="actions-cell">
-                  <button class="primary-btn small" @click="updateTeacher(teacher)">{{ tr('Save', '儲存') }}</button>
-                  <button class="danger-btn small" @click="deleteTeacher(teacher.user_id)">{{ tr('Delete', '刪除') }}</button>
-                </td>
+              <tr v-for="teacher in paginatedTeachers" :key="teacher.user_id" :class="{ 'editing-row': isEditingTeacher(teacher) }">
+                <template v-if="isEditingTeacher(teacher)">
+                  <td><input v-model.trim="teacher.user_name" /></td>
+                  <td><input v-model.trim="teacher.email" /></td>
+                  <td>
+                    <select v-model="teacher.role" @change="applyDefaultPermissions(teacher)">
+                      <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
+                    </select>
+                  </td>
+                  <td class="permission-cell">
+                    <span v-if="teacher.role === 'manager'" class="manager-permission-note table-note">{{ tr('Manager has all permissions', 'Manager 已有全部權限') }}</span>
+                    <label v-for="permission in visiblePermissionOptions" :key="permission.key" class="permission-toggle table-toggle" :class="{ active: teacher.permissions[permission.key], locked: teacher.role === 'manager' }" :title="permission.label">
+                      <input type="checkbox" v-model="teacher.permissions[permission.key]" :disabled="teacher.role === 'manager'" />
+                      <span class="ui-icon permission-icon" :class="permission.iconClass"></span>
+                      <span>{{ permission.shortLabel }}</span>
+                    </label>
+                  </td>
+                  <td><input v-model="teacher.newPassword" :placeholder="tr('Optional', '可留空')" /></td>
+                  <td class="actions-cell">
+                    <button class="primary-btn small" @click="saveTeacherRow(teacher)"><span class="ui-icon icon-save"></span>{{ tr('Save', '儲存') }}</button>
+                    <button class="secondary-btn small" @click="cancelEditTeacher">{{ tr('Cancel', '取消') }}</button>
+                    <button class="icon-btn delete-icon-btn" :aria-label="tr('Delete', '刪除')" :title="tr('Delete', '刪除')" @click="deleteTeacher(teacher.user_id)"><span class="ui-icon icon-delete"></span></button>
+                  </td>
+                </template>
+                <template v-else>
+                  <td>
+                    <div class="user-name-text">{{ teacher.user_name || '-' }}</div>
+                  </td>
+                  <td>
+                    <div class="muted-text">{{ teacher.email || '-' }}</div>
+                  </td>
+                  <td>
+                    <span class="role-badge" :class="`role-${teacher.role}`">{{ roleLabel(teacher.role) }}</span>
+                  </td>
+                  <td class="permission-cell readonly">
+                    <span v-if="teacher.role === 'manager'" class="manager-permission-note table-note">{{ tr('Manager has all permissions', 'Manager 已有全部權限') }}</span>
+                    <span
+                      v-for="permission in visiblePermissionOptions"
+                      :key="permission.key"
+                      class="permission-toggle table-toggle readonly-chip"
+                      :class="{ active: permissionEnabled(teacher, permission.key), inactive: !permissionEnabled(teacher, permission.key) }"
+                      :title="permission.label"
+                      :aria-label="permission.label"
+                    >
+                      <span class="ui-icon permission-icon" :class="permission.iconClass"></span>
+                      <span>{{ permission.shortLabel }}</span>
+                    </span>
+                  </td>
+                  <td><span class="password-placeholder">••••••••</span></td>
+                  <td class="actions-cell">
+                    <button class="icon-btn edit-icon-btn" :aria-label="tr('Edit', '編輯')" :title="tr('Edit', '編輯')" @click="startEditTeacher(teacher)"><span class="ui-icon icon-edit"></span></button>
+                    <button class="icon-btn delete-icon-btn" :aria-label="tr('Delete', '刪除')" :title="tr('Delete', '刪除')" @click="deleteTeacher(teacher.user_id)"><span class="ui-icon icon-delete"></span></button>
+                  </td>
+                </template>
               </tr>
             </tbody>
           </table>
@@ -107,6 +157,7 @@
         </div>
 
         <div class="pagination-bar" v-if="filteredTeachers.length">
+          <span class="page-range">{{ pageRangeLabel }}，{{ tr('total', '共') }} {{ filteredTeachers.length }} {{ tr('users', '位使用者') }}</span>
           <button class="secondary-btn small" :disabled="currentPage === 1" @click="currentPage -= 1">
             {{ tr('Previous', '上一頁') }}
           </button>
@@ -163,6 +214,9 @@ export default {
       selectedPermission: '',
       currentPage: 1,
       pageSize: 30,
+      showFilters: false,
+      searchReadonly: true,
+      editingTeacherId: null,
       newTeacher: {
         user_name: '',
         email: '',
@@ -185,46 +239,55 @@ export default {
       return [
         {
           key: 'timetable',
+          iconClass: 'icon-schedule',
           shortLabel: this.tr('Timetable', '時間表'),
           label: this.tr('Timetable', '時間表'),
           description: this.tr('View timetable pages.', '可使用時間表相關功能。')
         },
         {
           key: 'nominations',
+          iconClass: 'icon-nomination',
           shortLabel: this.tr('Nomination', '提名'),
           label: this.tr('Student Nomination', '提名學生'),
           description: this.tr('Use nomination pages.', '可使用學生提名功能。')
         },
         {
           key: 'changePassword',
+          iconClass: 'icon-lock',
           shortLabel: this.tr('Password', '密碼'),
           label: this.tr('Change Password', '更改密碼'),
           description: this.tr('User may change own password.', '可自行更改密碼。')
         },
         {
           key: 'manageUsers',
+          iconClass: 'icon-users',
           shortLabel: this.tr('Users', '用戶'),
           label: this.tr('User Management', '使用者管理'),
           description: this.tr('Add, edit and delete users.', '可新增、修改及刪除使用者。')
         },
         {
           key: 'manageStudents',
+          iconClass: 'icon-school',
           shortLabel: this.tr('Students', '學生'),
           label: this.tr('Student Management', '學生管理'),
           description: this.tr('Add and delete students.', '可新增及刪除學生。')
         },
         {
           key: 'importTimetable',
+          iconClass: 'icon-upload',
           shortLabel: this.tr('Import', '導入'),
           label: this.tr('Import Timetable', '導入時間表'),
           description: this.tr('Import timetable CSV files.', '可導入時間表 CSV。')
         }
       ];
     },
+    visiblePermissionOptions() {
+      return this.permissionOptions.filter(permission => permission.key !== 'timetable');
+    },
     filteredTeachers() {
       const keyword = this.searchText.trim().toLowerCase();
       return this.teachers.filter(teacher => {
-        const haystack = `${teacher.user_name || ''} ${teacher.email || ''}`.toLowerCase();
+        const haystack = `${teacher.user_name || ''} ${teacher.email || ''} ${teacher.role || ''} ${this.roleLabel(teacher.role)}`.toLowerCase();
         const matchesKeyword = !keyword || haystack.includes(keyword);
         const matchesRole = !this.selectedRole || teacher.role === this.selectedRole;
         const matchesPermission = !this.selectedPermission || Boolean(teacher.permissions && teacher.permissions[this.selectedPermission]);
@@ -276,11 +339,63 @@ export default {
     applyDefaultPermissions(user) {
       this.$set(user, 'permissions', this.defaultPermissions(user.role));
     },
+    roleLabel(role) {
+      const match = this.roleOptions.find(option => option.value === role);
+      return match ? match.label : role || '-';
+    },
+    enabledPermissions(teacher) {
+      return this.permissionOptions.filter(permission => teacher.permissions && teacher.permissions[permission.key]);
+    },
+    permissionEnabled(teacher, permissionKey) {
+      return Boolean(teacher.permissions && teacher.permissions[permissionKey]);
+    },
+    userInitial(teacher) {
+      const source = String((teacher && (teacher.user_name || teacher.email)) || '').trim();
+      return source ? source.charAt(0).toUpperCase() : '?';
+    },
+    isEditingTeacher(teacher) {
+      return this.editingTeacherId === teacher.user_id;
+    },
+    startEditTeacher(teacher) {
+      this.editingTeacherId = teacher.user_id;
+    },
+    cancelEditTeacher() {
+      this.editingTeacherId = null;
+    },
     clearFilters() {
       this.searchText = '';
       this.selectedRole = '';
       this.selectedPermission = '';
       this.currentPage = 1;
+    },
+    clearSearchAutofill() {
+      this.searchText = '';
+      this.$nextTick(() => {
+        const input = this.$refs.userSearchInput;
+        if (input) input.value = '';
+      });
+      window.setTimeout(() => {
+        this.searchText = '';
+        const input = this.$refs.userSearchInput;
+        if (input) input.value = '';
+      }, 250);
+      window.setTimeout(() => {
+        this.searchText = '';
+        const input = this.$refs.userSearchInput;
+        if (input) input.value = '';
+      }, 1000);
+    },
+    clearNewUserAutofill() {
+      this.newTeacher.email = '';
+      this.$nextTick(() => {
+        const input = this.$refs.newUserEmailInput;
+        if (input) input.value = '';
+      });
+      window.setTimeout(() => {
+        this.newTeacher.email = '';
+        const input = this.$refs.newUserEmailInput;
+        if (input) input.value = '';
+      }, 250);
     },
     authHeaders() {
       const token = localStorage.getItem('token');
@@ -308,6 +423,7 @@ export default {
           newPassword: ''
         }));
         this.currentPage = 1;
+        this.editingTeacherId = null;
       } catch (err) {
         const status = err.response ? err.response.status : 0;
         const message = status === 403
@@ -329,12 +445,18 @@ export default {
         });
         alert(teacher.newPassword ? this.tr('User and password updated.', '使用者及密碼已更新。') : this.tr('User updated.', '使用者已更新。'));
         teacher.newPassword = '';
+        return true;
       } catch (err) {
         const status = err.response ? err.response.status : 0;
         alert(status === 403
           ? this.tr('You do not have permission to update users.', '你沒有權限修改使用者。')
           : this.tr('Failed to update user.', '修改使用者失敗。'));
+        return false;
       }
+    },
+    async saveTeacherRow(teacher) {
+      const saved = await this.updateTeacher(teacher);
+      if (saved) this.editingTeacherId = null;
     },
     async addTeacher() {
       try {
@@ -376,6 +498,8 @@ export default {
   },
   mounted() {
     this.loadCurrentUserRole();
+    this.clearSearchAutofill();
+    this.clearNewUserAutofill();
     this.fetchTeachers();
   }
 };
@@ -383,400 +507,692 @@ export default {
 
 <style scoped>
 .user-admin-page {
-  min-height: calc(100vh - 126px);
   box-sizing: border-box;
-  padding: 34px 18px 56px;
+  min-height: calc(100vh - 126px);
+  padding: 24px 20px 56px;
+  background: #f8f9ff;
+  font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .admin-panel {
-  max-width: 1240px;
+  max-width: 1500px;
   margin: 0 auto;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: var(--shadow);
-  box-sizing: border-box;
-  padding: 24px;
 }
 
-.page-header,
-.section-toolbar,
-.pagination-bar,
-.list-status {
-  display: flex;
+.page-header {
   align-items: center;
+  display: flex;
   justify-content: space-between;
-  gap: 14px;
-}
-
-.page-header p {
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 800;
-  margin: 0 0 8px;
-  text-transform: uppercase;
+  gap: 12px;
+  margin-bottom: 34px;
 }
 
 h1,
-h2 {
-  color: var(--text);
+h2,
+h3,
+p {
   margin: 0;
 }
 
 h1 {
-  font-size: 32px;
+  color: #0b1c30;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+
+.ui-icon {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 900;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  width: 18px;
+}
+
+.ui-icon::before {
+  display: block;
+}
+
+.icon-search::before { content: "⌕"; }
+.icon-filter::before { content: "≡"; }
+.icon-person-add::before { content: "+"; }
+.icon-save::before {
+  background: currentColor;
+  content: "";
+  height: 22px;
+  width: 22px;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z'/%3E%3Cpath d='M17 21v-8H7v8'/%3E%3Cpath d='M7 3v5h8'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z'/%3E%3Cpath d='M17 21v-8H7v8'/%3E%3Cpath d='M7 3v5h8'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.icon-edit::before { content: "✎"; }
+.icon-delete::before { content: "×"; }
+.icon-schedule::before { content: "○"; }
+.icon-nomination::before,
+.icon-lock::before,
+.icon-users::before,
+.icon-school::before,
+.icon-upload::before {
+  background: currentColor;
+  content: "";
+  height: 18px;
+  width: 18px;
+}
+
+.icon-nomination::before {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9.5' cy='7' r='4'/%3E%3Cpath d='m16 11 2 2 4-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9.5' cy='7' r='4'/%3E%3Cpath d='m16 11 2 2 4-5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-lock::before {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='5' y='10' width='14' height='11' rx='2'/%3E%3Cpath d='M8 10V7a4 4 0 0 1 8 0v3'/%3E%3Cpath d='M12 15v2'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='5' y='10' width='14' height='11' rx='2'/%3E%3Cpath d='M8 10V7a4 4 0 0 1 8 0v3'/%3E%3Cpath d='M12 15v2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-users::before {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-school::before {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m22 10-10-5-10 5 10 5 10-5Z'/%3E%3Cpath d='M6 12v5c3 2 9 2 12 0v-5'/%3E%3Cpath d='M22 10v6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m22 10-10-5-10 5 10 5 10-5Z'/%3E%3Cpath d='M6 12v5c3 2 9 2 12 0v-5'/%3E%3Cpath d='M22 10v6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-upload::before {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M12 18v-7'/%3E%3Cpath d='m9 14 3-3 3 3'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M12 18v-7'/%3E%3Cpath d='m9 14 3-3 3 3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.header-tools {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  margin-left: 46px;
+}
+
+.header-search {
+  align-items: center;
+  background: #eff4ff;
+  border: 1px solid #dfe7f1;
+  border-radius: 999px;
+  box-shadow: 0 2px 7px rgba(13, 35, 52, 0.06) inset, 0 1px 2px rgba(13, 35, 52, 0.04);
+  display: flex;
+  gap: 12px;
+  height: 54px;
+  min-width: 420px;
+  padding: 0 24px;
+}
+
+.header-search input {
+  appearance: none;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: #0b1c30;
+  flex: 1;
+  font-size: 16px;
+  font-weight: 700;
+  height: 100%;
+  outline: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.header-search input:focus,
+.header-search input:focus-visible {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: 0;
+}
+
+.header-search input::-webkit-search-decoration,
+.header-search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.header-search input:-webkit-autofill,
+.header-search input:-webkit-autofill:hover,
+.header-search input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0b1c30;
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
+.header-search .ui-icon {
+  color: #6e7979;
+  font-size: 24px;
+  height: 24px;
+  width: 24px;
+}
+
+.header-search input::placeholder {
+  color: #6e7979;
+  font-weight: 700;
+}
+
+.add-section,
+.table-section {
+  background: #ffffff;
+  border: 1px solid rgba(190, 201, 200, 0.42);
+  border-radius: 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.add-section {
+  padding: 32px 38px;
+}
+
+.table-section {
+  margin-top: 26px;
+}
+
+.add-header,
+.table-header,
+.permission-save-row,
+.pagination-bar {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.title-icon {
+  align-items: center;
+  background: #a0f0f0;
+  border-radius: 10px;
+  color: #004f50;
+  display: inline-flex;
+  font-weight: 900;
+  font-size: 22px;
+  height: 50px;
+  justify-content: center;
+  width: 50px;
 }
 
 h2 {
-  font-size: 21px;
-}
-
-.summary-pill {
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  font-weight: 800;
-  padding: 9px 14px;
-  white-space: nowrap;
-}
-
-.permission-help,
-.add-section,
-.table-section {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  margin-top: 18px;
-  padding: 16px;
-}
-
-.permission-help summary {
-  color: var(--text);
-  cursor: pointer;
-  font-weight: 800;
-}
-
-.permission-guide-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(160px, 1fr));
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.permission-guide-grid span {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 9px 10px;
-}
-
-.permission-guide-grid strong {
-  color: var(--primary);
-  margin-right: 6px;
-}
-
-.section-note {
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 700;
-  margin: 6px 0 0;
-}
-
-.form-grid,
-.filter-panel {
-  display: grid;
-  gap: 10px;
-  margin-top: 14px;
+  color: #0b1c30;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.15;
 }
 
 .form-grid {
-  grid-template-columns: minmax(120px, 1fr) minmax(180px, 1.2fr) minmax(130px, 1fr) minmax(120px, 0.7fr) auto;
-}
-
-.filter-panel {
-  grid-template-columns: minmax(260px, 1.6fr) minmax(150px, 0.7fr) minmax(210px, 1fr) auto;
-}
-
-.permission-toggle-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(96px, 1fr));
-  gap: 8px;
-  margin-top: 12px;
+  gap: 28px;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  margin-top: 32px;
 }
 
-.permission-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 7px;
-  border: 1px solid #cbdfea;
-  border-radius: 999px;
-  background: #fff;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 12px;
+.form-grid label {
+  color: #4e616f;
+  display: grid;
+  font-size: 14px;
   font-weight: 900;
-  min-height: 32px;
-  padding: 5px 10px;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-  user-select: none;
-  white-space: nowrap;
-}
-
-.permission-toggle:hover {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(11, 114, 133, 0.08);
-}
-
-.manager-permission-note {
-  color: var(--primary-dark);
-  background: var(--primary-soft);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 900;
-  margin: 12px 0 0;
-  padding: 9px 11px;
-}
-
-.table-note {
-  grid-column: 1 / -1;
-  margin: 0 0 2px;
-  text-align: center;
-}
-
-.permission-toggle.locked {
-  cursor: default;
-  opacity: 0.92;
-}
-
-.permission-toggle.locked:hover {
-  box-shadow: none;
-}
-.permission-toggle input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.permission-toggle.active {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: #fff;
-}
-
-.permission-mark {
-  width: 14px;
-  height: 14px;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  box-sizing: border-box;
-  display: inline-block;
-  flex: 0 0 auto;
-  position: relative;
-}
-
-.permission-toggle.active .permission-mark::after {
-  content: "";
-  position: absolute;
-  left: 3px;
-  top: 0px;
-  width: 4px;
-  height: 8px;
-  border: solid currentColor;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  gap: 10px;
 }
 
 input,
 select {
-  width: 100%;
-  height: 40px;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: #fff;
+  background: #eff4ff;
+  border: 1px solid transparent;
+  border-radius: 10px;
   box-sizing: border-box;
-  color: var(--text);
-  font-size: 14px;
-  padding: 0 10px;
+  color: #0b1c30;
+  font-size: 16px;
+  height: 52px;
+  outline: none;
+  padding: 0 16px;
+  width: 100%;
 }
 
 input:focus,
 select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(11, 114, 133, 0.13);
-  outline: none;
+  border-color: #005454;
+  box-shadow: 0 0 0 3px rgba(0, 84, 84, 0.14);
+}
+
+.permission-save-row {
+  align-items: end;
+  margin-top: 28px;
+}
+
+.permission-save-row h3 {
+  color: #4e616f;
+  font-size: 15px;
+  font-weight: 900;
+  margin-bottom: 12px;
+}
+
+.permission-toggle-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.permission-toggle {
+  align-items: center;
+  background: #eff4ff;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #4e616f;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 15px;
+  font-weight: 900;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 16px;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.permission-toggle input {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.permission-toggle.active {
+  background: #005454;
+  color: #ffffff;
+}
+
+.permission-toggle:not(.active):hover {
+  background: #e5eeff;
+}
+
+.permission-icon {
+  font-size: 13px;
+}
+
+.permission-toggle.locked {
+  cursor: default;
+  opacity: 0.9;
+}
+
+.manager-permission-note {
+  background: #eff4ff;
+  border-radius: 10px;
+  color: #004f50;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 16px;
+  padding: 9px 12px;
 }
 
 .primary-btn,
 .secondary-btn,
 .danger-btn {
-  height: 40px;
+  align-items: center;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
-  font-weight: 800;
-  padding: 0 14px;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 15px;
+  height: 42px;
+  padding: 0 16px;
 }
 
 .primary-btn {
-  background: var(--primary);
-  color: #fff;
+  background: #005454;
+  color: #ffffff;
+}
+
+.primary-btn:hover {
+  background: #0d6e6e;
+}
+
+.save-btn {
+  align-items: center;
+  border-radius: 10px;
+  display: inline-flex;
+  font-size: 18px;
+  gap: 10px;
+  height: 52px;
+  justify-content: center;
+  line-height: 1;
+  min-width: 180px;
+  padding: 0 28px;
+  text-align: center;
+}
+
+.save-btn .ui-icon {
+  height: 22px;
+  margin-top: 1px;
+  width: 22px;
 }
 
 .secondary-btn {
-  background: #fff;
-  border: 1px solid var(--border-strong);
-  color: var(--text);
+  background: #eff4ff;
+  color: #364956;
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background: #e5eeff;
 }
 
 .danger-btn {
-  background: var(--danger);
-  color: #fff;
+  background: #ffdad6;
+  color: #93000a;
+}
+
+.danger-btn:hover {
+  background: #ffe2e2;
 }
 
 .small {
-  height: 32px;
-  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  height: 38px;
+  padding: 0 12px;
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
-.primary-btn:hover {
-  background: var(--primary-dark);
-}
-
-.secondary-btn:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.danger-btn:hover {
-  background: #9f302b;
-}
-
-.list-status {
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 800;
-  margin: 12px 0 8px;
+.table-header {
+  padding: 28px 38px;
 }
 
 .table-wrap {
   overflow-x: auto;
-  margin-top: 14px;
 }
 
 table {
+  background: #ffffff;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 1380px;
   width: 100%;
-  min-width: 1120px;
-  border-collapse: collapse;
-  background: #fff;
 }
 
 th,
 td {
-  border: 1px solid var(--border);
-  padding: 8px;
+  border-left: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 1px solid #edf2f7;
+  border-top: 0;
+  color: #0b1c30;
+  padding: 24px 34px;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 th {
-  background: #f3f8fa;
-  color: var(--text);
-  font-weight: 800;
+  background: #eff4ff;
+  color: #4e616f;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  height: 58px;
+  text-transform: uppercase;
 }
 
-.name-col {
-  width: 160px;
+tbody td {
+  height: 72px;
 }
 
-.email-col {
-  width: 230px;
+tbody tr {
+  transition: background 0.15s ease;
 }
 
-.role-col {
-  width: 120px;
+tbody tr:hover {
+  background: #f1f5f9;
 }
 
-.password-col {
-  width: 150px;
-}
-
-.actions-col {
-  width: 140px;
+tbody tr.editing-row {
+  background: #f8f9ff;
 }
 
 td input,
 td select {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 8px;
   height: 34px;
+  padding: 0;
+}
+
+td input:focus,
+td select:focus {
+  background: #eff4ff;
+  padding: 0 10px;
+}
+
+.name-col {
+  width: 260px;
+}
+
+.email-col {
+  width: 320px;
+}
+
+.role-col {
+  width: 180px;
+}
+
+.email-col,
+.role-col,
+tbody td:nth-child(2),
+tbody td:nth-child(3) {
+  text-align: center;
+}
+
+.password-col {
+  width: 180px;
+}
+
+.actions-col {
+  width: 150px;
+}
+
+.user-name-text {
+  color: #0b1c30;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.muted-text {
+  color: #4e616f;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.password-placeholder {
+  color: #4e616f;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.role-badge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 8px 12px;
+}
+
+.role-teacher {
+  background: #a0f0f0;
+  color: #004f50;
+}
+
+.role-staff {
+  background: #d1e5f6;
+  color: #364956;
+}
+
+.role-manager {
+  background: #e1e3e4;
+  color: #191c1d;
 }
 
 .permission-cell {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(82px, 1fr));
-  gap: 6px;
-  min-width: 330px;
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 260px;
 }
 
 .table-toggle {
   justify-content: center;
-  min-height: 30px;
-  padding: 4px 8px;
+  min-height: 24px;
+  padding: 0 8px;
+}
+
+.permission-cell.readonly {
+  align-items: center;
+}
+
+.readonly-chip {
+  cursor: default;
+  font-size: 0;
+  min-height: 24px;
+  padding: 0;
+  width: 24px;
+}
+
+.readonly-chip.active,
+.readonly-chip.inactive {
+  background: transparent;
+}
+
+.readonly-chip.active {
+  color: #005454;
+}
+
+.readonly-chip.inactive {
+  color: #d8e0e2;
+}
+
+.readonly-chip .permission-icon {
+  font-size: 12px;
+}
+
+.table-note {
+  margin: 0;
 }
 
 .actions-cell {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   white-space: nowrap;
 }
 
+.icon-btn {
+  align-items: center;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.icon-btn .ui-icon {
+  font-size: 24px;
+  height: 24px;
+  width: 24px;
+}
+
+.edit-icon-btn {
+  background: transparent;
+  color: #005454;
+}
+
+.edit-icon-btn:hover {
+  background: #eff4ff;
+}
+
+.delete-icon-btn {
+  background: transparent;
+  color: #ba1a1a;
+}
+
+.delete-icon-btn:hover {
+  background: #ffdad6;
+}
+
 .empty-state {
-  border: 1px dashed var(--border-strong);
-  border-radius: 8px;
-  color: var(--text-muted);
-  font-weight: 800;
+  color: #4e616f;
+  font-weight: 900;
   margin: 0;
-  padding: 28px;
+  padding: 34px;
   text-align: center;
 }
 
 .pagination-bar {
-  justify-content: center;
-  margin-top: 14px;
+  background: #eff4ff;
+  color: #364956;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 18px 38px;
 }
 
-.pagination-bar span {
-  color: var(--text);
-  font-weight: 900;
-  min-width: 70px;
+.page-range {
+  margin-right: auto;
+}
+
+.pagination-bar > span:not(.page-range) {
+  color: #0b1c30;
+  min-width: 72px;
   text-align: center;
 }
 
 @media (max-width: 980px) {
-  .permission-guide-grid,
-  .permission-toggle-grid,
-  .form-grid,
-  .filter-panel {
-    grid-template-columns: 1fr;
-  }
-
   .page-header,
-  .section-toolbar,
-  .list-status {
+  .add-header,
+  .permission-save-row,
+  .table-header,
+  .pagination-bar {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .primary-btn,
-  .secondary-btn {
+  .header-tools,
+  .header-search,
+  .save-btn {
     width: 100%;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  th,
+  td {
+    padding: 10px 16px;
   }
 }
 </style>

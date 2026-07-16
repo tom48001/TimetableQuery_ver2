@@ -11,7 +11,7 @@
         :class="{ active: activeTab === 'timetable' }"
         @click="selectTab('timetable')"
       >
-        {{ tr('Import Timetable CSV', '導入時間表 CSV') }}
+        {{ tr('Import Timetable CSV/Excel', '導入時間表 CSV/Excel') }}
       </button>
       <button
         v-if="canManageStudents"
@@ -25,12 +25,16 @@
 
     <section class="import-layout">
       <div class="upload-panel">
+        <div class="panel-heading">
+          <h2>{{ tr('Upload File', '上傳檔案') }}</h2>
+          <p>{{ activeTab === 'students' ? tr('Drag and drop or choose a CSV file', '請拖放或點擊選擇 CSV 檔案') : tr('Drag and drop or choose a CSV or Excel file', '請拖放或點擊選擇 CSV 或 Excel 檔案') }}</p>
+        </div>
         <input
           id="data-import-file"
           ref="fileInput"
           class="file-input"
           type="file"
-          accept=".csv,text/csv"
+          :accept="acceptedFileTypes"
           @change="handleFile"
         />
 
@@ -43,22 +47,21 @@
           @dragleave.prevent="dragging = false"
           @drop.prevent="handleDrop"
         >
-          <span class="file-mark" aria-hidden="true">CSV</span>
           <strong v-if="file">{{ file.name }}</strong>
           <strong v-else>{{ tr('No file selected', '未選擇檔案') }}</strong>
           <span v-if="file" class="file-meta">{{ fileSize }}</span>
-          <span v-else class="file-meta">{{ tr('Selected file', '已選擇檔案') }}</span>
+          <span v-else class="file-meta">{{ tr('No file selected', '未選擇檔案') }}</span>
           <span class="pick-file">{{ tr('Choose file', '選擇檔案') }}</span>
         </label>
 
         <div class="upload-actions">
           <button
-            type="button"
-            class="upload-button"
-            :disabled="!file || uploading"
-            @click="uploadFile"
-          >
-            {{ uploading ? tr('Importing...', '導入中...') : tr('Import', '導入') }}
+          type="button"
+          class="upload-button"
+          :disabled="!file || uploading"
+          @click="uploadFile"
+        >
+            {{ uploadButtonLabel }}
           </button>
           <button
             v-if="file"
@@ -112,9 +115,12 @@
 
       <div class="format-panel">
         <div class="format-header">
-          <h2>{{ activeTab === 'timetable' ? tr('Timetable CSV Format', '時間表 CSV 格式') : tr('Student CSV Format', '學生 CSV 格式') }}</h2>
+          <div>
+            <h2>{{ activeTab === 'timetable' ? tr('Timetable CSV/Excel Format', '時間表 CSV/Excel 格式') : tr('Student CSV Format', '學生 CSV 格式') }}</h2>
+            <p>{{ tr('Make sure your file follows this format', '請確保你的檔案符合以下格式') }}</p>
+          </div>
           <button type="button" class="template-button" @click="downloadCsvTemplate">
-            {{ tr('Download CSV Template', '下載 CSV 範本') }}
+            {{ tr('Download Template', '下載範本') }}
           </button>
         </div>
 
@@ -183,16 +189,68 @@
         </div>
 
         <ul v-if="activeTab === 'timetable'">
+          <li>{{ tr('Timetable import accepts CSV or Excel. Excel can contain multiple sheets.', '時間表可接受 CSV 或 Excel；Excel 可以有多個工作表。') }}</li>
           <li>day: Mon, Tue, Wed, Thu, Fri</li>
           <li>period: Period 1, P1, or 1</li>
-          <li>{{ tr('First row must use the field names above.', '第一列必須使用以上欄位名稱。') }}</li>
+          <li>{{ tr('Each sheet must contain the field names above in its header row.', '每個工作表的標題列必須包含以上欄位名稱。') }}</li>
+          <li>{{ tr('Group worksheets in the existing horizontal two-column format are detected automatically.', '同一活頁簿內的橫向雙欄分組工作表會自動識別。') }}</li>
         </ul>
+
+        <div v-if="activeTab === 'timetable'" class="group-sample">
+          <h3>{{ tr('Group worksheet sample', '分組工作表範例') }}</h3>
+          <p>{{ tr('Chinese worksheet, for example Sample_中文', '中文工作表，例如 Sample_中文') }}</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Group1</th><th></th><th class="empty-column"></th><th>第二組</th><th></th><th class="empty-column"></th><th>Group 3</th><th></th></tr></thead>
+              <tbody>
+                <tr><td>1Y04</td><td>黃美軒</td><td></td><td>1M27</td><td>吳健美</td><td></td><td>1R03</td><td>高宇健</td></tr>
+                <tr><td>1R17</td><td>張啟俊</td><td></td><td>1M24</td><td>李裕</td><td></td><td></td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>{{ tr('English worksheet, for example Sample_Eng, uses the same IDs and group positions with English names.', '英文工作表（例如 Sample_Eng）使用相同學生編號及組別位置，姓名欄填寫英文姓名。') }}</p>
+          <ul>
+            <li>{{ tr('Each group occupies two columns: student ID, then student name.', '每組佔兩欄：第一欄為班別＋學號，第二欄為學生姓名。') }}</li>
+            <li>{{ tr('Groups may begin in any column, with one or more empty columns between them.', '分組可由任何欄開始，組與組之間可有一欄或多欄空白。') }}</li>
+            <li>{{ tr('Accepted headers include Group1, Group 1, 第一組, 第二組 and so on.', '組別標題可使用 Group1、Group 1、第一組、第二組等。') }}</li>
+            <li>{{ tr('Student IDs use class plus student number, such as 1Y04; leading zeros are preserved.', '學生編號使用班別＋學號，例如 1Y04；學號開首的 0 會保留。') }}</li>
+            <li>{{ tr('Chinese and English names are matched by student ID, never by name.', '中英文姓名只會按學生編號配對，不會按姓名配對。') }}</li>
+            <li>{{ tr('The same student must belong to the same group on Chinese and English worksheets.', '同一學生在中文及英文工作表必須屬於相同組別。') }}</li>
+          </ul>
+        </div>
         <ul v-else>
           <li>{{ tr('REGNO identifies students for add or update.', '系統按 REGNO 新增或更新學生。') }}</li>
           <li>{{ tr('Student import accepts CSV only.', '學生資料只接受 CSV。') }}</li>
           <li>{{ tr('sex must be M or F.', 'sex 必須為 M 或 F。') }}</li>
           <li>{{ tr('Students not listed in the CSV will not be deleted.', 'CSV 沒有列出的學生不會被刪除。') }}</li>
         </ul>
+      </div>
+    </section>
+
+    <section v-if="activeTab === 'timetable' && groupPreview" class="history-panel group-preview-panel">
+      <div class="history-header">
+        <div>
+          <h2>{{ tr('Import Preview', '導入預覽') }}</h2>
+          <p>{{ tr('Review every record before saving.', '儲存前請檢查每項記錄。') }}</p>
+        </div>
+        <button type="button" class="template-button" :disabled="groupPreview.hasErrors || savingGroup" @click="saveGroupImport">
+          {{ savingGroup ? tr('Importing...', '導入中...') : tr('Import Timetable and Groups', '導入時間表及分組') }}
+        </button>
+      </div>
+      <div class="history-table-wrap">
+        <table class="history-table">
+          <thead><tr><th>{{ tr('Group', '組別') }}</th><th>{{ tr('Class / No.', '班別／學號') }}</th><th>{{ tr('Chinese name', '中文姓名') }}</th><th>{{ tr('English name', '英文姓名') }}</th><th>{{ tr('Status', '狀態') }}</th><th>{{ tr('Message', '訊息') }}</th></tr></thead>
+          <tbody>
+            <tr v-for="record in groupPreview.records" :key="record.studentKey">
+              <td>{{ record.groupCode }}</td><td>{{ record.studentKey }}</td><td>{{ record.nameZh || '-' }}</td><td>{{ record.nameEn || '-' }}</td>
+              <td><span class="status-pill" :class="record.validationStatus">{{ validationStatusLabel(record.validationStatus) }}</span></td>
+              <td>{{ record.messages.length ? record.messages.join(' ') : tr('Ready', '可導入') }}</td>
+            </tr>
+            <tr v-for="(issue, index) in unlinkedGroupIssues" :key="`issue-${index}`">
+              <td>{{ issue.groupCode || '-' }}</td><td>{{ issue.studentKey || '-' }}</td><td>-</td><td>-</td><td><span class="status-pill error">{{ tr('Error', '錯誤') }}</span></td><td>{{ issue.message }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -348,8 +406,9 @@ const TEXT = {
   upload: '\u4e0a\u8f09\u8ab2\u8868',
   uploading: '\u4e0a\u8f09\u4e2d...',
   clear: '\u6e05\u9664',
-  chooseFile: '\u8acb\u9078\u64c7 CSV \u6a94\u6848\u3002',
+  chooseFile: '\u8acb\u9078\u64c7\u6a94\u6848\u3002',
   csvOnly: '\u8acb\u4e0a\u8f09 .csv \u6a94\u6848\u3002',
+  timetableFileOnly: '\u8acb\u4e0a\u8f09 .csv\u3001.xlsx \u6216 .xls \u6a94\u6848\u3002',
   loginFirst: '\u8acb\u5148\u767b\u5165\u518d\u4e0a\u8f09\u3002',
   failed: '\u4e0a\u8f09\u5931\u6557\u3002',
   networkFailed: '\u4e0a\u8f09\u5931\u6557\uff0c\u8acb\u6aa2\u67e5\u4f3a\u670d\u5668\u9023\u7dda\u3002',
@@ -369,6 +428,8 @@ export default {
       rollbackLoading: false,
       studentHistoryLoading: false,
       studentRollbackLoading: false,
+      savingGroup: false,
+      groupPreview: null,
       message: '',
       messageType: '',
       lastImportResult: null,
@@ -391,6 +452,24 @@ export default {
       const sizeInKb = Math.max(1, Math.round(this.file.size / 1024));
       return `${sizeInKb} KB`;
     },
+    acceptedFileTypes() {
+      if (this.activeTab !== 'students') {
+        return '.csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
+      }
+      return '.csv,text/csv';
+    },
+    fileTypeLabel() {
+      return this.activeTab !== 'students' ? 'CSV/XLSX' : 'CSV';
+    },
+    uploadButtonLabel() {
+      if (this.uploading) return this.tr('Checking and importing...', '檢查及導入中...');
+      return this.tr('Start Import', '開始導入');
+    },
+    unlinkedGroupIssues() {
+      if (!this.groupPreview) return [];
+      const recordKeys = new Set(this.groupPreview.records.map(record => record.studentKey));
+      return this.groupPreview.issues.filter(issue => !recordKeys.has(issue.studentKey));
+    },
     historyTotalPages() {
       return Math.max(1, Math.ceil(this.importBatches.length / this.historyPageSize));
     },
@@ -400,11 +479,14 @@ export default {
       return this.importBatches.slice(start, start + this.historyPageSize);
     },
     historyRangeLabel() {
-      if (!this.importBatches.length) return '';
+      if (!this.importBatches.length) return this.tr('No records', '沒有記錄');
       const page = Math.min(this.historyPage, this.historyTotalPages);
       const start = (page - 1) * this.historyPageSize + 1;
       const end = Math.min(start + this.historyPageSize - 1, this.importBatches.length);
-      return this.tr(`Showing ${start}-${end} of ${this.importBatches.length}`, `\u986f\u793a\u7b2c ${start}-${end} \u7b46\uff0c\u5171 ${this.importBatches.length} \u7b46`);
+      return this.tr(
+        `Showing ${start} to ${end} of ${this.importBatches.length} records`,
+        `顯示 ${start} 到 ${end} 筆記錄`
+      );
     }
   },
   methods: {
@@ -419,6 +501,7 @@ export default {
       this.message = '';
       this.messageType = '';
       this.lastImportResult = null;
+      this.groupPreview = null;
       if (tab === 'timetable') this.fetchImportBatches();
       if (tab === 'students') this.fetchStudentImportBatches();
     },
@@ -426,13 +509,18 @@ export default {
       this.dragging = false;
       this.message = '';
       this.messageType = '';
+      this.groupPreview = null;
 
       if (!file) return;
-      const validFile = /\.csv$/i.test(file.name);
+      const validFile = this.activeTab !== 'students'
+        ? /\.(csv|xlsx|xls)$/i.test(file.name)
+        : /\.csv$/i.test(file.name);
       if (!validFile) {
         this.clearFile();
         this.showMessage(
-          this.tr('Please upload a .csv file.', TEXT.csvOnly),
+          this.activeTab !== 'students'
+            ? this.tr('Please upload a .csv, .xlsx, or .xls file.', TEXT.timetableFileOnly)
+            : this.tr('Please upload a .csv file.', TEXT.csvOnly),
           'error'
         );
         return;
@@ -453,6 +541,14 @@ export default {
       if (this.$refs.fileInput) {
         this.$refs.fileInput.value = '';
       }
+    },
+    validationStatusLabel(status) {
+      const labels = {
+        valid: this.tr('Valid', '有效'),
+        warning: this.tr('Warning', '警告'),
+        error: this.tr('Error', '錯誤')
+      };
+      return labels[status] || status;
     },
     showMessage(message, type) {
       this.message = message;
@@ -675,6 +771,8 @@ export default {
         this.formatList('Duplicate email', data.duplicateEmails),
         this.formatList('Duplicate class number', data.duplicateClassNumbers),
         this.formatList('Missing elective', data.missingElectives),
+        this.formatList('Group validation', (data.issues || []).map(issue => issue.message)),
+        this.formatList('Students not found', (data.missingStudents || []).map(issue => issue.message)),
         this.formatInvalidRows(data.invalidRows)
       ].filter(Boolean);
 
@@ -682,7 +780,7 @@ export default {
     },
     async uploadFile() {
       if (!this.file) {
-        this.showMessage(this.tr('Please choose a CSV file.', TEXT.chooseFile), 'error');
+        this.showMessage(this.tr('Please choose a file.', TEXT.chooseFile), 'error');
         return;
       }
 
@@ -697,6 +795,16 @@ export default {
       this.uploading = true;
 
       try {
+        if (this.activeTab === 'timetable' && this.canManageStudents && !this.groupPreview) {
+          const previewRes = await axios.post('/api/import/groups/preview', formData, {
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+          });
+          if (previewRes.data.hasGroups) {
+            this.groupPreview = previewRes.data;
+            this.showMessage(this.tr('Group worksheets found. Review the preview below before importing the timetable.', '找到分組工作表，請先檢查下方預覽再導入時間表。'), 'success');
+            return;
+          }
+        }
         const endpoint = this.activeTab === 'timetable'
           ? '/api/import/csv'
           : '/api/import/students/file';
@@ -738,12 +846,37 @@ export default {
         this.lastImportResult = null;
 
         if (err.response && err.response.data) {
+          if (this.activeTab === 'timetable' && Array.isArray(err.response.data.records)) {
+            this.groupPreview = err.response.data;
+          }
           this.showMessage(this.buildErrorMessage(err.response.data), 'error');
         } else {
           this.showMessage(this.tr('Upload failed. Please check the server connection.', TEXT.networkFailed), 'error');
         }
       } finally {
         this.uploading = false;
+      }
+    },
+    async saveGroupImport() {
+      if (!this.groupPreview || this.groupPreview.hasErrors) return;
+      this.savingGroup = true;
+      try {
+        const formData = new FormData();
+        formData.append('file', this.file);
+        const timetableRes = await axios.post('/api/import/csv', formData, {
+          headers: { ...this.authHeaders(), 'Content-Type': 'multipart/form-data' }
+        });
+        const groupRes = await axios.post('/api/import/groups/save', { records: this.groupPreview.records }, { headers: this.authHeaders() });
+        this.lastImportResult = timetableRes.data;
+        this.showMessage(`${timetableRes.data.message}\n${groupRes.data.message}\nUpdated group rows: ${groupRes.data.updatedRows}`, 'success');
+        this.groupPreview = null;
+        this.clearFile();
+        await this.fetchImportBatches();
+      } catch (err) {
+        const data = err.response && err.response.data;
+        this.showMessage(data ? this.buildErrorMessage(data) : this.tr('Save failed. Please check the server connection.', '儲存失敗，請檢查伺服器連線。'), 'error');
+      } finally {
+        this.savingGroup = false;
       }
     }
   },
@@ -1299,6 +1432,603 @@ ul {
 
   .history-pager {
     justify-content: center;
+  }
+}
+
+/* Modern import page layout */
+.import-page {
+  background: #f8f9ff;
+  box-sizing: border-box;
+  color: #0b1c30;
+  font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  margin: 0 auto;
+  max-width: 1160px;
+  min-height: calc(100vh - 130px);
+  padding: 36px 22px 64px;
+}
+
+.import-intro {
+  margin: 0 0 24px;
+  max-width: none;
+  text-align: left;
+}
+
+h1 {
+  color: #0b1c30;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0;
+  text-align: left;
+}
+
+.import-tabs {
+  background: #eaf0f8;
+  border: 0;
+  border-radius: 12px;
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 38px;
+  padding: 4px;
+}
+
+.import-tabs button {
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  color: #4e616f;
+  font-size: 15px;
+  font-weight: 900;
+  height: 44px;
+  padding: 0 28px;
+}
+
+.import-tabs button:hover {
+  background: rgba(255, 255, 255, 0.55);
+  color: #005454;
+}
+
+.import-tabs button.active {
+  background: #ffffff;
+  border: 1px solid #dce6ef;
+  box-shadow: 0 2px 8px rgba(15, 35, 52, 0.06);
+  color: #005454;
+}
+
+.import-layout {
+  align-items: stretch;
+  display: grid;
+  gap: 38px;
+  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr);
+}
+
+.upload-panel,
+.format-panel,
+.history-panel {
+  background: #ffffff;
+  border: 1px solid #dbe5ef;
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(15, 35, 52, 0.04);
+}
+
+.upload-panel,
+.format-panel {
+  min-height: 470px;
+  padding: 38px;
+}
+
+.panel-heading {
+  margin-bottom: 26px;
+}
+
+.panel-heading h2,
+.format-header h2,
+.history-header h2,
+.batch-result h2 {
+  color: #0b1c30;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.panel-heading p,
+.format-header p,
+.history-header p {
+  color: #4e616f;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 6px 0 0;
+}
+
+.drop-zone {
+  background: #ffffff;
+  border: 2px dashed #c9d8e8;
+  border-radius: 10px;
+  color: #0b1c30;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 300px;
+  padding: 22px;
+  text-align: center;
+}
+
+.drop-zone.dragging,
+.drop-zone:hover {
+  background: #f7fbff;
+  border-color: #0b7787;
+  transform: none;
+}
+
+.drop-zone.ready {
+  background: #f2fbf6;
+  border-color: #0b7787;
+  border-style: solid;
+}
+
+.file-mark {
+  align-items: center;
+  background: #e7eff0;
+  border-radius: 999px;
+  color: #0b7787;
+  display: inline-flex;
+  font-size: 0;
+  font-weight: 900;
+  height: 68px;
+  justify-content: center;
+  min-width: 0;
+  padding: 0;
+  width: 68px;
+}
+
+.file-mark::before {
+  background: currentColor;
+  content: "";
+  height: 34px;
+  width: 34px;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 16l-4-4-4 4'/%3E%3Cpath d='M12 12v9'/%3E%3Cpath d='M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3'/%3E%3Cpath d='M16 21h1a4 4 0 0 0 0-8h-.6'/%3E%3Cpath d='M8 21H7a4 4 0 0 1 0-8h.6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M16 16l-4-4-4 4'/%3E%3Cpath d='M12 12v9'/%3E%3Cpath d='M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3'/%3E%3Cpath d='M16 21h1a4 4 0 0 0 0-8h-.6'/%3E%3Cpath d='M8 21H7a4 4 0 0 1 0-8h.6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.drop-zone strong {
+  color: #0b1c30;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  padding: 0;
+}
+
+.file-meta {
+  color: #4e616f;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.pick-file {
+  background: #ffffff;
+  border: 1px solid #dbe5ef;
+  border-radius: 8px;
+  color: #0b1c30;
+  display: inline-flex;
+  font-weight: 900;
+  margin-top: 6px;
+  padding: 13px 34px;
+}
+
+.upload-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 36px;
+  min-height: 54px;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 900;
+  height: 48px;
+  margin: 0;
+  padding: 0 20px;
+}
+
+.upload-button {
+  background: #0b7787;
+  color: #ffffff;
+  flex: 1;
+}
+
+.upload-button::before {
+  content: none;
+}
+
+.upload-button:hover:not(:disabled),
+.template-button:hover {
+  background: #00616d;
+}
+
+.clear-button,
+.template-button {
+  background: #e7eff0;
+  border: 0;
+  color: #005454;
+}
+
+.template-button {
+  background: #0b7787;
+  color: #ffffff;
+  flex: 0 0 auto;
+  height: 50px;
+  padding: 0 24px;
+}
+
+.template-button::before {
+  content: none;
+}
+
+button:disabled {
+  background: #dce4ee;
+  color: #8a9aaa;
+  cursor: not-allowed;
+}
+
+.format-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+
+.table-wrap {
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+table {
+  background: #ffffff;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 480px;
+  width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid #edf2f7;
+  color: #0b1c30;
+  padding: 18px 20px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+th {
+  background: #f7f9fd;
+  color: #0b1c30;
+  font-weight: 900;
+}
+
+td {
+  color: #173044;
+  font-weight: 700;
+}
+
+ul {
+  background: #eff5ff;
+  border: 0;
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+  color: #1d4ed8;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.8;
+  list-style-position: inside;
+  margin: 28px 0 0;
+  padding: 18px 20px;
+}
+
+.message,
+.batch-result {
+  border: 1px solid #dbe5ef;
+  border-radius: 10px;
+  margin: 18px 0 0;
+}
+
+.message {
+  background: #f7f9fd;
+  color: #173044;
+  line-height: 1.5;
+  min-height: auto;
+  padding: 16px;
+  white-space: pre-wrap;
+}
+
+.message.success {
+  background: #eefaf3;
+  border-color: #b8e2c8;
+  color: #16613f;
+}
+
+.message.error {
+  background: #fff1f0;
+  border-color: #f0b8b8;
+  color: #8c2929;
+}
+
+.batch-result {
+  background: #fbfdff;
+  padding: 18px;
+}
+
+.batch-result h2 {
+  font-size: 18px;
+  margin-bottom: 14px;
+}
+
+.batch-result dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.batch-result dl div {
+  border-bottom: 1px solid #edf2f7;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding-bottom: 10px;
+}
+
+.batch-result dl div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.batch-result dt {
+  color: #4e616f;
+  font-weight: 800;
+}
+
+.batch-result dd {
+  color: #0b1c30;
+  font-weight: 900;
+  margin: 0;
+}
+
+.history-panel {
+  margin-top: 38px;
+  overflow: hidden;
+  padding: 0;
+}
+
+.history-header {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 38px 38px 32px;
+}
+
+.history-header .clear-button {
+  height: 52px;
+  padding: 0 24px;
+}
+
+.history-table-wrap {
+  overflow-x: auto;
+}
+
+.history-table {
+  background: #ffffff;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 860px;
+  width: 100%;
+}
+
+.history-table th,
+.history-table td {
+  border: 0;
+  border-bottom: 1px solid #edf2f7;
+  padding: 20px 38px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.history-table th {
+  background: #f7f9fd;
+  color: #4e616f;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.history-table td {
+  color: #0b1c30;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.status-pill {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0 10px;
+}
+
+.status-pill.success {
+  background: #d8f7e4;
+  color: #047857;
+}
+
+.status-pill.failed {
+  background: #ffe1e1;
+  color: #c02626;
+}
+
+.status-pill.rolled_back {
+  background: #e7eff0;
+  color: #4e616f;
+}
+
+.status-pill.valid {
+  background: #d8f7e4;
+  color: #047857;
+}
+
+.status-pill.warning {
+  background: #fff3cd;
+  color: #8a5a00;
+}
+
+.status-pill.error {
+  background: #ffe1e1;
+  color: #c02626;
+}
+
+.group-preview-panel {
+  margin-top: 38px;
+}
+
+.group-preview-panel td:last-child {
+  min-width: 240px;
+  white-space: normal;
+}
+
+.group-sample {
+  border-top: 1px solid #dbe5ef;
+  margin-top: 28px;
+  padding-top: 24px;
+}
+
+.group-sample h3 {
+  color: #0b1c30;
+  font-size: 18px;
+  margin: 0 0 6px;
+}
+
+.group-sample p {
+  color: #4e616f;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+  margin: 8px 0 12px;
+}
+
+.group-sample .table-wrap {
+  margin-top: 0;
+}
+
+.group-sample .empty-column {
+  min-width: 28px;
+  background: #f8fafc;
+}
+
+.group-sample ul {
+  margin-top: 14px;
+}
+
+.history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clear-button.small,
+.danger-button.small,
+.delete-button.small {
+  border-radius: 8px;
+  height: 34px;
+  padding: 0 12px;
+}
+
+.danger-button {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.delete-button {
+  background: #f1f5f9;
+  color: #0b1c30;
+}
+
+.empty-history {
+  border: 0;
+  color: #4e616f;
+  font-weight: 900;
+  margin: 0;
+  padding: 28px;
+  text-align: center;
+}
+
+.history-footer,
+.history-pager {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.history-footer {
+  background: #fbfdff;
+  color: #4e616f;
+  font-size: 14px;
+  font-weight: 800;
+  justify-content: space-between;
+  margin-top: 0;
+  padding: 22px 38px;
+}
+
+.history-pager span {
+  color: #0b1c30;
+  font-weight: 900;
+  min-width: 52px;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .import-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .format-header,
+  .history-header,
+  .history-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .import-page {
+    padding: 24px 12px 44px;
+  }
+
+  .upload-panel,
+  .format-panel {
+    padding: 24px;
+  }
+
+  .import-tabs {
+    display: flex;
+    width: 100%;
+  }
+
+  .import-tabs button {
+    flex: 1;
+    padding: 0 10px;
   }
 }
 </style>

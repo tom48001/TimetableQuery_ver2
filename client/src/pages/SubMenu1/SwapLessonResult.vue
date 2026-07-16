@@ -1,65 +1,52 @@
 <template>
   <main class="result-page">
-    <section class="result-panel">
+    <div class="page-shell">
+      <nav class="breadcrumb">{{ tr('Swap Request', '調課申請') }} <span>›</span> <strong>{{ tr('Available Teachers', '可供調課的老師') }}</strong></nav>
       <header class="page-header">
-        <div>
-          <h1>{{ tr('Available Swap Teachers', '可供調課的老師') }}</h1>
-        </div>
+        <h1>{{ tr('Available Swap Teachers', '可供調課的老師') }}</h1>
         <span class="count-badge">{{ filteredTeachers.length }} {{ tr('teachers', '老師') }}</span>
       </header>
 
-      <div class="request-summary">
-        <div>
-          <span class="summary-label">{{ tr('Teacher to swap', '需要調課老師') }}</span>
-          <strong>{{ $route.query.teacherName || '-' }}</strong>
-        </div>
-        <div>
-          <span class="summary-label">{{ tr('Lessons to swap', '需要調課課節') }}</span>
-          <ul class="lesson-summary-list">
-            <li v-for="(lesson, index) in selectedLessons" :key="lesson.timetableId || index">
-              {{ lessonLabel(lesson) }}
-            </li>
-          </ul>
-        </div>
+      <div class="result-layout">
+        <section class="result-content">
+          <div class="request-summary">
+            <div class="summary-details">
+              <span class="summary-label">{{ tr('Teacher to swap', '需要調課老師') }}</span>
+              <strong class="summary-name">{{ $route.query.teacherName || '-' }}</strong>
+              <ul class="lesson-summary-list">
+                <li v-for="(lesson, index) in selectedLessons" :key="lesson.timetableId || index">
+                  {{ lessonLabel(lesson) }}
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <p v-if="loading" class="empty-message">{{ tr('Loading...', '載入中...') }}</p>
+          <div v-else-if="filteredTeachers.length" class="teacher-list">
+            <article v-for="teacher in filteredTeachers" :key="teacher.teacher_id" class="teacher-card">
+              <div class="teacher-card-top">
+                <span class="teacher-avatar">{{ teacherInitials(teacher.teacher_name) }}</span>
+                <span class="reason-row">
+                  <small v-for="reason in reasonParts(teacher.match_reason)" :key="reason" class="reason-badge" :class="reasonClass(reason)">{{ reason }}</small>
+                </span>
+              </div>
+              <strong class="teacher-name">{{ teacher.teacher_name }}</strong>
+              <span class="teacher-description">{{ reasonParts(teacher.match_reason).join('、') }}</span>
+            </article>
+          </div>
+          <p v-else class="empty-message">{{ tr('No teachers found', '找不到老師') }}</p>
+        </section>
+
+        <aside class="filter-panel">
+          <h2><span class="filter-icon">☰</span>{{ tr('Filters', '篩選條件') }}</h2>
+          <span class="filter-label">{{ tr('Status', '狀態') }}</span>
+          <label><input v-model="filters.available" type="checkbox" /> {{ tr('Available', '空堂') }} (Available)</label>
+          <label><input v-model="filters.sameSubject" type="checkbox" /> {{ tr('Same-subject teacher', '同科老師') }}</label>
+          <label><input v-model="filters.sameClass" type="checkbox" /> {{ tr('Same-class teacher', '同班老師') }}</label>
+          <button type="button" class="reset-button" @click="resetFilters">{{ tr('Reset all filters', '重置所有篩選') }}</button>
+        </aside>
       </div>
-
-      <p v-if="loading" class="empty-message">{{ tr('Loading...', '載入中...') }}</p>
-
-      <template v-else>
-        <input
-          v-if="availableTeachers.length"
-          v-model.trim="searchText"
-          class="search-input"
-          type="text"
-          :placeholder="tr('Search teacher...', '搜尋老師...')"
-        />
-
-        <div v-if="filteredTeachers.length" class="teacher-list">
-          <span
-            v-for="teacher in filteredTeachers"
-            :key="teacher.teacher_id"
-            class="teacher-chip"
-            :class="teacherCardClass(teacher.match_reason)"
-          >
-            <span>{{ teacher.teacher_name }}</span>
-            <span class="reason-row">
-              <small
-                v-for="reason in reasonParts(teacher.match_reason)"
-                :key="reason"
-                class="reason-badge"
-                :class="reasonClass(reason)"
-              >
-                {{ reason }}
-              </small>
-            </span>
-          </span>
-        </div>
-
-        <p v-else class="empty-message">
-          {{ tr('No teachers found', '找不到老師') }}
-        </p>
-      </template>
-    </section>
+    </div>
   </main>
 </template>
 
@@ -76,23 +63,32 @@ const DAY_LABELS = {
   Sat: '\u661f\u671f\u516d'
 };
 
+function sortTeachersByName(teachers) {
+  return [...teachers].sort((a, b) =>
+    String(a.teacher_name || '').localeCompare(String(b.teacher_name || ''), 'en', { sensitivity: 'base' })
+  );
+}
+
 export default {
   name: 'SwapLessonResult',
   data() {
     return {
       availableTeachers: [],
       loading: true,
-      searchText: ''
+      searchText: '',
+      filters: { available: true, sameSubject: false, sameClass: false }
     };
   },
   computed: {
     filteredTeachers() {
       const keyword = this.searchText.toLowerCase();
-      if (!keyword) return this.availableTeachers;
-
-      return this.availableTeachers.filter(teacher =>
-        String(teacher.teacher_name || '').toLowerCase().includes(keyword)
-      );
+      return sortTeachersByName(this.availableTeachers.filter(teacher => {
+        if (!this.filters.available) return false;
+        if (keyword && !String(teacher.teacher_name || '').toLowerCase().includes(keyword)) return false;
+        if (this.filters.sameSubject && !this.hasReason(teacher, 'same-subject')) return false;
+        if (this.filters.sameClass && !this.hasReason(teacher, 'same-class')) return false;
+        return true;
+      }));
     },
     selectedLessons() {
       try {
@@ -133,7 +129,7 @@ export default {
 
       const candidateLists = responses.map(response => Array.isArray(response.data) ? response.data : []);
       const firstList = candidateLists[0] || [];
-      this.availableTeachers = firstList
+      this.availableTeachers = sortTeachersByName(firstList
         .filter(teacher => candidateLists.every(list =>
           list.some(candidate => Number(candidate.teacher_id) === Number(teacher.teacher_id))
         ))
@@ -146,7 +142,7 @@ export default {
             ...teacher,
             match_reason: Array.from(new Set(reasons)).join(' / ')
           };
-        });
+        }));
     } catch (err) {
       console.error('Failed to load substitute teachers:', err);
       alert(this.tr('Failed to load available teachers.', '載入可供調課老師失敗。'));
@@ -155,6 +151,17 @@ export default {
     }
   },
   methods: {
+    teacherInitials(name) {
+      const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+      if (!parts.length) return '--';
+      return parts.length === 1 ? parts[0].slice(0, 2).toUpperCase() : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    },
+    hasReason(teacher, type) {
+      return this.reasonParts(teacher.match_reason).some(reason => this.reasonClass(reason) === `reason-${type}`);
+    },
+    resetFilters() {
+      this.filters = { available: true, sameSubject: false, sameClass: false };
+    },
     dayLabel(day) {
       const en = { Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat' }[day] || day || '-';
       return this.$lang.locale === 'en' ? en : (DAY_LABELS[day] || day || '-');
@@ -432,5 +439,233 @@ h1 {
   .teacher-list {
     grid-template-columns: 1fr;
   }
+}
+
+/* Card layout for the available-teacher result. */
+.result-page {
+  background: #fff;
+  padding: 28px 24px 64px;
+}
+
+.page-shell {
+  max-width: 1230px;
+  margin: 0 auto;
+}
+
+.breadcrumb {
+  color: #475569;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.breadcrumb span {
+  margin: 0 10px;
+}
+
+.breadcrumb strong {
+  color: #0757c9;
+}
+
+.page-header {
+  align-items: center;
+  margin-bottom: 42px;
+}
+
+.count-badge {
+  border: 0;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #0757c9;
+}
+
+.result-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 370px;
+  gap: 40px;
+  align-items: start;
+}
+
+.request-summary {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  border: 0;
+  border-radius: 30px;
+  background: linear-gradient(105deg, #0757c9 0%, #0757c9 72%, #2360cf 72%, #2360cf 100%);
+  box-shadow: 0 12px 24px rgba(15, 67, 160, 0.2);
+  color: #fff;
+  margin: 0 0 40px;
+  padding: 28px 42px;
+}
+
+.summary-avatar {
+  width: 120px;
+  height: 120px;
+  flex: 0 0 120px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.summary-details {
+  min-width: 0;
+}
+
+.summary-label {
+  display: block;
+  color: #bcd2ff;
+  font-size: 14px;
+  font-weight: 800;
+  margin: 0 0 8px;
+}
+
+.summary-name {
+  display: block;
+  font-size: clamp(22px, 2.4vw, 32px);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.lesson-summary-list {
+  gap: 6px;
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+}
+
+.teacher-list {
+  max-height: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+.teacher-card {
+  min-height: 154px;
+  border: 1px solid #cbd5e1;
+  border-radius: 11px;
+  background: #fff;
+  box-sizing: border-box;
+  padding: 20px;
+}
+
+.teacher-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.teacher-avatar {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: #dbeafe;
+  color: #0757c9;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.teacher-name,
+.teacher-description {
+  display: block;
+}
+
+.teacher-name {
+  color: #0f172a;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.teacher-description {
+  color: #475569;
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.reason-row {
+  justify-content: flex-end;
+}
+
+.reason-badge {
+  border: 0;
+  border-radius: 3px;
+  padding: 5px 7px;
+}
+
+.reason-same-class { background: #f3e8ff; color: #9333ea; }
+.reason-same-subject { background: #eafbf0; color: #16a34a; }
+.reason-free { background: #eef4ff; color: #2563eb; }
+
+.filter-panel {
+  display: grid;
+  gap: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 30px;
+  box-shadow: 0 2px 3px rgba(15, 23, 42, 0.05);
+  padding: 30px 32px;
+}
+
+.filter-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #0f172a;
+  font-size: 20px;
+  margin: 0 0 6px;
+}
+
+.filter-icon { color: #0757c9; transform: rotate(180deg); }
+.filter-label { color: #64748b; font-size: 13px; font-weight: 800; }
+
+.filter-panel label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.filter-panel input {
+  width: 20px;
+  height: 20px;
+  accent-color: #0757c9;
+}
+
+.reset-button {
+  height: 56px;
+  border: 0;
+  border-radius: 10px;
+  background: #dbeafe;
+  color: #0f172a;
+  font-size: 15px;
+  margin-top: 26px;
+}
+
+@media (max-width: 980px) {
+  .result-layout { grid-template-columns: 1fr; }
+  .filter-panel { grid-row: 1; border-radius: 18px; }
+}
+
+@media (max-width: 720px) {
+  .result-page { padding: 22px 14px 48px; }
+  .page-header { margin-bottom: 24px; }
+  .request-summary { min-height: 0; align-items: flex-start; gap: 18px; border-radius: 20px; padding: 24px 20px; }
+  .summary-avatar { width: 64px; height: 64px; flex-basis: 64px; border-radius: 12px; font-size: 18px; }
+  .teacher-list { grid-template-columns: 1fr; }
+  .filter-panel { padding: 24px 20px; }
 }
 </style>

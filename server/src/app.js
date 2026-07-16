@@ -18,6 +18,8 @@ import blaRoutes from './routes/blaRoutes.js';
 import conductRoutes from './routes/conductRoutes.js';
 import prefectRoutes from './routes/prefectRoutes.js';
 import learningGoalRoutes from './routes/learningGoalRoutes.js';
+import lessonGroupRoutes from './routes/lessonGroupRoutes.js';
+import nominationAdminRoutes from './routes/nominationAdminRoutes.js';
 
 import importRoutes from "./routes/importRoutes.js";
 
@@ -64,6 +66,8 @@ app.use('/api/bla', blaRoutes);
 app.use('/api/conduct', conductRoutes);
 app.use('/api/prefect', prefectRoutes);
 app.use('/api/learning-goals', learningGoalRoutes);
+app.use('/api/lesson-groups', lessonGroupRoutes);
+app.use('/api/nominations', nominationAdminRoutes);
 app.use('/api/import', importRoutes);
 
 // Server

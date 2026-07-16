@@ -2,7 +2,7 @@ import express from 'express';
 import { ensureJWT } from '../auth/auth.js';
 import { requireAnyPermission } from '../auth/permissions.js';
 import db from '../db.js';
-import { getStudentElectives, getElectives } from '../controllers/subjectController.js';
+import { getStudentElectives, getElectives, getElectiveSubjectOptions } from '../controllers/subjectController.js';
 import { ensureStudentAdminSchema } from '../controllers/manageStudentController.js';
 
 const router = express.Router();
@@ -57,15 +57,7 @@ router.get('/class-counts', ensureJWT, canReadSchoolData, async (req, res) => {
   }
 });
 
-router.get('/findElective', ensureJWT, canReadSchoolData, async (req, res) => {
-  try {
-    const [rows] = await db.query('SELECT * FROM subject WHERE is_elective IS TRUE ORDER BY subject_id');
-    res.json(rows);
-  } catch (error) {
-    console.error('Error fetching subjects:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+router.get('/findElective', ensureJWT, canReadSchoolData, getElectiveSubjectOptions);
 
 router.post('/list', ensureJWT, canReadSchoolData, getStudentElectives);
 

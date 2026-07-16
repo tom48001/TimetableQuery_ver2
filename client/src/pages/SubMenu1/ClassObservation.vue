@@ -19,13 +19,14 @@
 </template>
 <script>
 import axios from 'axios';
+function sortTeachersByName(teachers) { return [...teachers].sort((a, b) => String(a.teacher_name || '').localeCompare(String(b.teacher_name || ''), 'en', { sensitivity: 'base' })); }
 export default {
   data() { return { teachers: [], observerIds: [], targetId: null, observerSearch: '', targetSearch: '' }; },
-  computed: { filteredObservers() { return this.filterTeachers(this.observerSearch); }, filteredTargets() { return this.filterTeachers(this.targetSearch); }, observerTeachers() { return this.teachers.filter(teacher => this.observerIds.includes(teacher.teacher_id)); } },
+  computed: { filteredObservers() { return this.filterTeachers(this.observerSearch); }, filteredTargets() { return this.filterTeachers(this.targetSearch); }, observerTeachers() { return sortTeachersByName(this.teachers.filter(teacher => this.observerIds.includes(teacher.teacher_id))); } },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     filterTeachers(keyword) { const text = keyword.toLowerCase(); if (!text) return this.teachers; return this.teachers.filter(teacher => String(teacher.teacher_name || '').toLowerCase().includes(text)); },
-    async fetchTeachers() { try { const token = localStorage.getItem('token'); const res = await axios.get('/api/teachers/list', { headers: { Authorization: `Bearer ${token}` } }); this.teachers = res.data; } catch (err) { console.error('Failed to load teachers:', err); alert(this.tr('Failed to load teachers.', '載入老師列表失敗。')); } },
+    async fetchTeachers() { try { const token = localStorage.getItem('token'); const res = await axios.get('/api/teachers/list', { headers: { Authorization: `Bearer ${token}` } }); this.teachers = sortTeachersByName(res.data); } catch (err) { console.error('Failed to load teachers:', err); alert(this.tr('Failed to load teachers.', '載入老師列表失敗。')); } },
     toggleObserver(teacherId) { const index = this.observerIds.indexOf(teacherId); if (index >= 0) this.observerIds.splice(index, 1); else this.observerIds.push(teacherId); },
     clearObservers() { this.observerIds = []; },
     searchSchedule() { if (this.observerIds.length === 0) { alert(this.tr('Please select observer teachers.', '請選擇觀課老師。')); return; } if (!this.targetId) { alert(this.tr('Please select a target teacher.', '請選擇被觀課老師。')); return; } this.$router.push({ name: 'ClassObservationResult', query: { observers: this.observerIds, target: this.targetId } }); }

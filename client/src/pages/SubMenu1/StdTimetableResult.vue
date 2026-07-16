@@ -9,7 +9,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(label, index) in periodLabels" :key="index">
+        <tr v-for="(label, index) in periodLabels" :key="index" :class="periodRowClass(index + 1)">
           <th v-html="label"></th>
           <td v-for="day in days" :key="day">
             <div
@@ -18,9 +18,9 @@
               class="cell-entry"
               :class="{ 'red-entry': periodName(item) === 'Period 11' || periodName(item) === 'Period 12' }"
             >
-              <strong>{{ tr('Teacher', '\u8001\u5e2b') }}: {{ item.teacher_name }}</strong><br />
-              {{ item.class_name }} | {{ subjectLabel(item) }}<br />
-              {{ roomLabel(item.room_name) }}
+              <span class="teacher-line">{{ tr('Teacher', '\u8001\u5e2b') }}: {{ item.teacher_name }}</span>
+              <strong class="lesson-line">{{ item.class_name }} | {{ subjectLabel(item) }}</strong>
+              <span class="room-line">{{ roomLabel(item.room_name) }}</span>
             </div>
           </td>
         </tr>
@@ -88,6 +88,9 @@ export default {
     },
     periodName(item) {
       return item.period_name || item.period || '';
+    },
+    periodRowClass(periodNumber) {
+      return [3, 4, 7, 8, 11, 12].includes(periodNumber) ? 'period-row-blue' : 'period-row-purple';
     },
     cellKey(item) {
       return [item.teacher_id || item.teacher_name, this.periodName(item), item.class_name, item.subject_name || item.subject].join('-');
@@ -161,16 +164,49 @@ h1 {
   font-weight: 800;
 }
 
+.timetable tbody tr.period-row-purple th,
+.timetable tbody tr.period-row-purple td {
+  background-color: #eef4ff;
+  color: var(--text);
+}
+
+.timetable tbody tr.period-row-purple .teacher-line,
+.timetable tbody tr.period-row-purple .room-line {
+  color: #64748b;
+}
+
+.timetable tbody tr.period-row-purple .cell-entry + .cell-entry {
+  border-top-color: #64748b;
+}
+
+.timetable tbody tr.period-row-purple .red-entry {
+  background-color: #eef4ff;
+}
+
+.timetable tbody tr.period-row-blue th,
+.timetable tbody tr.period-row-blue td {
+  background-color: #ffffff;
+}
+
 .cell-entry {
-  background-color: #eef6ff;
-  margin-bottom: 6px;
-  padding: 7px 4px;
-  border-radius: 4px;
+  background-color: transparent;
+  padding: 8px 4px;
   line-height: 1.35;
 }
 
-.cell-entry:last-child {
-  margin-bottom: 0;
+.cell-entry + .cell-entry {
+  border-top: 1px dashed #64748b;
+}
+
+.teacher-line,
+.lesson-line,
+.room-line {
+  display: block;
+}
+
+.teacher-line,
+.room-line {
+  color: #64748b;
 }
 
 .red-entry {
