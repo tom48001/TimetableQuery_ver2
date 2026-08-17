@@ -4,6 +4,8 @@ import passport from './auth/auth.js';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import authRoutes from './routes/authRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
@@ -32,6 +34,10 @@ if (missingEnv.length > 0) {
 }
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const clientDistPath = path.resolve(__dirname, '../../client/dist');
 
 // Database connection
 app.use(session({
@@ -71,4 +77,14 @@ app.use('/api/nominations', nominationAdminRoutes);
 app.use('/api/import', importRoutes);
 
 // Server
+app.use(express.static(clientDistPath));
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
+
 app.listen(3000, () => console.log('Server running on port 3000'));

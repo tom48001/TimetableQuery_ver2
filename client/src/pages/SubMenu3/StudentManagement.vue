@@ -220,8 +220,8 @@ export default {
     },
     pageRangeLabel() {
       if (!this.filteredStudents.length) return this.tr('No students', '沒有學生');
-      const start = (this.currentPage - 1) * this.pageSize + 1;
-      const end = Math.min(start + this.pageSize - 1, this.filteredStudents.length);
+      // const start = (this.currentPage - 1) * this.pageSize + 1;
+      // const end = Math.min(start + this.pageSize - 1, this.filteredStudents.length);
     },
     pageItems() {
       const pages = [];
