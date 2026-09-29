@@ -22,16 +22,17 @@ CREATE TABLE user (
     user_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255),
-    role ENUM('teacher', 'staff', 'manager') DEFAULT 'teacher',
-    permissions TEXT NULL
+    role ENUM('teacher', 'subject_head', 'staff', 'manager') DEFAULT 'teacher',
+    permissions TEXT NULL,
+    subject_head_subject_id BIGINT NULL
 );
 
 -- 老師表（可直接用user_id）
 CREATE TABLE teacher (
     teacher_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT UNIQUE NOT NULL,
+    user_id BIGINT UNIQUE NULL,
     teacher_name VARCHAR(100) NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE SET NULL
 );
 ALTER TABLE teacher ADD COLUMN teacher_code VARCHAR(50) UNIQUE;
 ALTER TABLE teacher ADD COLUMN status ENUM('active','inactive') DEFAULT 'active';
@@ -64,7 +65,8 @@ CREATE TABLE class (
 CREATE TABLE subject (
     subject_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     subject_name VARCHAR(255) NOT NULL,
-    is_elective BOOLEAN DEFAULT FALSE -- 是否選修科目
+    is_elective BOOLEAN DEFAULT FALSE, -- 是否選修科目
+    is_nominatable BOOLEAN NOT NULL DEFAULT TRUE -- 是否可作最佳學習態度提名
 );
 
 -- 學生表（多對多選修科目）
@@ -157,10 +159,29 @@ CREATE TABLE IF NOT EXISTS learning_goal_record (
     teacher_id BIGINT NOT NULL,
     student_id BIGINT NOT NULL,
     completed_goals INT NOT NULL DEFAULT 0,
-    UNIQUE KEY unique_learning_goal_record (teacher_id, student_id),
+    semester ENUM('first','second') NOT NULL DEFAULT 'first',
+    UNIQUE KEY unique_learning_goal_record_semester (teacher_id, student_id, semester),
     FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS learning_goal_reward_rule (
+    rule_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    min_goals INT NOT NULL,
+    max_goals INT NOT NULL,
+    award_name VARCHAR(100) NOT NULL,
+    has_prize BOOLEAN NOT NULL DEFAULT FALSE,
+    merit_offset_count INT NOT NULL DEFAULT 0,
+    display_order INT NOT NULL DEFAULT 0
+);
+
+INSERT INTO learning_goal_reward_rule
+    (min_goals, max_goals, award_name, has_prize, merit_offset_count, display_order)
+VALUES
+    (2, 2, '紀念品', FALSE, 0, 1),
+    (3, 4, '銅獎', TRUE, 1, 2),
+    (5, 6, '銀獎', TRUE, 1, 3),
+    (7, 8, '金獎', TRUE, 2, 4);
 
 CREATE TABLE BLA (
     BLA_id BIGINT AUTO_INCREMENT PRIMARY KEY,

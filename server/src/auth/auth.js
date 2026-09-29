@@ -86,6 +86,28 @@ export function ensureJWT(req, res, next) {
   }
 }
 
+export async function ensureTeacherIdentity(req, res, next) {
+  try {
+    const [teachers] = await pool.query(
+      'SELECT teacher_id FROM teacher WHERE user_id = ? LIMIT 1',
+      [req.user.id]
+    );
+
+    if (!teachers.length) {
+      return res.status(403).json({
+        code: 'TEACHER_PROFILE_REQUIRED',
+        error: 'The signed-in account is not linked to a teacher profile.'
+      });
+    }
+
+    req.user.teacher_id = teachers[0].teacher_id;
+    return next();
+  } catch (error) {
+    console.error('Failed to resolve teacher identity:', error);
+    return res.status(500).json({ error: 'Failed to resolve teacher identity.' });
+  }
+}
+
 export function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated && req.isAuthenticated()) {
     return next();

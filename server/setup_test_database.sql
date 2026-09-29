@@ -8,17 +8,18 @@ CREATE TABLE user (
   user_name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255),
-  role ENUM('teacher', 'staff', 'manager') DEFAULT 'teacher',
-  permissions TEXT NULL
+  role ENUM('teacher', 'subject_head', 'staff', 'manager') DEFAULT 'teacher',
+  permissions TEXT NULL,
+  subject_head_subject_id BIGINT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE teacher (
   teacher_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  user_id BIGINT UNIQUE NOT NULL,
+  user_id BIGINT UNIQUE NULL,
   teacher_name VARCHAR(100) NOT NULL,
   teacher_code VARCHAR(50) UNIQUE,
   status ENUM('active', 'inactive') DEFAULT 'active',
-  FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE class (
@@ -32,7 +33,28 @@ CREATE TABLE subject (
   subject_name VARCHAR(255) NOT NULL UNIQUE,
   subject_name_zh VARCHAR(255) NULL,
   subject_name_en VARCHAR(255) NULL,
-  is_elective BOOLEAN DEFAULT FALSE
+  is_elective BOOLEAN DEFAULT FALSE,
+  is_nominatable BOOLEAN NOT NULL DEFAULT TRUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE system_settings (
+  setting_key VARCHAR(100) PRIMARY KEY,
+  setting_value VARCHAR(255) NOT NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO system_settings (setting_key, setting_value) VALUES
+('academic_year', '2026-2027'),
+('current_semester', '1');
+
+CREATE TABLE junior_subject_allocation_rule (
+  rule_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  grade ENUM('F1', 'F2', 'F3') NOT NULL,
+  semester TINYINT NOT NULL,
+  subject_id BIGINT NOT NULL,
+  class_group ENUM('odd', 'even', 'all', 'disabled') NOT NULL DEFAULT 'disabled',
+  UNIQUE KEY unique_junior_allocation (grade, semester, subject_id),
+  FOREIGN KEY (subject_id) REFERENCES subject(subject_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE room (
@@ -63,6 +85,8 @@ CREATE TABLE student (
   x1_subject_id BIGINT NULL,
   x2_subject_id BIGINT NULL,
   x3_subject_id BIGINT NULL,
+  elective_review_required BOOLEAN NOT NULL DEFAULT FALSE,
+  elective_review_note VARCHAR(255) NULL,
   INDEX idx_student_class_id (class_id),
   FOREIGN KEY (class_id) REFERENCES class(class_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -151,10 +175,29 @@ CREATE TABLE learning_goal_record (
   teacher_id BIGINT NOT NULL,
   student_id BIGINT NOT NULL,
   completed_goals INT NOT NULL DEFAULT 0,
-  UNIQUE KEY unique_learning_goal_record (teacher_id, student_id),
+  semester ENUM('first','second') NOT NULL DEFAULT 'first',
+  UNIQUE KEY unique_learning_goal_record_semester (teacher_id, student_id, semester),
   FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
   FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE learning_goal_reward_rule (
+  rule_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  min_goals INT NOT NULL,
+  max_goals INT NOT NULL,
+  award_name VARCHAR(100) NOT NULL,
+  has_prize BOOLEAN NOT NULL DEFAULT FALSE,
+  merit_offset_count INT NOT NULL DEFAULT 0,
+  display_order INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO learning_goal_reward_rule
+  (min_goals, max_goals, award_name, has_prize, merit_offset_count, display_order)
+VALUES
+  (2, 2, '紀念品', FALSE, 0, 1),
+  (3, 4, '銅獎', TRUE, 1, 2),
+  (5, 6, '銀獎', TRUE, 1, 3),
+  (7, 8, '金獎', TRUE, 2, 4);
 
 CREATE TABLE import_schedule (
   import_id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -244,14 +287,9 @@ INSERT INTO subject (subject_name, is_elective) VALUES
 ('Economics', TRUE);
 
 INSERT INTO room (room_name) VALUES
-('101 Visual Arts Room'), ('102 Music Room'), ('202 1M Classroom'), ('203 1A Classroom'),
-('204 1R Classroom'), ('205 1Y Classroom'), ('302 2M Classroom'), ('303 2A Classroom'),
-('304 2R Classroom'), ('305 2Y Classroom'), ('401 Classroom'), ('402 3M Classroom'),
-('403 3A Classroom'), ('404 3R Classroom'), ('405 3Y Classroom'), ('413 CAL Room'),
-('501 Classroom'), ('502 4M Classroom'), ('503 4A Classroom'), ('504 4R Classroom'),
-('505 4Y Classroom'), ('509 Geography Room'), ('602 5Y Classroom'), ('603 5R Classroom'),
-('604 5A Classroom'), ('605 5M Classroom'), ('702 6M Classroom'), ('703 6A Classroom'),
-('704 6R Classroom'), ('705 6Y Classroom');
+('101'), ('102'), ('202'), ('203'), ('204'), ('205'), ('302'), ('303'), ('304'), ('305'),
+('401'), ('402'), ('403'), ('404'), ('405'), ('413'), ('501'), ('502'), ('503'), ('504'),
+('505'), ('509'), ('602'), ('603'), ('604'), ('605'), ('702'), ('703'), ('704'), ('705');
 
 INSERT INTO period (period_name, start_time, end_time) VALUES
 ('Period 1', '08:30:00', '09:05:00'),
@@ -263,7 +301,7 @@ INSERT INTO period (period_name, start_time, end_time) VALUES
 ('Period 7', '13:30:00', '14:05:00'),
 ('Period 8', '14:05:00', '14:40:00'),
 ('Period 9', '14:40:00', '15:15:00'),
-('Period 10', '15:25:00', '16:00:00'),
+('Period 10', '15:15:00', '16:00:00'),
 ('Period 11', '14:50:00', '15:25:00'),
 ('Period 12', '15:25:00', '16:00:00');
 
@@ -355,7 +393,7 @@ SET
     WHEN 'BIO-B3' THEN '生物'
     WHEN '企業、會計與財務概論' THEN '企業、會計與財務概論'
     WHEN 'BAFS' THEN '企業、會計與財務概論'
-    WHEN 'BAFS-B2' THEN '企業、會計與財務概論'
+    WHEN 'BAFS-B2' THEN '企業、會計與財務概論-2'
     WHEN '英語文學' THEN '英語文學'
     WHEN 'English Literature' THEN '英語文學'
     WHEN '化學' THEN '化學'
@@ -454,7 +492,7 @@ SET
     WHEN 'BIO-B3' THEN 'Biology'
     WHEN '企業、會計與財務概論' THEN 'Business, Accounting and Financial Studies'
     WHEN 'BAFS' THEN 'Business, Accounting and Financial Studies'
-    WHEN 'BAFS-B2' THEN 'Business, Accounting and Financial Studies'
+    WHEN 'BAFS-B2' THEN 'Business, Accounting and Financial Studies-2'
     WHEN '英語文學' THEN 'English Literature'
     WHEN 'English Literature' THEN 'English Literature'
     WHEN '化學' THEN 'Chemistry'
@@ -526,6 +564,56 @@ SET
     WHEN 'SUPP4-B3' THEN 'Support Class 4'
     ELSE COALESCE(subject_name_en, subject_name)
   END
+WHERE subject_id IS NOT NULL;
+
+
+-- Distinguish timetable blocks that share the same base subject name.
+UPDATE subject
+SET subject_name_zh = CASE
+      WHEN RIGHT(TRIM(subject_name_zh), 2) = CONCAT('-', RIGHT(TRIM(subject_name), 1))
+        THEN subject_name_zh
+      ELSE CONCAT(TRIM(subject_name_zh), '-', RIGHT(TRIM(subject_name), 1))
+    END,
+    subject_name_en = CASE
+      WHEN RIGHT(TRIM(subject_name_en), 2) = CONCAT('-', RIGHT(TRIM(subject_name), 1))
+        THEN subject_name_en
+      ELSE CONCAT(TRIM(subject_name_en), '-', RIGHT(TRIM(subject_name), 1))
+    END
+WHERE TRIM(subject_name) REGEXP '-B[123]$'
+  AND subject_name_zh IS NOT NULL
+  AND subject_name_en IS NOT NULL;
+
+
+-- Distinguish non-B timetable codes that share the same translated name.
+UPDATE subject
+SET subject_name_zh = CASE TRIM(subject_name)
+      WHEN 'E&RE' THEN '倫理與宗教（E&RE）'
+      WHEN 'RE' THEN '倫理與宗教（RE）'
+      WHEN 'RS' THEN '倫理與宗教（RS）'
+      WHEN 'CS' THEN '綜合科學（CS）'
+      WHEN 'SCJ' THEN '綜合科學（SCJ）'
+      WHEN 'SCJb' THEN '綜合科學（SCJb）'
+      WHEN 'SCJc' THEN '綜合科學（SCJc）'
+      ELSE subject_name_zh
+    END,
+    subject_name_en = CASE TRIM(subject_name)
+      WHEN 'E&RE' THEN 'Ethics and Religious Education (E&RE)'
+      WHEN 'RE' THEN 'Ethics and Religious Education (RE)'
+      WHEN 'RS' THEN 'Ethics and Religious Education (RS)'
+      WHEN 'CS' THEN 'Integrated Science (CS)'
+      WHEN 'SCJ' THEN 'Integrated Science (SCJ)'
+      WHEN 'SCJb' THEN 'Integrated Science (SCJb)'
+      WHEN 'SCJc' THEN 'Integrated Science (SCJc)'
+      ELSE subject_name_en
+    END
+WHERE TRIM(subject_name) IN ('E&RE', 'RE', 'RS', 'CS', 'SCJ', 'SCJb', 'SCJc');
+
+UPDATE subject
+SET is_nominatable = CASE
+  WHEN TRIM(subject_name) IN ('班主任課', 'Career_Planning')
+    OR TRIM(subject_name) LIKE 'SUPP%' THEN FALSE
+  ELSE TRUE
+END
 WHERE subject_id IS NOT NULL;
 
 UPDATE room

@@ -8,8 +8,31 @@ import {
   hasPermission
 } from '../auth/permissions.js';
 
-const ALL_ROLES = ['teacher', 'staff', 'manager'];
-const STAFF_MANAGED_ROLES = ['teacher', 'staff'];
+const ALL_ROLES = ['teacher', 'subject_head', 'staff', 'manager'];
+const STAFF_MANAGED_ROLES = ['teacher', 'subject_head', 'staff'];
+let accountDeletionSchemaReady = false;
+
+async function ensureAccountDeletionSchema() {
+  if (accountDeletionSchemaReady) return;
+  const [constraints] = await db.query(`
+    SELECT CONSTRAINT_NAME, DELETE_RULE
+    FROM information_schema.REFERENTIAL_CONSTRAINTS
+    WHERE CONSTRAINT_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'teacher'
+      AND REFERENCED_TABLE_NAME = 'user'
+  `);
+  const current = constraints[0];
+  if (current && current.DELETE_RULE !== 'SET NULL') {
+    await db.query(`ALTER TABLE teacher DROP FOREIGN KEY \`${current.CONSTRAINT_NAME}\``);
+  }
+  await db.query('ALTER TABLE teacher MODIFY COLUMN user_id BIGINT NULL');
+  if (!current || current.DELETE_RULE !== 'SET NULL') {
+    await db.query(
+      'ALTER TABLE teacher ADD CONSTRAINT fk_teacher_user_account FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE SET NULL'
+    );
+  }
+  accountDeletionSchemaReady = true;
+}
 
 function actorRole(req) {
   return req.user?.role ? req.user.role.trim().toLowerCase() : '';
@@ -106,7 +129,8 @@ export const getAllTeachers = async (req, res) => {
     const roles = allowedRolesFor(req);
     const placeholders = roles.map(() => '?').join(', ');
     const [teachers] = await db.query(
-      `SELECT user_id, user_name, email, role, permissions FROM user WHERE role IN (${placeholders}) ORDER BY user_name`,
+      `SELECT user_id, user_name, email, role, permissions, subject_head_subject_id
+       FROM user WHERE role IN (${placeholders}) ORDER BY user_name`,
       roles
     );
     res.json(teachers.map(user => ({
@@ -124,18 +148,19 @@ export const createTeacher = async (req, res) => {
 
   try {
     await ensurePermissionsColumn();
-    const { user_name, email, password, role, permissions } = req.body;
+    const { user_name, email, password, role, permissions, subject_head_subject_id } = req.body;
     const normalizedRole = normalizeRole(role, req);
 
-    if (!user_name || !email || !password || !normalizedRole) {
+    const headSubjectId = normalizedRole === 'subject_head' ? Number(subject_head_subject_id) : null;
+    if (!user_name || !email || !password || !normalizedRole || (normalizedRole === 'subject_head' && !headSubjectId)) {
       return res.status(400).json({ error: 'Invalid user data or role.' });
     }
 
     const hashed = await bcrypt.hash(password, 10);
     const permissionText = sanitizePermissions(permissions, normalizedRole, req);
     const [result] = await db.query(
-      'INSERT INTO user (user_name, email, password, role, permissions) VALUES (?, ?, ?, ?, ?)',
-      [user_name, email, hashed, normalizedRole, permissionText]
+      'INSERT INTO user (user_name, email, password, role, permissions, subject_head_subject_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [user_name, email, hashed, normalizedRole, permissionText, headSubjectId]
     );
     await syncTeacherProfile(result.insertId, user_name, email, normalizedRole, permissionText);
     res.json({ message: 'User created successfully.' });
@@ -149,15 +174,17 @@ export const updateTeacher = async (req, res) => {
   if (!canManageUsers(req)) return res.status(403).json({ error: 'Permission denied.' });
 
   const { id } = req.params;
-  const { user_name, email, role, newPassword, permissions } = req.body;
+  const { user_name, email, role, newPassword, permissions, subject_head_subject_id } = req.body;
   const normalizedRole = normalizeRole(role, req);
+  const headSubjectId = normalizedRole === 'subject_head' ? Number(subject_head_subject_id) : null;
 
-  if (!user_name || !email || !normalizedRole) {
+  if (!user_name || !email || !normalizedRole || (normalizedRole === 'subject_head' && !headSubjectId)) {
     return res.status(400).json({ error: 'Invalid user data or role.' });
   }
 
   try {
     await ensurePermissionsColumn();
+    await ensureAccountDeletionSchema();
     const [existingRows] = await db.query('SELECT role FROM user WHERE user_id = ?', [id]);
     if (!existingRows.length) return res.status(404).json({ error: 'User not found.' });
 
@@ -172,11 +199,11 @@ export const updateTeacher = async (req, res) => {
 
     if (newPassword) {
       const hashed = await bcrypt.hash(newPassword, 10);
-      query = 'UPDATE user SET user_name = ?, email = ?, role = ?, permissions = ?, password = ? WHERE user_id = ?';
-      params = [user_name, email, normalizedRole, permissionText, hashed, id];
+      query = 'UPDATE user SET user_name = ?, email = ?, role = ?, permissions = ?, subject_head_subject_id = ?, password = ? WHERE user_id = ?';
+      params = [user_name, email, normalizedRole, permissionText, headSubjectId, hashed, id];
     } else {
-      query = 'UPDATE user SET user_name = ?, email = ?, role = ?, permissions = ? WHERE user_id = ?';
-      params = [user_name, email, normalizedRole, permissionText, id];
+      query = 'UPDATE user SET user_name = ?, email = ?, role = ?, permissions = ?, subject_head_subject_id = ? WHERE user_id = ?';
+      params = [user_name, email, normalizedRole, permissionText, headSubjectId, id];
     }
 
     await db.query(query, params);
@@ -217,7 +244,7 @@ export const getTeacherById = async (req, res) => {
   try {
     await ensurePermissionsColumn();
     const [rows] = await db.query(
-      'SELECT user_id, user_name, email, role, permissions FROM user WHERE user_id = ?',
+      'SELECT user_id, user_name, email, role, permissions, subject_head_subject_id FROM user WHERE user_id = ?',
       [id]
     );
     if (!rows.length) return res.status(404).json({ error: 'User not found.' });

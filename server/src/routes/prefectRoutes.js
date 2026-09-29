@@ -1,5 +1,5 @@
 import express from 'express';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureJWT, ensureTeacherIdentity } from '../auth/auth.js';
 import { requirePermission } from '../auth/permissions.js';
 import {
   deletePrefect,
@@ -12,9 +12,9 @@ const router = express.Router();
 router.use(ensureJWT);
 router.use(requirePermission('nominations'));
 
-router.post('/insert', insertPrefect);
-router.delete('/delete', deletePrefect);
+router.post('/insert', ensureTeacherIdentity, insertPrefect);
+router.delete('/delete', ensureTeacherIdentity, deletePrefect);
 router.get('/results', getPrefectResults);
-router.get('/students', getSelectPrefect);
+router.get('/students', ensureTeacherIdentity, getSelectPrefect);
 
 export default router;

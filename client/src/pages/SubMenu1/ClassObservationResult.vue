@@ -36,6 +36,7 @@
 <script>
 import axios from 'axios';
 import { subjectLabel as formatSubjectLabel, roomLabel as formatRoomLabel } from '../../utils/timetableLabels';
+import { timetablePeriodLabel } from '../../utils/timetablePeriodLabel';
 
 export default {
   data() {
@@ -57,7 +58,7 @@ export default {
         this.periodLabel(7, '13:30-14:05'),
         this.periodLabel(8, '14:05-14:40'),
         this.periodLabel(9, '14:40-15:15', '14:50-15:25'),
-        this.periodLabel(10, '15:25-16:00', '15:25-16:00')
+        this.periodLabel(10, '15:15-16:00', '15:25-16:00')
       ];
     }
   },
@@ -82,10 +83,8 @@ export default {
       };
       return labels[day] || day;
     },
-    periodLabel(period, time, electiveTime) {
-      const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
-      const elective = electiveTime ? '<br><span class="red-time">' + this.tr('Elective', '選修') + ' ' + electiveTime + '</span>' : '';
-      return label + '<br><small>' + time + elective + '</small>';
+    periodLabel(period, time, alternateTime) {
+      return timetablePeriodLabel(this.$lang.locale, period, time, alternateTime);
     },
     periodName(item) {
       return item.period_name || item.period || '';
@@ -97,11 +96,16 @@ export default {
       return [item.teacher_id || item.teacher_name, this.periodName(item), item.class_name, item.subject_id || item.subject_name].join('-');
     },
     async fetchSchedule() {
+      const observers = this.$route.query.observers;
+      const target = this.$route.query.target;
+      const observerIds = Array.isArray(observers) ? observers : String(observers || '').split(',').filter(Boolean);
+      if (!observerIds.length || !target) {
+        this.$router.replace({ name: 'ClassObservation' });
+        return;
+      }
+
       try {
         const token = localStorage.getItem('token');
-        const observers = this.$route.query.observers;
-        const target = this.$route.query.target;
-        const observerIds = Array.isArray(observers) ? observers : String(observers || '').split(',').filter(Boolean);
         const res = await axios.post('/api/observation/observe/schedule', { observerIds, targetId: target }, { headers: { Authorization: `Bearer ${token}` } });
         this.schedule = res.data;
       } catch (err) {

@@ -56,6 +56,13 @@
               <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
             </select>
           </label>
+          <label v-if="newTeacher.role === 'subject_head'">
+            <span>{{ tr('Managed subject', '主管科目') }}</span>
+            <select v-model.number="newTeacher.subject_head_subject_id">
+              <option :value="null">{{ tr('Select subject', '選擇科目') }}</option>
+              <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">{{ subjectLabel(subject) }}</option>
+            </select>
+          </label>
           <label>
             <span>{{ tr('Password', '密碼') }}</span>
             <input v-model="newTeacher.password" type="password" placeholder="••••••••" />
@@ -90,7 +97,7 @@
                 <th class="name-col">{{ tr('Name', '姓名') }}</th>
                 <th class="email-col">Email</th>
                 <th class="role-col">Role</th>
-                <th>{{ tr('Permissions', '權限') }}</th>
+                <th class="permission-col">{{ tr('Permissions', '權限') }}</th>
                 <th class="password-col">{{ tr('New password', '新密碼') }}</th>
                 <th class="actions-col">{{ tr('Actions', '操作') }}</th>
               </tr>
@@ -104,20 +111,28 @@
                     <select v-model="teacher.role" @change="applyDefaultPermissions(teacher)">
                       <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
                     </select>
+                    <select v-if="teacher.role === 'subject_head'" v-model.number="teacher.subject_head_subject_id" class="subject-head-select">
+                      <option :value="null">{{ tr('Select subject', '選擇科目') }}</option>
+                      <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">{{ subjectLabel(subject) }}</option>
+                    </select>
                   </td>
                   <td class="permission-cell">
-                    <span v-if="teacher.role === 'manager'" class="manager-permission-note table-note">{{ tr('Manager has all permissions', 'Manager 已有全部權限') }}</span>
-                    <label v-for="permission in visiblePermissionOptions" :key="permission.key" class="permission-toggle table-toggle" :class="{ active: teacher.permissions[permission.key], locked: teacher.role === 'manager' }" :title="permission.label">
-                      <input type="checkbox" v-model="teacher.permissions[permission.key]" :disabled="teacher.role === 'manager'" />
-                      <span class="ui-icon permission-icon" :class="permission.iconClass"></span>
-                      <span>{{ permission.shortLabel }}</span>
-                    </label>
+                    <div class="permission-list">
+                      <span v-if="teacher.role === 'manager'" class="manager-permission-note table-note">{{ tr('Manager has all permissions', 'Manager 已有全部權限') }}</span>
+                      <label v-for="permission in visiblePermissionOptions" :key="permission.key" class="permission-toggle table-toggle" :class="{ active: teacher.permissions[permission.key], locked: teacher.role === 'manager' }" :title="permission.label">
+                        <input type="checkbox" v-model="teacher.permissions[permission.key]" :disabled="teacher.role === 'manager'" />
+                        <span class="ui-icon permission-icon" :class="permission.iconClass"></span>
+                        <span>{{ permission.shortLabel }}</span>
+                      </label>
+                    </div>
                   </td>
                   <td><input v-model="teacher.newPassword" :placeholder="tr('Optional', '可留空')" /></td>
                   <td class="actions-cell">
-                    <button class="primary-btn small" @click="saveTeacherRow(teacher)"><span class="ui-icon icon-save"></span>{{ tr('Save', '儲存') }}</button>
-                    <button class="secondary-btn small" @click="cancelEditTeacher">{{ tr('Cancel', '取消') }}</button>
-                    <button class="icon-btn delete-icon-btn" :aria-label="tr('Delete', '刪除')" :title="tr('Delete', '刪除')" @click="deleteTeacher(teacher.user_id)"><span class="ui-icon icon-delete"></span></button>
+                    <div class="action-buttons">
+                      <button class="primary-btn small" @click="saveTeacherRow(teacher)"><span class="ui-icon icon-save"></span>{{ tr('Save', '儲存') }}</button>
+                      <button class="secondary-btn small" @click="cancelEditTeacher">{{ tr('Cancel', '取消') }}</button>
+                      <button class="icon-btn delete-icon-btn" :aria-label="tr('Delete', '刪除')" :title="tr('Delete', '刪除')" @click="deleteTeacher(teacher.user_id)"><span class="ui-icon icon-delete"></span></button>
+                    </div>
                   </td>
                 </template>
                 <template v-else>
@@ -129,25 +144,30 @@
                   </td>
                   <td>
                     <span class="role-badge" :class="`role-${teacher.role}`">{{ roleLabel(teacher.role) }}</span>
+                    <small v-if="teacher.role === 'subject_head'" class="subject-head-name">{{ subjectName(teacher.subject_head_subject_id) }}</small>
                   </td>
                   <td class="permission-cell readonly">
-                    <span v-if="teacher.role === 'manager'" class="manager-permission-note table-note">{{ tr('Manager has all permissions', 'Manager 已有全部權限') }}</span>
-                    <span
-                      v-for="permission in visiblePermissionOptions"
-                      :key="permission.key"
-                      class="permission-toggle table-toggle readonly-chip"
-                      :class="{ active: permissionEnabled(teacher, permission.key), inactive: !permissionEnabled(teacher, permission.key) }"
-                      :title="permission.label"
-                      :aria-label="permission.label"
-                    >
-                      <span class="ui-icon permission-icon" :class="permission.iconClass"></span>
-                      <span>{{ permission.shortLabel }}</span>
-                    </span>
+                    <div class="permission-list">
+                      <span v-if="teacher.role === 'manager'" class="manager-permission-note table-note">{{ tr('Manager has all permissions', 'Manager 已有全部權限') }}</span>
+                      <span
+                        v-for="permission in visiblePermissionOptions"
+                        :key="permission.key"
+                        class="permission-toggle table-toggle readonly-chip"
+                        :class="{ active: permissionEnabled(teacher, permission.key), inactive: !permissionEnabled(teacher, permission.key) }"
+                        :title="permission.label"
+                        :aria-label="permission.label"
+                      >
+                        <span class="ui-icon permission-icon" :class="permission.iconClass"></span>
+                        <span>{{ permission.shortLabel }}</span>
+                      </span>
+                    </div>
                   </td>
                   <td><span class="password-placeholder">••••••••</span></td>
                   <td class="actions-cell">
-                    <button class="icon-btn edit-icon-btn" :aria-label="tr('Edit', '編輯')" :title="tr('Edit', '編輯')" @click="startEditTeacher(teacher)"><span class="ui-icon icon-edit"></span></button>
-                    <button class="icon-btn delete-icon-btn" :aria-label="tr('Delete', '刪除')" :title="tr('Delete', '刪除')" @click="deleteTeacher(teacher.user_id)"><span class="ui-icon icon-delete"></span></button>
+                    <div class="action-buttons">
+                      <button class="icon-btn edit-icon-btn" :aria-label="tr('Edit', '編輯')" :title="tr('Edit', '編輯')" @click="startEditTeacher(teacher)"><span class="ui-icon icon-edit"></span></button>
+                      <button class="icon-btn delete-icon-btn" :aria-label="tr('Delete', '刪除')" :title="tr('Delete', '刪除')" @click="deleteTeacher(teacher.user_id)"><span class="ui-icon icon-delete"></span></button>
+                    </div>
                   </td>
                 </template>
               </tr>
@@ -185,6 +205,14 @@ const DEFAULT_PERMISSIONS = {
     manageStudents: false,
     importTimetable: false
   },
+  subject_head: {
+    timetable: true,
+    nominations: true,
+    changePassword: true,
+    manageUsers: false,
+    manageStudents: false,
+    importTimetable: false
+  },
   staff: {
     timetable: true,
     nominations: true,
@@ -208,6 +236,7 @@ export default {
   data() {
     return {
       teachers: [],
+      subjects: [],
       currentUserRole: 'teacher',
       searchText: '',
       selectedRole: '',
@@ -222,6 +251,7 @@ export default {
         email: '',
         password: '',
         role: 'teacher',
+        subject_head_subject_id: null,
         permissions: this.defaultPermissions('teacher')
       }
     };
@@ -230,6 +260,7 @@ export default {
     roleOptions() {
       const roles = [
         { value: 'teacher', label: 'Teacher' },
+        { value: 'subject_head', label: this.tr('Subject Head', '科主管') },
         { value: 'staff', label: 'Staff' }
       ];
       if (this.currentUserRole === 'manager') roles.push({ value: 'manager', label: 'Manager' });
@@ -343,6 +374,25 @@ export default {
       const match = this.roleOptions.find(option => option.value === role);
       return match ? match.label : role || '-';
     },
+    subjectLabel(subject) {
+      if (!subject) return '-';
+      return this.$lang.locale === 'en'
+        ? (subject.subject_name_en || subject.subject_name || subject.subject_name_zh)
+        : (subject.subject_name_zh || subject.subject_name || subject.subject_name_en);
+    },
+    subjectName(subjectId) {
+      return this.subjectLabel(this.subjects.find(subject =>
+        Number(subject.subject_id) === Number(subjectId) ||
+        (Array.isArray(subject.alias_subject_ids) && subject.alias_subject_ids.map(Number).includes(Number(subjectId)))
+      ));
+    },
+    canonicalSubjectId(subjectId) {
+      const subject = this.subjects.find(option =>
+        Number(option.subject_id) === Number(subjectId) ||
+        (Array.isArray(option.alias_subject_ids) && option.alias_subject_ids.map(Number).includes(Number(subjectId)))
+      );
+      return subject ? Number(subject.subject_id) : (Number(subjectId) || null);
+    },
     enabledPermissions(teacher) {
       return this.permissionOptions.filter(permission => teacher.permissions && teacher.permissions[permission.key]);
     },
@@ -432,12 +482,21 @@ export default {
         alert(message);
       }
     },
+    async fetchSubjects() {
+      try {
+        const res = await axios.get('/api/subjects/head-options', { headers: this.authHeaders() });
+        this.subjects = res.data || [];
+      } catch (error) {
+        this.subjects = [];
+      }
+    },
     async updateTeacher(teacher) {
       try {
         await axios.put(`/api/teachers/${teacher.user_id}`, {
           user_name: teacher.user_name,
           email: teacher.email,
           role: teacher.role,
+          subject_head_subject_id: teacher.role === 'subject_head' ? this.canonicalSubjectId(teacher.subject_head_subject_id) : null,
           permissions: teacher.permissions,
           newPassword: teacher.newPassword || null
         }, {
@@ -469,6 +528,7 @@ export default {
           email: '',
           password: '',
           role: 'teacher',
+          subject_head_subject_id: null,
           permissions: this.defaultPermissions('teacher')
         };
         this.fetchTeachers();
@@ -496,11 +556,12 @@ export default {
       }
     }
   },
-  mounted() {
+  async mounted() {
     this.loadCurrentUserRole();
     this.clearSearchAutofill();
     this.clearNewUserAutofill();
-    this.fetchTeachers();
+    await this.fetchSubjects();
+    await this.fetchTeachers();
   }
 };
 </script>
@@ -643,6 +704,7 @@ h1 {
   height: 100%;
   outline: 0;
   padding: 0;
+  text-align: center;
   width: 100%;
 }
 
@@ -925,7 +987,8 @@ table {
   background: #ffffff;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 1380px;
+  min-width: 1480px;
+  table-layout: fixed;
   width: 100%;
 }
 
@@ -935,8 +998,9 @@ td {
   border-right: 0 !important;
   border-bottom: 1px solid #edf2f7;
   border-top: 0;
+  box-sizing: border-box;
   color: #0b1c30;
-  padding: 24px 34px;
+  padding: 22px 18px;
   text-align: left;
   vertical-align: middle;
 }
@@ -948,6 +1012,7 @@ th {
   font-weight: 900;
   letter-spacing: 0.05em;
   height: 58px;
+  text-align: center;
   text-transform: uppercase;
 }
 
@@ -967,6 +1032,17 @@ tbody tr.editing-row {
   background: #f8f9ff;
 }
 
+.editing-row td input,
+.editing-row td select {
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #bccbd5;
+  border-radius: 8px;
+  height: 42px;
+  padding: 0 12px;
+  width: 100%;
+}
+
 td input,
 td select {
   background: transparent;
@@ -983,30 +1059,37 @@ td select:focus {
 }
 
 .name-col {
-  width: 260px;
+  width: 250px;
 }
 
 .email-col {
-  width: 320px;
+  width: 300px;
 }
 
 .role-col {
-  width: 180px;
+  width: 150px;
 }
 
 .email-col,
 .role-col,
+tbody td:first-child,
 tbody td:nth-child(2),
-tbody td:nth-child(3) {
+tbody td:nth-child(3),
+tbody td:nth-child(5) {
+  text-align: center;
+}
+
+tbody td:first-child input,
+tbody td:nth-child(5) input {
   text-align: center;
 }
 
 .password-col {
-  width: 180px;
+  width: 170px;
 }
 
 .actions-col {
-  width: 150px;
+  width: 220px;
 }
 
 .user-name-text {
@@ -1014,6 +1097,8 @@ tbody td:nth-child(3) {
   font-size: 18px;
   font-weight: 900;
   line-height: 1.2;
+  padding: 4px 6px;
+  text-align: center;
 }
 
 .muted-text {
@@ -1044,6 +1129,22 @@ tbody td:nth-child(3) {
   color: #004f50;
 }
 
+.role-subject_head {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.subject-head-select,
+.subject-head-name {
+  display: block;
+  margin-top: 8px;
+}
+
+.subject-head-name {
+  color: #64748b;
+  font-weight: 700;
+}
+
 .role-staff {
   background: #d1e5f6;
   color: #364956;
@@ -1054,22 +1155,26 @@ tbody td:nth-child(3) {
   color: #191c1d;
 }
 
+.permission-col,
 .permission-cell {
+  width: 390px;
+}
+
+.permission-list {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  min-width: 260px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  justify-content: center;
+  min-height: 42px;
 }
 
 .table-toggle {
+  font-size: 13px;
+  gap: 6px;
   justify-content: center;
-  min-height: 24px;
-  padding: 0 8px;
-}
-
-.permission-cell.readonly {
-  align-items: center;
+  min-height: 32px;
+  padding: 0 6px;
 }
 
 .readonly-chip {
@@ -1102,11 +1207,46 @@ tbody td:nth-child(3) {
 }
 
 .actions-cell {
+  width: 220px;
+}
+
+.actions-col,
+.actions-cell {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+}
+
+.actions-col {
+  background: #eff4ff;
+  z-index: 3;
+}
+
+.actions-cell {
+  background: #ffffff;
+  box-shadow: -8px 0 12px -12px rgba(11, 28, 48, 0.55);
+}
+
+tbody tr:hover .actions-cell {
+  background: #f1f5f9;
+}
+
+tbody tr.editing-row .actions-cell {
+  background: #f8f9ff;
+}
+
+.action-buttons {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  justify-content: center;
   white-space: nowrap;
+}
+
+.editing-row td {
+  padding-bottom: 18px;
+  padding-top: 18px;
 }
 
 .icon-btn {

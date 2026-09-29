@@ -55,11 +55,19 @@ router.post('/login', async (req, res) => {
     const role = user.role ? user.role.trim().toLowerCase() : 'teacher';
     const permissions = permissionsForUser(user);
     const token = jwt.sign(
-      { id: user.user_id, role, user_name: user.user_name, email: user.email, permissions },
+      {
+        id: user.user_id,
+        role,
+        user_name: user.user_name,
+        email: user.email,
+        permissions,
+        subject_head_subject_id: user.subject_head_subject_id || null
+      },
       process.env.JWT_SECRET,
       { expiresIn: '2h' }
     );
-    const { password: passwordHash, ...safeUser } = user;
+    const safeUser = { ...user };
+    delete safeUser.password;
     safeUser.permissions = permissions;
 
     return res.json({ message: MESSAGES.loginOk, user: safeUser, token });
@@ -82,7 +90,14 @@ router.get('/google/callback',
     const role = req.user.role ? req.user.role.trim().toLowerCase() : 'teacher';
     const permissions = permissionsForUser(req.user);
     const token = jwt.sign(
-      { id: req.user.user_id, role, user_name: req.user.user_name, email: req.user.email, permissions },
+      {
+        id: req.user.user_id,
+        role,
+        user_name: req.user.user_name,
+        email: req.user.email,
+        permissions,
+        subject_head_subject_id: req.user.subject_head_subject_id || null
+      },
       process.env.JWT_SECRET,
       { expiresIn: '2h' }
     );

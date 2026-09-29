@@ -5,7 +5,7 @@
         <div>
           <h1>{{ tr('Teacher Timetable', '\u8001\u5e2b\u4e0a\u8ab2\u6642\u9593\u8868') }}</h1>
         </div>
-        <span class="count-badge">{{ selectedTeacherId.length }} {{ tr('teachers', '\u8001\u5e2b') }}</span>
+        <span class="count-badge">{{ selectedCountLabel }}</span>
       </header>
 
       <div class="toolbar">
@@ -20,13 +20,17 @@
 
         <div class="toolbar-actions">
           <button type="button" class="secondary-btn" @click="selectVisibleTeachers">
-            {{ tr('Select visible', '\u9078\u64c7\u76ee\u524d\u986f\u793a') }}
+            {{ tr('Select all visible', '\u5168\u9078\u76ee\u524d\u986f\u793a') }}
           </button>
           <button type="button" class="secondary-btn" @click="clearSelection">
             {{ tr('Clear', '\u6e05\u9664') }}
           </button>
         </div>
       </div>
+
+      <p v-if="searchText && filteredTeachers.length" class="search-feedback">
+        {{ searchResultLabel }}
+      </p>
 
       <div class="selected-strip" v-if="selectedTeachers.length">
         <button
@@ -46,24 +50,26 @@
           :key="teacher.teacher_id"
           class="teacher-row"
           :class="{ selected: selectedTeacherId.includes(teacher.teacher_id), empty: !lessonCount(teacher) }"
+          :title="!lessonCount(teacher) ? tr('This teacher does not currently have timetable data', '\u6b64\u8001\u5e2b\u66ab\u672a\u6709\u8ab2\u8868\u8cc7\u6599') : ''"
         >
           <input
             type="checkbox"
             :value="teacher.teacher_id"
             v-model="selectedTeacherId"
+            :disabled="!lessonCount(teacher)"
           />
-          <span class="teacher-name">{{ teacher.teacher_name }}</span>
+          <span class="teacher-name" :title="teacher.teacher_name">{{ teacher.teacher_name }}</span>
           <span class="lesson-badge" :class="{ empty: !lessonCount(teacher) }">
             {{ lessonCountLabel(teacher) }}
           </span>
         </label>
       </div>
 
-      <p v-else class="empty-message">{{ tr('No teachers found', '\u627e\u4e0d\u5230\u8001\u5e2b') }}</p>
+      <p v-else class="empty-message">{{ emptyResultLabel }}</p>
 
       <footer class="footer-actions">
-        <button type="button" class="primary-btn" @click="goNext">
-          {{ tr('View Timetable', '\u67e5\u770b\u6642\u9593\u8868') }}
+        <button type="button" class="primary-btn" :disabled="selectedTeacherId.length === 0" @click="goNext">
+          {{ viewScheduleLabel }}
         </button>
       </footer>
     </section>
@@ -103,6 +109,26 @@ export default {
     },
     teachersWithLessons() {
       return this.teachers.filter(teacher => this.lessonCount(teacher) > 0);
+    },
+    selectedCountLabel() {
+      const count = this.selectedTeacherId.length;
+      return this.tr(`Selected ${count} teacher${count === 1 ? '' : 's'}`, `\u5df2\u9078 ${count} \u4f4d\u8001\u5e2b`);
+    },
+    searchResultLabel() {
+      const count = this.filteredTeachers.length;
+      return this.tr(`Found ${count} teacher${count === 1 ? '' : 's'}`, `\u627e\u5230 ${count} \u4f4d\u8001\u5e2b`);
+    },
+    emptyResultLabel() {
+      if (!this.searchText) return this.tr('No teachers found', '\u627e\u4e0d\u5230\u8001\u5e2b');
+      return this.tr(`No teachers match "${this.searchText}"`, `\u627e\u4e0d\u5230\u7b26\u5408\u300c${this.searchText}\u300d\u7684\u8001\u5e2b`);
+    },
+    viewScheduleLabel() {
+      const count = this.selectedTeacherId.length;
+      if (!count) return this.tr('View Timetable', '\u67e5\u770b\u6642\u9593\u8868');
+      return this.tr(
+        `View ${count} teacher${count === 1 ? '' : 's'} timetable`,
+        `\u67e5\u770b ${count} \u4f4d\u8001\u5e2b\u6642\u9593\u8868`
+      );
     }
   },
   methods: {
@@ -298,11 +324,14 @@ button {
 }
 
 .teacher-list {
-  max-height: 460px;
+  height: 460px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-auto-rows: min-content;
+  align-content: start;
   gap: 8px;
-  overflow-y: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface-soft);
@@ -310,12 +339,19 @@ button {
   padding: 10px;
 }
 
+.search-feedback {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 12px 0 -6px;
+}
+
 .teacher-row {
-  min-height: 44px;
+  min-height: 38px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: #fff;
@@ -323,11 +359,14 @@ button {
   cursor: pointer;
   font-size: 13px;
   font-weight: 800;
-  padding: 7px 9px;
+  padding: 6px 8px;
 }
 
 .teacher-row.empty {
+  background: #f5f7f8;
   color: #7b8a93;
+  cursor: not-allowed;
+  opacity: 0.82;
 }
 
 .teacher-name {
@@ -337,7 +376,7 @@ button {
   white-space: nowrap;
 }
 
-.teacher-row:hover,
+.teacher-row:not(.empty):hover,
 .teacher-row.selected {
   border-color: var(--primary);
   background: var(--primary-soft);
@@ -349,12 +388,17 @@ button {
   accent-color: var(--primary);
 }
 
+.teacher-row input:disabled {
+  cursor: not-allowed;
+}
+
 .lesson-badge {
   border-radius: 999px;
   background: #e7f4f6;
   color: #0a5260;
-  font-size: 12px;
-  padding: 4px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 6px;
   white-space: nowrap;
 }
 
@@ -385,8 +429,14 @@ button {
   padding: 0 22px;
 }
 
-.primary-btn:hover {
+.primary-btn:hover:not(:disabled) {
   background: var(--primary-dark);
+}
+
+.primary-btn:disabled {
+  background: #c7d2d8;
+  color: #607683;
+  cursor: not-allowed;
 }
 
 @media (max-width: 720px) {

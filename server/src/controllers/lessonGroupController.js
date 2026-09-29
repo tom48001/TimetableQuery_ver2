@@ -1,5 +1,52 @@
 import pool from '../db.js';
 import { ensureStudentAdminSchema } from './manageStudentController.js';
+import { resolveSubjectIds } from './subjectController.js';
+
+async function lessonGroupScope(user) {
+  const role = String(user?.role || 'teacher').trim().toLowerCase();
+  if (role === 'manager' || role === 'staff') return { type: 'all' };
+
+  if (role === 'subject_head') {
+    const [users] = await pool.query(
+      'SELECT subject_head_subject_id FROM user WHERE user_id = ? LIMIT 1',
+      [user?.id]
+    );
+    const subjectId = Number(users[0]?.subject_head_subject_id) || 0;
+    return {
+      type: 'subject',
+      subjectId,
+      subjectIds: subjectId ? await resolveSubjectIds(subjectId) : []
+    };
+  }
+
+  const [teachers] = await pool.query(
+    "SELECT teacher_id FROM teacher WHERE user_id = ? AND COALESCE(status, 'active') = 'active' LIMIT 1",
+    [user?.id]
+  );
+  return { type: 'teacher', teacherId: Number(teachers[0]?.teacher_id) || 0 };
+}
+
+async function canAccessLessonGroup(user, classId, subjectId, day, periodId) {
+  const scope = await lessonGroupScope(user);
+  if (scope.type === 'all') return true;
+  if (scope.type === 'subject') return scope.subjectIds.map(Number).includes(Number(subjectId));
+  if (!scope.teacherId) return false;
+  const [rows] = await pool.query(
+    `SELECT timetable_id FROM timetable
+     WHERE class_id = ? AND subject_id = ? AND day_of_week = ? AND period_id = ? AND teacher_id = ?
+     LIMIT 1`,
+    [classId, subjectId, day, periodId, scope.teacherId]
+  );
+  return rows.length > 0;
+}
+
+async function canAddLessonGroupTeacher(user, subjectId) {
+  const scope = await lessonGroupScope(user);
+  if (scope.type === 'all') {
+    return String(user?.role || '').trim().toLowerCase() === 'manager';
+  }
+  return scope.type === 'subject' && scope.subjectIds.map(Number).includes(Number(subjectId));
+}
 
 function normaliseClassListSql(alias) {
   return `
@@ -79,6 +126,25 @@ async function matchingLessonFamily(connOrPool, classId, subjectId, day, periodI
 export async function getSplitLessonGroups(req, res) {
   try {
     await ensureLessonGroupSchema();
+    const scope = await lessonGroupScope(req.user);
+    if ((scope.type === 'subject' && !scope.subjectIds.length) || (scope.type === 'teacher' && !scope.teacherId)) {
+      return res.json([]);
+    }
+    const scopeCondition = scope.type === 'subject'
+      ? 'AND tt.subject_id IN (?)'
+      : (scope.type === 'teacher'
+        ? `AND EXISTS (
+             SELECT 1 FROM timetable own_tt
+             WHERE own_tt.class_id = tt.class_id
+               AND own_tt.subject_id = tt.subject_id
+               AND own_tt.day_of_week = tt.day_of_week
+               AND own_tt.period_id = tt.period_id
+               AND own_tt.teacher_id = ?
+           )`
+        : '');
+    const scopeParams = scope.type === 'subject'
+      ? [scope.subjectIds]
+      : (scope.type === 'teacher' ? [scope.teacherId] : []);
     const [rows] = await pool.query(`
       SELECT
         tt.class_id,
@@ -111,6 +177,7 @@ export async function getSplitLessonGroups(req, res) {
       LEFT JOIN student_lesson_group slg ON slg.timetable_id = tt.timetable_id
       WHERE TRIM(COALESCE(s.subject_name_zh, s.subject_name)) <> '班主任課'
         AND UPPER(TRIM(COALESCE(s.subject_name_en, s.subject_name))) NOT IN ('CLASS TEACHER', 'CLASS TEACHER PERIOD', 'HOMEROOM')
+        ${scopeCondition}
       GROUP BY
         tt.class_id, c.class_name, c.grade_level, tt.subject_id, s.subject_name, s.subject_name_zh,
         s.subject_name_en, tt.day_of_week, tt.period_id, p.period_name
@@ -121,7 +188,7 @@ export async function getSplitLessonGroups(req, res) {
         FIELD(tt.day_of_week, 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'),
         tt.period_id,
         s.subject_name
-    `);
+    `, scopeParams);
 
     const families = new Map();
     rows.forEach(row => {
@@ -157,6 +224,9 @@ export async function getSplitLessonGroupDetail(req, res) {
   try {
     await ensureStudentAdminSchema();
     await ensureLessonGroupSchema();
+    if (!(await canAccessLessonGroup(req.user, classId, subjectId, day, periodId))) {
+      return res.status(403).json({ code: 'GROUP_ACCESS_DENIED', error: 'You do not have permission to manage this lesson group.' });
+    }
     const lessonFamily = await matchingLessonFamily(pool, classId, subjectId, day, periodId);
     if (lessonFamily.selected.length < 2) {
       return res.status(404).json({ code: 'GROUP_NOT_FOUND', error: 'Split lesson group was not found.' });
@@ -252,6 +322,9 @@ export async function saveSplitLessonGroupAssignments(req, res) {
 
   try {
     await ensureLessonGroupSchema(conn);
+    if (!(await canAccessLessonGroup(req.user, classId, subjectId, day, periodId))) {
+      return res.status(403).json({ code: 'GROUP_ACCESS_DENIED', error: 'You do not have permission to manage this lesson group.' });
+    }
     await conn.beginTransaction();
 
     const lessonFamily = await matchingLessonFamily(conn, classId, subjectId, day, periodId);
@@ -308,6 +381,188 @@ export async function saveSplitLessonGroupAssignments(req, res) {
     await conn.rollback();
     console.error('Failed to save split lesson assignments:', err);
     res.status(500).json({ code: 'DATABASE_ERROR', error: 'Failed to save split lesson assignments.' });
+  } finally {
+    conn.release();
+  }
+}
+
+export async function addSplitLessonGroupTeacher(req, res) {
+  const classId = Number(req.body.classId);
+  const subjectId = Number(req.body.subjectId);
+  const day = String(req.body.day || '');
+  const periodId = Number(req.body.periodId);
+  const teacherId = Number(req.body.teacherId);
+  const roomId = Number(req.body.roomId);
+
+  if (!classId || !subjectId || !day || !periodId || !teacherId || !roomId) {
+    return res.status(400).json({ code: 'INVALID_GROUP_TEACHER', error: 'Missing lesson group, teacher, or room.' });
+  }
+
+  if (!(await canAddLessonGroupTeacher(req.user, subjectId))) {
+    return res.status(403).json({ code: 'GROUP_TEACHER_ACCESS_DENIED', error: 'Only the subject head or a manager can add a teacher.' });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const lessonFamily = await matchingLessonFamily(conn, classId, subjectId, day, periodId);
+    if (lessonFamily.selected.length < 2 || !lessonFamily.familySlots.length) {
+      await conn.rollback();
+      return res.status(404).json({ code: 'GROUP_NOT_FOUND', error: 'Split lesson group was not found.' });
+    }
+    const [teacherRows] = await conn.query(
+      "SELECT teacher_id, teacher_name FROM teacher WHERE teacher_id = ? AND COALESCE(status, 'active') = 'active' LIMIT 1",
+      [teacherId]
+    );
+    const [roomRows] = await conn.query('SELECT room_id, room_name FROM room WHERE room_id = ? LIMIT 1', [roomId]);
+    const teacher = teacherRows[0];
+    const room = roomRows[0];
+    if (!teacher || !room) {
+      await conn.rollback();
+      return res.status(400).json({ code: 'INVALID_TEACHER_OR_ROOM', error: 'Teacher or room was not found.' });
+    }
+
+    const familySlots = lessonFamily.familySlots.map(slot => ({
+      day: slot[0].day_of_week,
+      periodId: Number(slot[0].period_id)
+    }));
+    const timetableSlotConditions = familySlots.map(() => '(tt.day_of_week = ? AND tt.period_id = ?)').join(' OR ');
+    const slotParams = familySlots.flatMap(slot => [slot.day, slot.periodId]);
+
+    const [existingGroupRows] = await conn.query(
+      `SELECT tt.timetable_id FROM timetable tt
+       WHERE tt.teacher_id = ? AND tt.class_id = ? AND tt.subject_id = ? AND (${timetableSlotConditions})
+       LIMIT 1`,
+      [teacherId, classId, subjectId, ...slotParams]
+    );
+    if (existingGroupRows.length) {
+      await conn.rollback();
+      return res.status(409).json({ code: 'TEACHER_ALREADY_IN_GROUP', error: 'This teacher is already in the lesson group.' });
+    }
+
+    const [busyRows] = await conn.query(
+      `SELECT tt.day_of_week, p.period_name, c.class_name
+       FROM timetable tt
+       JOIN period p ON tt.period_id = p.period_id
+       JOIN class c ON tt.class_id = c.class_id
+       WHERE tt.teacher_id = ? AND (${timetableSlotConditions})
+       LIMIT 1`,
+      [teacherId, ...slotParams]
+    );
+    if (busyRows.length) {
+      await conn.rollback();
+      const conflict = busyRows[0];
+      return res.status(409).json({
+        code: 'TEACHER_NOT_AVAILABLE',
+        error: `${teacher.teacher_name} already teaches ${conflict.class_name} at ${conflict.day_of_week} ${conflict.period_name}.`
+      });
+    }
+
+    const [roomBusyRows] = await conn.query(
+      `SELECT tt.day_of_week, p.period_name, c.class_name
+       FROM timetable tt
+       JOIN period p ON tt.period_id = p.period_id
+       JOIN class c ON tt.class_id = c.class_id
+       WHERE tt.room_id = ? AND (${timetableSlotConditions})
+       LIMIT 1`,
+      [roomId, ...slotParams]
+    );
+    if (roomBusyRows.length) {
+      await conn.rollback();
+      const conflict = roomBusyRows[0];
+      return res.status(409).json({
+        code: 'ROOM_NOT_AVAILABLE',
+        error: `${room.room_name} is already used by ${conflict.class_name} at ${conflict.day_of_week} ${conflict.period_name}.`
+      });
+    }
+
+    const values = familySlots.map(slot => [teacherId, subjectId, classId, roomId, slot.day, slot.periodId]);
+    await conn.query(
+      `INSERT INTO timetable (teacher_id, subject_id, class_id, room_id, day_of_week, period_id)
+       VALUES ?`,
+      [values]
+    );
+    await conn.commit();
+    return res.status(201).json({
+      code: 'GROUP_TEACHER_ADDED',
+      message: `${teacher.teacher_name} added to ${values.length} matching lesson(s).`,
+      teacher,
+      room,
+      occurrenceCount: values.length
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('Failed to add split lesson group teacher:', err);
+    if (err.code === 'ER_DUP_ENTRY' || err.errno === 1062) {
+      return res.status(409).json({
+        code: 'TEACHER_NOT_AVAILABLE',
+        error: 'The selected teacher already has a lesson in one of these periods.'
+      });
+    }
+    return res.status(500).json({ code: 'DATABASE_ERROR', error: 'Failed to add the teacher to the lesson group.' });
+  } finally {
+    conn.release();
+  }
+}
+
+export async function deleteSplitLessonGroupTeacher(req, res) {
+  const timetableId = Number(req.params.timetableId);
+  const classId = Number(req.query.classId);
+  const subjectId = Number(req.query.subjectId);
+  const day = String(req.query.day || '');
+  const periodId = Number(req.query.periodId);
+
+  if (!timetableId || !classId || !subjectId || !day || !periodId) {
+    return res.status(400).json({ code: 'INVALID_GROUP_TEACHER', error: 'Missing lesson group or teacher parameters.' });
+  }
+  if (!(await canAddLessonGroupTeacher(req.user, subjectId))) {
+    return res.status(403).json({ code: 'GROUP_TEACHER_ACCESS_DENIED', error: 'Only the subject head or a manager can delete a teacher.' });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const lessonFamily = await matchingLessonFamily(conn, classId, subjectId, day, periodId);
+    if (lessonFamily.selected.length < 2) {
+      await conn.rollback();
+      return res.status(404).json({ code: 'GROUP_NOT_FOUND', error: 'Split lesson group was not found.' });
+    }
+    if (lessonFamily.selected.length <= 2) {
+      await conn.rollback();
+      return res.status(409).json({ code: 'MINIMUM_GROUPS_REQUIRED', error: 'A split lesson must keep at least two teachers.' });
+    }
+
+    const target = lessonFamily.selected.find(lesson => Number(lesson.timetable_id) === timetableId);
+    if (!target) {
+      await conn.rollback();
+      return res.status(404).json({ code: 'GROUP_TEACHER_NOT_FOUND', error: 'The selected teacher group was not found.' });
+    }
+
+    const targetTimetableIds = lessonFamily.family
+      .filter(lesson => Number(lesson.teacher_id) === Number(target.teacher_id) && Number(lesson.room_id) === Number(target.room_id))
+      .map(lesson => Number(lesson.timetable_id));
+    if (!targetTimetableIds.length) {
+      await conn.rollback();
+      return res.status(404).json({ code: 'GROUP_TEACHER_NOT_FOUND', error: 'The selected teacher group was not found.' });
+    }
+
+    const [[assignmentCountRows]] = await conn.query(
+      'SELECT COUNT(DISTINCT student_id) AS student_count FROM student_lesson_group WHERE timetable_id IN (?)',
+      [targetTimetableIds]
+    );
+    await conn.query('DELETE FROM student_lesson_group WHERE timetable_id IN (?)', [targetTimetableIds]);
+    await conn.query('DELETE FROM timetable WHERE timetable_id IN (?)', [targetTimetableIds]);
+    await conn.commit();
+    return res.json({
+      code: 'GROUP_TEACHER_DELETED',
+      message: `${target.teacher_name} removed from ${targetTimetableIds.length} matching lesson(s).`,
+      deletedLessons: targetTimetableIds.length,
+      unassignedStudents: Number(assignmentCountRows?.student_count || 0)
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('Failed to delete split lesson group teacher:', err);
+    return res.status(500).json({ code: 'DATABASE_ERROR', error: 'Failed to delete the teacher from the lesson group.' });
   } finally {
     conn.release();
   }

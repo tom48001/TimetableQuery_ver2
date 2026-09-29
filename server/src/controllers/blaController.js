@@ -2,8 +2,9 @@ import pool from '../db.js';
 
 export const insertBLA = async (req, res) => {
   try {
-    const { teacher_id, subject_id, student_ids } = req.body;
-    if (!teacher_id || !subject_id || !Array.isArray(student_ids)) {
+    const { subject_id, student_ids } = req.body;
+    const teacher_id = req.user.teacher_id;
+    if (!subject_id || !Array.isArray(student_ids)) {
       return res.status(400).json({ error: '缺少必要資料或 student_ids 不是陣列' });
     }
 
@@ -43,10 +44,10 @@ export const getVotedStudents = async (req, res) => {
 };
 
 export const deleteBLA = async (req, res) => {
-  const { subjectId, teacherId, removed } = req.body;
-  console.log('req.body:', req.body)
+  const { subjectId, removed } = req.body;
+  const teacherId = req.user.teacher_id;
 
-  if (!subjectId || !teacherId || !Array.isArray(removed)) {
+  if (!subjectId || !Array.isArray(removed)) {
     return res.status(400).json({ message: '缺少必要參數' });
   }
 
@@ -103,9 +104,10 @@ export const getBLAResults = async (req, res) => {
 
 export const getSelectBLA = async (req, res) => {
   try {
-    const { subject_id, teacher_id } = req.query;
+    const { subject_id } = req.query;
+    const teacher_id = req.user.teacher_id;
 
-    if (!subject_id || !teacher_id) {
+    if (!subject_id) {
       return res.status(400).json({ error: "缺少必要參數" });
     }
 

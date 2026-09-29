@@ -16,7 +16,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="subject in subjects" :key="subject.subject_id">
+            <tr v-for="subject in visibleSubjects" :key="subject.subject_id">
               <th class="subject-col">{{ subjectLabel(subject) }}</th>
               <td v-for="cls in visibleClassList" :key="`${subject.subject_id}-${cls.class_id}`" :class="{ unavailable: !isAvailable(subject.subject_id, cls.class_id) }">
                 <label v-if="isAvailable(subject.subject_id, cls.class_id)" class="choice-cell" :class="{ selected: selectedChoice === choiceValue(subject, cls) }">
@@ -43,6 +43,10 @@ import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels'
 export default {
   data() { return { subjects: [], classList: [], counts: {}, selectedChoice: '' }; },
   computed: {
+    visibleSubjects() {
+      const subjectIds = new Set(Object.keys(this.counts).map(key => Number(key.split('-')[0])));
+      return this.subjects.filter(subject => subjectIds.has(Number(subject.subject_id)));
+    },
     visibleClassList() {
       const classIds = new Set(Object.keys(this.counts).map(key => Number(key.split('-')[1])));
       return this.classList.filter(cls => classIds.has(Number(cls.class_id)));

@@ -105,6 +105,10 @@ export default {
   async mounted() {
     const token = localStorage.getItem('token');
     const teacherId = this.$route.query.teacherId;
+    if (!teacherId) {
+      this.$router.replace({ name: 'SwapLesson' });
+      return;
+    }
 
     try {
       const res = await axios.get(`/api/swap/teacher-lessons/${teacherId}`, {

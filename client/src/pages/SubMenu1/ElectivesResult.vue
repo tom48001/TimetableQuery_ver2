@@ -4,6 +4,7 @@
       <h1>{{ tr('Elective Timetable', '選修科時間表') }}</h1>
       <div class="summary-tags">
         <span>{{ tr('Form', '級別') }}: {{ selectedForm }}</span>
+        <span v-if="selectedBlock">{{ tr('Block', '組別') }}: {{ selectedBlock }}</span>
         <span>{{ tr('Subject', '科目') }}: {{ subjectLabel(electiveSubject) }}</span>
         <span>{{ tr('Students', '學生人數') }}: {{ groupedStudents.length }}</span>
       </div>
@@ -32,10 +33,15 @@
             <thead><tr><th>{{ tr('Period', '課節') }}</th><th v-for="day in days" :key="day">{{ dayLabel(day) }}</th></tr></thead>
             <tbody>
               <tr v-for="period in periodNumbers" :key="period">
-                <th>{{ periodLabel(`Period ${period}`) }}</th>
+                <th v-html="masterPeriodLabel(period)"></th>
                 <td v-for="day in days" :key="`${day}-${period}`">
-                  <div v-for="lesson in lessonsAt(day, period)" :key="lesson.key" class="lesson-chip">
-                    <small>{{ periodLabel(lesson.period_name) }}</small>
+                  <div
+                    v-for="lesson in lessonsAt(day, period)"
+                    :key="lesson.key"
+                    class="lesson-chip"
+                    :class="{ 'red-entry': isAlternatePeriod(lesson) }"
+                  >
+                    <small :class="{ 'red-time': isAlternatePeriod(lesson) }">{{ periodLabel(lesson.period_name) }}</small>
                     <strong>{{ subjectLabel(electiveSubject) }}</strong>
                     <span>{{ roomLabel(lesson.room_name) }}</span>
                     <span>{{ lesson.teacher_name || '-' }}</span>
@@ -61,6 +67,22 @@
 <script>
 import axios from 'axios';
 import { subjectLabel as formatSubjectLabel, roomLabel as formatRoomLabel } from '../../utils/timetableLabels';
+import { timetablePeriodLabel } from '../../utils/timetablePeriodLabel';
+
+const PERIOD_TIMES = {
+  1: '08:30-09:05',
+  2: '09:05-09:40',
+  3: '09:55-10:30',
+  4: '10:30-11:05',
+  5: '11:20-11:55',
+  6: '11:55-12:30',
+  7: '13:30-14:05',
+  8: '14:05-14:40',
+  9: '14:40-15:15',
+  10: '15:15-16:00',
+  11: '14:50-15:25',
+  12: '15:25-16:00'
+};
 
 export default {
   data() {
@@ -74,6 +96,9 @@ export default {
   computed: {
     selectedForm() {
       return this.$route.query.form || '';
+    },
+    selectedBlock() {
+      return String(this.$route.query.block || '').toUpperCase();
     },
     groupedStudents() {
       const students = new Map();
@@ -182,6 +207,16 @@ export default {
       if (!number) return periodName;
       return this.$lang.locale === 'en' ? `P${number}` : `第${number}節`;
     },
+    masterPeriodLabel(period) {
+      const alternateTime = period === 9
+        ? PERIOD_TIMES[11]
+        : (period === 10 ? PERIOD_TIMES[12] : '');
+      return timetablePeriodLabel(this.$lang.locale, period, PERIOD_TIMES[period], alternateTime);
+    },
+    isAlternatePeriod(lesson) {
+      const period = Number(lesson.period_id) || Number(String(lesson.period_name || '').replace(/\D/g, ''));
+      return period === 11 || period === 12;
+    },
     lessonsAt(day, displayedPeriod) {
       return this.masterLessons.filter(lesson => {
         const actualPeriod = Number(lesson.period_id);
@@ -192,7 +227,8 @@ export default {
     async fetchElectives() {
       const res = await axios.post('/api/subjects/list', {
         form: this.$route.query.form,
-        subject: this.$route.query.subject
+        subject: this.$route.query.subject,
+        block: this.$route.query.block
       }, {
         headers: this.authHeaders()
       });
@@ -207,6 +243,11 @@ export default {
       this.electiveSubject = res.data || {};
     },
     async loadData() {
+      if (!this.$route.query.form || !this.$route.query.subject) {
+        this.$router.replace({ name: 'Electives' });
+        return;
+      }
+
       try {
         await Promise.all([this.fetchElectives(), this.getElectives()]);
       } catch (err) {

@@ -5,6 +5,7 @@ import Login from '@/pages/Login.vue'
 import Home from '@/pages/Home.vue'
 import GoogleRedirect from '@/pages/GoogleRedirect.vue'
 import ChangePassword from '@/pages/ChangePassword.vue'
+import Forbidden from '@/pages/Forbidden.vue'
 
 import TeacherTimetable from '@/pages/SubMenu1/TeacherTimetable.vue'
 import TeacherTimetableResult from '../pages/SubMenu1/TeacherTimetableResult.vue'
@@ -42,6 +43,7 @@ import editTeacher from '@/pages/SubMenu3/editTeacher.vue'
 import ImportTeacher from '@/pages/SubMenu3/ImportTeacher.vue'
 import StudentManagement from '@/pages/SubMenu3/StudentManagement.vue'
 import AddStudent from '@/pages/SubMenu3/AddStudent.vue'
+import SemesterSettings from '@/pages/SubMenu3/SemesterSettings.vue'
 
 Vue.use(Router)
 
@@ -70,6 +72,12 @@ const router = new Router({
       name: 'ChangePassword',
       component: ChangePassword,
       meta: { show: true, requiredPermission: 'changePassword' }
+    },
+    {
+      path: '/forbidden',
+      name: 'Forbidden',
+      component: Forbidden,
+      meta: { show: true, requiresAuth: true }
     },
     {
       path: '/TeacherTimetable',
@@ -276,6 +284,12 @@ const router = new Router({
       meta: { show: true, requiredPermission: 'manageStudents' }
     },
     {
+      path: '/SemesterSettings',
+      name: 'SemesterSettings',
+      component: SemesterSettings,
+      meta: { show: true, requiredRole: 'manager' }
+    },
+    {
       path: '/*',
       redirect: '/login'
     }
@@ -297,7 +311,17 @@ const nominationRouteNames = new Set([
 
 router.beforeEach((to, from, next) => {
   const rawUser = localStorage.getItem('user')
-  const user = rawUser ? JSON.parse(rawUser) : null
+  let user = null
+  if (rawUser) {
+    try {
+      user = JSON.parse(rawUser)
+    } catch (error) {
+      localStorage.removeItem('user')
+      localStorage.removeItem('token')
+    }
+  }
+
+  const denyAccess = () => next(user ? '/forbidden' : '/login')
 
   const routePermission = to.meta.requiredPermission ||
     (timetableRouteNames.has(to.name) ? 'timetable' : null) ||
@@ -305,14 +329,14 @@ router.beforeEach((to, from, next) => {
   const routeAnyPermissions = to.meta.requiredAnyPermissions || []
 
   if (to.meta.requiredRole && (!user || user.role !== to.meta.requiredRole)) {
-    return next('/login')
+    return denyAccess()
   }
 
   if (routePermission) {
     const permissions = user && user.permissions ? user.permissions : {}
     const isManager = user && user.role === 'manager'
     if (!user || (!isManager && !permissions[routePermission])) {
-      return next('/login')
+      return denyAccess()
     }
   }
 
@@ -321,12 +345,12 @@ router.beforeEach((to, from, next) => {
     const isManager = user && user.role === 'manager'
     const hasAnyPermission = routeAnyPermissions.some(permission => permissions[permission])
     if (!user || (!isManager && !hasAnyPermission)) {
-      return next('/login')
+      return denyAccess()
     }
   }
 
   if (to.meta.allowedRoles && (!user || !to.meta.allowedRoles.includes(user.role))) {
-    return next('/login')
+    return denyAccess()
   }
 
   if (to.meta.requiresAuth && !user) {

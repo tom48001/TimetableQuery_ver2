@@ -34,6 +34,15 @@ export function parseStudentId(value) {
   return { studentKey, className: match[1], studentNo: match[2] };
 }
 
+export function parseSheetContext(sheetName) {
+  const match = text(sheetName).match(/^[SF]?([1-6])[_\-\s]+(.+)$/i);
+  if (!match) return { gradeLevel: '', subjectCode: '' };
+  return {
+    gradeLevel: `S${match[1]}`,
+    subjectCode: text(match[2])
+  };
+}
+
 function nameLanguage(name) {
   if (/[㐀-鿿]/u.test(name)) return 'zh';
   if (/[A-Za-z]/.test(name)) return 'en';
@@ -54,6 +63,7 @@ export function detectSheetLanguage(sheetName, names) {
 
 function sheetRecords(workbook, sheetName) {
   const matrix = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: false });
+  const context = parseSheetContext(sheetName);
   const headerRowIndex = matrix.findIndex(row => row.some(value => normalizeGroupHeader(value)));
   if (headerRowIndex < 0) return { records: [], issues: [] };
   const headers = matrix[headerRowIndex]
@@ -66,27 +76,56 @@ function sheetRecords(workbook, sheetName) {
     const seen = new Set();
     let displayOrder = 0;
     for (let rowIndex = headerRowIndex + 1; rowIndex < matrix.length; rowIndex += 1) {
-      const studentId = text(matrix[rowIndex][header.column]);
-      const studentName = text(matrix[rowIndex][header.column + 1]);
-      if (!studentId && !studentName) break;
+      const firstValue = text(matrix[rowIndex][header.column]);
+      const secondValue = text(matrix[rowIndex][header.column + 1]);
+      if (!firstValue && !secondValue) break;
       displayOrder += 1;
-      const parsed = parseStudentId(studentId);
-      const source = { sheetName, row: rowIndex + 1, groupCode: header.groupCode };
+      const firstParsed = parseStudentId(firstValue);
+      const secondParsed = parseStudentId(secondValue);
+      const parsed = firstParsed || secondParsed;
+      const studentId = firstParsed ? firstValue : secondValue;
+      const studentName = firstParsed ? secondValue : firstValue;
+      const source = { sheetName, row: rowIndex + 1, groupCode: header.groupCode, ...context };
       if (!parsed) {
-        issues.push({ severity: 'error', studentKey: studentId || '-', ...source, message: `Invalid student ID "${studentId || '(empty)'}" on worksheet ${sheetName}, row ${rowIndex + 1}.` });
+        issues.push({ severity: 'error', scope: 'row', affectsRecord: false, studentKey: studentId || '-', ...source, message: `Invalid student ID "${studentId || '(empty)'}" on worksheet ${sheetName}, row ${rowIndex + 1}.` });
         continue;
       }
+      const worksheetGrade = context.gradeLevel.match(/\d/)?.[0];
+      const studentGrade = parsed.className.match(/^\d/)?.[0];
+      if (worksheetGrade && studentGrade && worksheetGrade !== studentGrade) {
+        issues.push({
+          severity: 'error',
+          scope: 'row',
+          studentKey: parsed.studentKey,
+          ...source,
+          message: `Student ${parsed.studentKey} is Form ${studentGrade}, but worksheet ${sheetName} is labelled ${context.gradeLevel}.`
+        });
+      }
       if (seen.has(parsed.studentKey)) {
-        issues.push({ severity: 'error', studentKey: parsed.studentKey, ...source, message: `Duplicate student ID ${parsed.studentKey} in ${header.groupCode} on worksheet ${sheetName}.` });
+        issues.push({ severity: 'error', scope: 'row', affectsRecord: false, studentKey: parsed.studentKey, ...source, message: `Duplicate student ID ${parsed.studentKey} in ${header.groupCode} on worksheet ${sheetName}; the duplicate row will be skipped.` });
         continue;
       }
       seen.add(parsed.studentKey);
-      pending.push({ ...parsed, studentName, groupCode: header.groupCode, displayOrder, sheetName, row: rowIndex + 1 });
+      pending.push({
+        ...parsed,
+        ...context,
+        studentName,
+        groupCode: header.groupCode,
+        displayOrder,
+        sheetName,
+        row: rowIndex + 1
+      });
     }
   });
 
-  const language = detectSheetLanguage(sheetName, pending.map(record => record.studentName));
-  return { records: pending.map(record => ({ ...record, language })), issues };
+  const sheetLanguage = detectSheetLanguage(sheetName, pending.map(record => record.studentName));
+  return {
+    records: pending.map(record => ({
+      ...record,
+      language: nameLanguage(record.studentName) || sheetLanguage
+    })),
+    issues
+  };
 }
 
 export function parseGroupWorkbook(workbook) {
@@ -96,30 +135,44 @@ export function parseGroupWorkbook(workbook) {
   const merged = new Map();
 
   sourceRecords.forEach(source => {
-    let record = merged.get(source.studentKey);
+    const contextKey = `${source.gradeLevel || '-'}|${source.subjectCode.toUpperCase() || '-'}|${source.studentKey}`;
+    let record = merged.get(contextKey);
     if (!record) {
       record = {
         studentKey: source.studentKey,
         className: source.className,
         studentNo: source.studentNo,
+        gradeLevel: source.gradeLevel,
+        subjectCode: source.subjectCode,
         nameZh: '',
         nameEn: '',
         groupCode: source.groupCode,
         displayOrder: source.displayOrder,
         sourceSheets: []
       };
-      merged.set(source.studentKey, record);
+      merged.set(contextKey, record);
     } else if (record.groupCode !== source.groupCode) {
       issues.push({
         severity: 'error',
+        scope: 'fatal',
         studentKey: source.studentKey,
         groupCode: record.groupCode,
+        gradeLevel: source.gradeLevel,
+        subjectCode: source.subjectCode,
         message: `Student ${source.studentKey} is in ${record.groupCode} on the ${record.sourceSheets[0]?.language === 'zh' ? 'Chinese' : 'English'} worksheet, but ${source.groupCode} on the ${source.language === 'zh' ? 'Chinese' : 'English'} worksheet.`
       });
     }
     const nameField = source.language === 'zh' ? 'nameZh' : 'nameEn';
     if (record[nameField] && record[nameField] !== source.studentName) {
-      issues.push({ severity: 'error', studentKey: source.studentKey, groupCode: source.groupCode, message: `Student ${source.studentKey} has conflicting ${source.language === 'zh' ? 'Chinese' : 'English'} names.` });
+      issues.push({
+        severity: 'warning',
+        scope: 'row',
+        studentKey: source.studentKey,
+        groupCode: source.groupCode,
+        gradeLevel: source.gradeLevel,
+        subjectCode: source.subjectCode,
+        message: `Student ${source.studentKey} has conflicting ${source.language === 'zh' ? 'Chinese' : 'English'} names.`
+      });
     } else {
       record[nameField] = source.studentName;
     }
@@ -127,11 +180,29 @@ export function parseGroupWorkbook(workbook) {
   });
 
   const records = Array.from(merged.values())
-    .sort((a, b) => Number(a.groupCode.replace(/\D/g, '')) - Number(b.groupCode.replace(/\D/g, '')) || a.displayOrder - b.displayOrder)
+    .sort((a, b) => (
+      a.gradeLevel.localeCompare(b.gradeLevel, 'en', { numeric: true }) ||
+      a.subjectCode.localeCompare(b.subjectCode, 'en', { sensitivity: 'base' }) ||
+      Number(a.groupCode.replace(/\D/g, '')) - Number(b.groupCode.replace(/\D/g, '')) ||
+      a.displayOrder - b.displayOrder
+    ))
     .map(record => {
-      const recordIssues = issues.filter(issue => issue.studentKey === record.studentKey);
-      if (!record.nameZh) recordIssues.push({ severity: 'warning', studentKey: record.studentKey, groupCode: record.groupCode, message: `Student ${record.studentKey} has no Chinese name.` });
-      if (!record.nameEn) recordIssues.push({ severity: 'warning', studentKey: record.studentKey, groupCode: record.groupCode, message: `Student ${record.studentKey} has no English name.` });
+      const recordIssues = issues.filter(issue => (
+        issue.affectsRecord !== false &&
+        issue.studentKey === record.studentKey &&
+        (!issue.gradeLevel || (
+          issue.gradeLevel === record.gradeLevel &&
+          issue.subjectCode === record.subjectCode
+        ))
+      ));
+      const warningContext = {
+        studentKey: record.studentKey,
+        groupCode: record.groupCode,
+        gradeLevel: record.gradeLevel,
+        subjectCode: record.subjectCode
+      };
+      if (!record.nameZh) recordIssues.push({ severity: 'warning', ...warningContext, message: `Student ${record.studentKey} has no Chinese name.` });
+      if (!record.nameEn) recordIssues.push({ severity: 'warning', ...warningContext, message: `Student ${record.studentKey} has no English name.` });
       issues.push(...recordIssues.filter(issue => !issues.includes(issue)));
       return {
         ...record,
@@ -140,8 +211,24 @@ export function parseGroupWorkbook(workbook) {
       };
     });
 
-  if (!sourceRecords.length) issues.push({ severity: 'error', studentKey: '-', message: 'No group headers or student records were found.' });
-  return { records, issues, hasErrors: issues.some(issue => issue.severity === 'error') };
+  if (!sourceRecords.length) issues.push({ severity: 'error', scope: 'fatal', studentKey: '-', message: 'No group headers or student records were found.' });
+  const counts = records.reduce((result, record) => {
+    result[record.validationStatus] += 1;
+    return result;
+  }, { valid: 0, warning: 0, error: 0 });
+  const unlinkedRowErrors = issues.filter(issue => issue.severity === 'error' && issue.scope === 'row' && issue.affectsRecord === false).length;
+  const hasFatalErrors = issues.some(issue => issue.severity === 'error' && issue.scope === 'fatal');
+  return {
+    records,
+    issues,
+    counts: {
+      ...counts,
+      importable: counts.valid + counts.warning,
+      skipped: counts.error + unlinkedRowErrors
+    },
+    hasErrors: issues.some(issue => issue.severity === 'error'),
+    hasFatalErrors
+  };
 }
 
 export function readGroupFile(buffer) {

@@ -1,5 +1,9 @@
 {
+  "scripts": {
+    "start": "concurrently --kill-others --names server,client \"npm --prefix server start\" \"npm --prefix client start\""
+  },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "eslint": "^8.57.1",
     "prettier": "^3.5.2",
     "prettier-eslint": "^16.3.0",

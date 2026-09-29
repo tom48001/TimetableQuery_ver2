@@ -70,7 +70,9 @@ export default {
       studentsByClass: {},
       selectedStudents: {},
       previousSelectedStudents: {},
-      teacher_id: null
+      teacher_id: null,
+      loading: false,
+      loadError: ''
     };
   },
   computed: {
@@ -122,17 +124,8 @@ export default {
     async fetchStudentsForClass(classId, token) {
       const headers = { Authorization: `Bearer ${token}` };
       const subjectUrl = `/api/students/by-class/${classId}/subject/${this.selectedSubject.subject_id}`;
-      const classUrl = `/api/students/by-class/${classId}`;
-
-      try {
-        const res = await axios.get(subjectUrl, { headers });
-        if (Array.isArray(res.data) && res.data.length > 0) return res.data;
-      } catch (err) {
-        console.warn(`Subject student lookup failed for class ${classId}; falling back to full class.`, err);
-      }
-
-      const fallbackRes = await axios.get(classUrl, { headers });
-      return Array.isArray(fallbackRes.data) ? fallbackRes.data : [];
+      const res = await axios.get(subjectUrl, { headers });
+      return Array.isArray(res.data) ? res.data : [];
     },
     async loadStudents() {
       const token = localStorage.getItem('token');

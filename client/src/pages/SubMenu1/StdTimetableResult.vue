@@ -36,6 +36,7 @@
 <script>
 import axios from 'axios';
 import { subjectLabel as formatSubjectLabel, roomLabel as formatRoomLabel } from '../../utils/timetableLabels';
+import { timetablePeriodLabel } from '../../utils/timetablePeriodLabel';
 
 export default {
   data() {
@@ -57,7 +58,7 @@ export default {
         this.periodLabel(7, '13:30-14:05'),
         this.periodLabel(8, '14:05-14:40'),
         this.periodLabel(9, '14:40-15:15', '14:50-15:25'),
-        this.periodLabel(10, '15:25-16:00', '15:25-16:00')
+        this.periodLabel(10, '15:15-16:00', '15:25-16:00')
       ];
     }
   },
@@ -81,10 +82,8 @@ export default {
       };
       return labels[day] || day;
     },
-    periodLabel(period, time, electiveTime) {
-      const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
-      const elective = electiveTime ? '<br><span class="red-time">' + this.tr('Elective', '\u9078\u4fee') + ' ' + electiveTime + '</span>' : '';
-      return label + '<br><small>' + time + elective + '</small>';
+    periodLabel(period, time, alternateTime) {
+      return timetablePeriodLabel(this.$lang.locale, period, time, alternateTime);
     },
     periodName(item) {
       return item.period_name || item.period || '';

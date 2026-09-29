@@ -32,6 +32,7 @@
 <script>
 import axios from 'axios';
 import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
+import { timetablePeriodLabel } from '../../utils/timetablePeriodLabel';
 
 const DAY_LABELS = {
   Mon: '\u661f\u671f\u4e00',
@@ -52,7 +53,7 @@ const PERIOD_TIMES = {
   7: '13:30-14:05',
   8: '14:05-14:40',
   9: '14:40-15:15',
-  10: '15:25-16:00',
+  10: '15:15-16:00',
   11: '14:50-15:25',
   12: '15:25-16:00'
 };
@@ -98,10 +99,8 @@ export default {
       const en = { Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat' }[day] || day;
       return this.$lang.locale === 'en' ? en : zh;
     },
-    periodLabel(period, time, electiveTime) {
-      const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
-      const elective = electiveTime ? '<br><span class="red-time">' + this.tr('Elective', '\u9078\u4fee') + ' ' + electiveTime + '</span>' : '';
-      return label + '<br><small>' + time + elective + '</small>';
+    periodLabel(period, time, alternateTime) {
+      return timetablePeriodLabel(this.$lang.locale, period, time, alternateTime);
     },
     periodRowClass(periodNumber) {
       return [3, 4, 7, 8, 11, 12].includes(periodNumber) ? 'period-row-blue' : 'period-row-purple';

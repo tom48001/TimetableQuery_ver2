@@ -14,6 +14,19 @@
   --shadow: 0 14px 34px rgba(23, 48, 64, 0.1);
 }
 
+/* Period 11/12 are displayed beside Period 9/10 but keep their imported
+   timetable identity visually distinct. This class is inserted with v-html,
+   so it must remain global rather than scoped to an individual timetable. */
+.red-time {
+  color: #b2352f !important;
+  font-weight: 800;
+}
+
+.red-entry,
+.red-entry * {
+  color: #b2352f !important;
+}
+
 html,
 body,
 #app {

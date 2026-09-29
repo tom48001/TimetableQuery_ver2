@@ -108,6 +108,13 @@ export default {
   async mounted() {
     const teacherId = this.$route.query.teacherId;
     const token = localStorage.getItem('token');
+    const hasValidLessons = this.selectedLessons.length > 0 && this.selectedLessons.every(lesson =>
+      lesson.day && lesson.period && lesson.classId && lesson.subjectId
+    );
+    if (!teacherId || !hasValidLessons) {
+      this.$router.replace({ name: 'SwapLesson' });
+      return;
+    }
 
     try {
       const responses = await Promise.all(this.selectedLessons.map(lesson =>

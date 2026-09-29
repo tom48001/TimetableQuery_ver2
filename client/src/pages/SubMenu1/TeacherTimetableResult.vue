@@ -36,6 +36,7 @@
 <script>
 import axios from 'axios';
 import { subjectLabel as formatSubjectLabel, roomLabel as formatRoomLabel } from '../../utils/timetableLabels';
+import { timetablePeriodLabel } from '../../utils/timetablePeriodLabel';
 
 export default {
   data() {
@@ -57,7 +58,7 @@ export default {
         this.periodLabel(7, '13:30-14:05'),
         this.periodLabel(8, '14:05-14:40'),
         this.periodLabel(9, '14:40-15:15', '14:50-15:25'),
-        this.periodLabel(10, '15:25-16:00', '15:25-16:00')
+        this.periodLabel(10, '15:15-16:00', '15:25-16:00')
       ];
     }
   },
@@ -82,10 +83,8 @@ export default {
       };
       return labels[day] || day;
     },
-    periodLabel(period, time, electiveTime) {
-      const label = this.$lang.locale === 'en' ? 'Period ' + period : '\u7b2c' + period + '\u7bc0';
-      const elective = electiveTime ? '<br><span class="red-time">' + this.tr('Elective', '\u9078\u4fee') + ' ' + electiveTime + '</span>' : '';
-      return label + '<br><small>' + time + elective + '</small>';
+    periodLabel(period, time, alternateTime) {
+      return timetablePeriodLabel(this.$lang.locale, period, time, alternateTime);
     },
     periodName(item) {
       return item.period_name || item.period || '';
@@ -98,7 +97,12 @@ export default {
       const bluePeriods = [1, 2, 5, 6, 9, 10, 11, 12];
       const greenPeriods = [3, 4, 7, 8];
       const number = this.periodNumber(item);
-      if (bluePeriods.includes(number)) return 'period-blue-entry';
+      if (bluePeriods.includes(number)) {
+        return {
+          'period-blue-entry': true,
+          'red-entry': number === 11 || number === 12
+        };
+      }
       if (greenPeriods.includes(number)) return 'period-green-entry';
       return '';
     },
@@ -113,9 +117,14 @@ export default {
       return ids.flatMap(item => String(item || '').split(',')).map(item => item.trim()).filter(Boolean);
     },
     async fetchSchedule() {
+      const ids = this.normalizeTeacherIds(this.$route.query.teacherId);
+      if (!ids.length) {
+        this.$router.replace({ name: 'TeacherTimetable' });
+        return;
+      }
+
       try {
         const token = localStorage.getItem('token');
-        const ids = this.normalizeTeacherIds(this.$route.query.teacherId);
         const res = await axios.post('/api/teachers/schedule', { teacherIds: ids }, { headers: { Authorization: `Bearer ${token}` } });
         this.schedule = res.data;
       } catch (err) {

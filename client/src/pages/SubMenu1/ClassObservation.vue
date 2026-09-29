@@ -7,11 +7,13 @@
         <input v-model.trim="observerSearch" class="search-input" type="text" :placeholder="tr('Search observer...', '搜尋觀課老師...')" />
         <div class="selected-strip" v-if="observerTeachers.length"><button v-for="teacher in observerTeachers" :key="teacher.teacher_id" type="button" class="selected-chip" @click="toggleObserver(teacher.teacher_id)">{{ teacher.teacher_name }} <span aria-hidden="true">x</span></button></div>
         <div class="teacher-list"><label v-for="teacher in filteredObservers" :key="teacher.teacher_id" class="teacher-row" :class="{ selected: observerIds.includes(teacher.teacher_id) }"><input type="checkbox" :value="teacher.teacher_id" v-model="observerIds" /><span>{{ teacher.teacher_name }}</span></label></div>
+        <div class="list-controls"><span class="scroll-hint">{{ tr('↓ Scroll down to see more', '↓ 向下捲動查看更多') }}</span></div>
       </section>
       <section class="selector-card">
         <div class="section-title"><h2>{{ tr('Target teacher', '被觀課老師') }}</h2></div>
         <input v-model.trim="targetSearch" class="search-input" type="text" :placeholder="tr('Search target teacher...', '搜尋被觀課老師...')" />
         <div class="teacher-list target-list"><label v-for="teacher in filteredTargets" :key="teacher.teacher_id" class="teacher-row" :class="{ selected: targetId === teacher.teacher_id }"><input type="radio" name="targetTeacher" :value="teacher.teacher_id" v-model="targetId" /><span>{{ teacher.teacher_name }}</span></label></div>
+        <div class="list-controls"><span class="scroll-hint">{{ tr('↓ Scroll down to see more', '↓ 向下捲動查看更多') }}</span></div>
       </section>
       <footer class="footer-actions"><button type="button" class="primary-btn" @click="searchSchedule">{{ tr('Search Timetable', '搜尋課表') }}</button></footer>
     </section>
@@ -22,7 +24,11 @@ import axios from 'axios';
 function sortTeachersByName(teachers) { return [...teachers].sort((a, b) => String(a.teacher_name || '').localeCompare(String(b.teacher_name || ''), 'en', { sensitivity: 'base' })); }
 export default {
   data() { return { teachers: [], observerIds: [], targetId: null, observerSearch: '', targetSearch: '' }; },
-  computed: { filteredObservers() { return this.filterTeachers(this.observerSearch); }, filteredTargets() { return this.filterTeachers(this.targetSearch); }, observerTeachers() { return sortTeachersByName(this.teachers.filter(teacher => this.observerIds.includes(teacher.teacher_id))); } },
+  computed: {
+    filteredObservers() { return this.filterTeachers(this.observerSearch); },
+    filteredTargets() { return this.filterTeachers(this.targetSearch); },
+    observerTeachers() { return sortTeachersByName(this.teachers.filter(teacher => this.observerIds.includes(teacher.teacher_id))); }
+  },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     filterTeachers(keyword) { const text = keyword.toLowerCase(); if (!text) return this.teachers; return this.teachers.filter(teacher => String(teacher.teacher_name || '').toLowerCase().includes(text)); },
@@ -144,8 +150,23 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  overflow-y: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
   margin-top: 12px;
+}
+
+.list-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.scroll-hint {
+  color: #607683;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .selected-chip {
@@ -161,7 +182,7 @@ button {
 }
 
 .teacher-list {
-  max-height: 300px;
+  height: 300px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 7px;
@@ -170,7 +191,7 @@ button {
 }
 
 .target-list {
-  max-height: 240px;
+  height: 240px;
 }
 
 .teacher-row {

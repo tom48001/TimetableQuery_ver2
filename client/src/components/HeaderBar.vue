@@ -82,6 +82,7 @@
           <li><router-link to="/editTeacher">{{ $t('nav.editTeacher') }}</router-link></li>
           <li v-if="canManageStudents"><router-link to="/StudentManagement">{{ $t('nav.studentManagement') }}</router-link></li>
           <li v-if="canImportTimetable || canManageStudents"><router-link to="/ImportTeacher">{{ $t('nav.importTeacher') }}</router-link></li>
+          <li v-if="userRole === 'manager'"><router-link to="/SemesterSettings">{{ $lang.locale === 'en' ? 'Semester Settings' : '學期及初中科目設定' }}</router-link></li>
         </ul>
       </span>
     </div>
@@ -106,7 +107,7 @@ export default {
       return '';
     },
     showRoleBadge() {
-      return this.userRole === 'staff' || this.userRole === 'manager';
+      return Boolean(this.userRole);
     },
     displayRole() {
       if (!this.userRole) return '';

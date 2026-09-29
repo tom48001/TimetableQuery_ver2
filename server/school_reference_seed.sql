@@ -23,6 +23,13 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'subject' AND COLUMN_NAME = 'is_nominatable'
+  ) THEN
+    ALTER TABLE subject ADD COLUMN is_nominatable BOOLEAN NOT NULL DEFAULT TRUE AFTER is_elective;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'room' AND COLUMN_NAME = 'room_name_zh'
   ) THEN
     ALTER TABLE room ADD COLUMN room_name_zh VARCHAR(255) NULL AFTER room_name;
@@ -497,7 +504,7 @@ INSERT INTO period (period_name, start_time, end_time)
 SELECT 'Period 9', '14:40:00', '15:15:00'
 WHERE NOT EXISTS (SELECT 1 FROM period WHERE TRIM(period_name) = 'Period 9');
 INSERT INTO period (period_name, start_time, end_time)
-SELECT 'Period 10', '15:15:00', '16:30:00'
+SELECT 'Period 10', '15:15:00', '16:00:00'
 WHERE NOT EXISTS (SELECT 1 FROM period WHERE TRIM(period_name) = 'Period 10');
 INSERT INTO period (period_name, start_time, end_time)
 SELECT 'Period 11', '14:50:00', '15:25:00'
@@ -916,7 +923,7 @@ SET
     WHEN 'BIO-B3' THEN '生物'
     WHEN '企業、會計與財務概論' THEN '企業、會計與財務概論'
     WHEN 'BAFS' THEN '企業、會計與財務概論'
-    WHEN 'BAFS-B2' THEN '企業、會計與財務概論'
+    WHEN 'BAFS-B2' THEN '企業、會計與財務概論-2'
     WHEN '英語文學' THEN '英語文學'
     WHEN 'English Literature' THEN '英語文學'
     WHEN '化學' THEN '化學'
@@ -1015,7 +1022,7 @@ SET
     WHEN 'BIO-B3' THEN 'Biology'
     WHEN '企業、會計與財務概論' THEN 'Business, Accounting and Financial Studies'
     WHEN 'BAFS' THEN 'Business, Accounting and Financial Studies'
-    WHEN 'BAFS-B2' THEN 'Business, Accounting and Financial Studies'
+    WHEN 'BAFS-B2' THEN 'Business, Accounting and Financial Studies-2'
     WHEN '英語文學' THEN 'English Literature'
     WHEN 'English Literature' THEN 'English Literature'
     WHEN '化學' THEN 'Chemistry'
@@ -1088,6 +1095,56 @@ SET
     ELSE COALESCE(subject_name_en, subject_name)
   END
 WHERE subject_id IS NOT NULL;
+
+-- Distinguish timetable blocks that share the same base subject name.
+UPDATE subject
+SET subject_name_zh = CASE
+      WHEN RIGHT(TRIM(subject_name_zh), 2) = CONCAT('-', RIGHT(TRIM(subject_name), 1))
+        THEN subject_name_zh
+      ELSE CONCAT(TRIM(subject_name_zh), '-', RIGHT(TRIM(subject_name), 1))
+    END,
+    subject_name_en = CASE
+      WHEN RIGHT(TRIM(subject_name_en), 2) = CONCAT('-', RIGHT(TRIM(subject_name), 1))
+        THEN subject_name_en
+      ELSE CONCAT(TRIM(subject_name_en), '-', RIGHT(TRIM(subject_name), 1))
+    END
+WHERE TRIM(subject_name) REGEXP '-B[123]$'
+  AND subject_name_zh IS NOT NULL
+  AND subject_name_en IS NOT NULL;
+
+
+-- Distinguish non-B timetable codes that share the same translated name.
+UPDATE subject
+SET subject_name_zh = CASE TRIM(subject_name)
+      WHEN 'E&RE' THEN '倫理與宗教（E&RE）'
+      WHEN 'RE' THEN '倫理與宗教（RE）'
+      WHEN 'RS' THEN '倫理與宗教（RS）'
+      WHEN 'CS' THEN '綜合科學（CS）'
+      WHEN 'SCJ' THEN '綜合科學（SCJ）'
+      WHEN 'SCJb' THEN '綜合科學（SCJb）'
+      WHEN 'SCJc' THEN '綜合科學（SCJc）'
+      ELSE subject_name_zh
+    END,
+    subject_name_en = CASE TRIM(subject_name)
+      WHEN 'E&RE' THEN 'Ethics and Religious Education (E&RE)'
+      WHEN 'RE' THEN 'Ethics and Religious Education (RE)'
+      WHEN 'RS' THEN 'Ethics and Religious Education (RS)'
+      WHEN 'CS' THEN 'Integrated Science (CS)'
+      WHEN 'SCJ' THEN 'Integrated Science (SCJ)'
+      WHEN 'SCJb' THEN 'Integrated Science (SCJb)'
+      WHEN 'SCJc' THEN 'Integrated Science (SCJc)'
+      ELSE subject_name_en
+    END
+WHERE TRIM(subject_name) IN ('E&RE', 'RE', 'RS', 'CS', 'SCJ', 'SCJb', 'SCJc');
+
+UPDATE subject
+SET is_nominatable = CASE
+  WHEN TRIM(subject_name) IN ('班主任課', 'Career_Planning')
+    OR TRIM(subject_name) LIKE 'SUPP%' THEN FALSE
+  ELSE TRUE
+END
+WHERE subject_id IS NOT NULL;
+
 UPDATE room
 SET
   room_name_zh = CASE

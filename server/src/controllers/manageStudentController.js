@@ -46,6 +46,8 @@ export async function ensureStudentAdminSchema() {
   await addColumnIfMissing('citizenship VARCHAR(100) NULL');
   await addColumnIfMissing('dropped_subjects VARCHAR(255) NULL');
   await addColumnIfMissing('remarks TEXT NULL');
+  await addColumnIfMissing('elective_review_required BOOLEAN NOT NULL DEFAULT FALSE');
+  await addColumnIfMissing('elective_review_note VARCHAR(255) NULL');
 
   const [classNumberIndexes] = await db.query(
     "SHOW INDEX FROM student WHERE Key_name = 'unique_class_number'"
@@ -182,6 +184,8 @@ export const getManagedStudents = async (req, res) => {
         s.citizenship,
         s.dropped_subjects,
         s.remarks,
+        s.elective_review_required,
+        s.elective_review_note,
         c.class_name,
         c.grade_level,
         x1.subject_name AS x1_subject_name,

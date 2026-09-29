@@ -19,7 +19,7 @@
         :class="{ active: activeTab === 'students' }"
         @click="selectTab('students')"
       >
-        {{ tr('Import Student Data CSV', '導入學生資料 CSV') }}
+        {{ tr('Import Student Data CSV/Excel', '導入學生資料 CSV/Excel') }}
       </button>
     </nav>
 
@@ -27,7 +27,7 @@
       <div class="upload-panel">
         <div class="panel-heading">
           <h2>{{ tr('Upload File', '上傳檔案') }}</h2>
-          <p>{{ activeTab === 'students' ? tr('Drag and drop or choose a CSV file', '請拖放或點擊選擇 CSV 檔案') : tr('Drag and drop or choose a CSV or Excel file', '請拖放或點擊選擇 CSV 或 Excel 檔案') }}</p>
+          <p>{{ tr('Drag and drop or choose a CSV or Excel file', '請拖放或點擊選擇 CSV 或 Excel 檔案') }}</p>
         </div>
         <input
           id="data-import-file"
@@ -116,7 +116,7 @@
       <div class="format-panel">
         <div class="format-header">
           <div>
-            <h2>{{ activeTab === 'timetable' ? tr('Timetable CSV/Excel Format', '時間表 CSV/Excel 格式') : tr('Student CSV Format', '學生 CSV 格式') }}</h2>
+            <h2>{{ activeTab === 'timetable' ? tr('Timetable CSV/Excel Format', '時間表 CSV/Excel 格式') : tr('Student CSV/Excel Format', '學生 CSV/Excel 格式') }}</h2>
             <p>{{ tr('Make sure your file follows this format', '請確保你的檔案符合以下格式') }}</p>
           </div>
           <button type="button" class="template-button" @click="downloadCsvTemplate">
@@ -128,22 +128,42 @@
           <table>
             <thead>
               <tr>
-                <th>teacher</th>
-                <th>subject</th>
-                <th>class</th>
-                <th>room</th>
-                <th>day</th>
-                <th>period</th>
+                <th>Abbreviation</th>
+                <th>Teacher</th>
+                <th>Class</th>
+                <th>Subject</th>
+                <th>Weekday</th>
+                <th>Period</th>
+                <th>Start Time</th>
+                <th>End Time</th>
+                <th>Room</th>
+                <th>Details</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>CKW</td>
-                <td>English Language</td>
-                <td>1A</td>
-                <td>101</td>
-                <td>Mon</td>
-                <td>Period 1</td>
+                <td>CWK</td>
+                <td>CHAN WAI KIT</td>
+                <td>1Y</td>
+                <td>ENG</td>
+                <td>星期一</td>
+                <td>11</td>
+                <td>14:50</td>
+                <td>15:25</td>
+                <td>705</td>
+                <td>Group1</td>
+              </tr>
+              <tr>
+                <td>LCW</td>
+                <td>LEE CHI WAI</td>
+                <td>1Y</td>
+                <td>ENG</td>
+                <td>星期一</td>
+                <td>12</td>
+                <td>15:25</td>
+                <td>16:00</td>
+                <td>705</td>
+                <td>Group2</td>
               </tr>
             </tbody>
           </table>
@@ -190,6 +210,7 @@
 
         <ul v-if="activeTab === 'timetable'">
           <li>{{ tr('Timetable import accepts CSV or Excel. Excel can contain multiple sheets.', '時間表可接受 CSV 或 Excel；Excel 可以有多個工作表。') }}</li>
+          <li>{{ tr('Abbreviation must be the unique teacher code stored in the system; the Teacher column is the teacher name.', 'Abbreviation 必須填寫系統內唯一的老師代碼；Teacher 欄填寫老師姓名。') }}</li>
           <li>day: Mon, Tue, Wed, Thu, Fri</li>
           <li>period: Period 1, P1, or 1</li>
           <li>{{ tr('Each sheet must contain the field names above in its header row.', '每個工作表的標題列必須包含以上欄位名稱。') }}</li>
@@ -198,31 +219,32 @@
 
         <div v-if="activeTab === 'timetable'" class="group-sample">
           <h3>{{ tr('Group worksheet sample', '分組工作表範例') }}</h3>
-          <p>{{ tr('Chinese worksheet, for example Sample_中文', '中文工作表，例如 Sample_中文') }}</p>
+          <p>{{ tr('Name the worksheet Grade_Subject, for example S6_STEM, S1_Eng, or S5_中文.', '工作表名稱使用「年級_科目」，例如 S6_STEM、S1_Eng 或 S5_中文。') }}</p>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Group1</th><th></th><th class="empty-column"></th><th>第二組</th><th></th><th class="empty-column"></th><th>Group 3</th><th></th></tr></thead>
+              <thead><tr><th>Group 1</th><th></th><th>Group 2</th><th></th><th class="empty-column"></th><th>Group 3</th><th></th></tr></thead>
               <tbody>
-                <tr><td>1Y04</td><td>黃美軒</td><td></td><td>1M27</td><td>吳健美</td><td></td><td>1R03</td><td>高宇健</td></tr>
-                <tr><td>1R17</td><td>張啟俊</td><td></td><td>1M24</td><td>李裕</td><td></td><td></td><td></td></tr>
+                <tr><td>劉明欣</td><td>6Y02</td><td>陳美軒</td><td>6Y03</td><td></td><td>何嘉欣</td><td>6Y01</td></tr>
+                <tr><td>HO GRACE</td><td>6Y04</td><td>LEE MARY</td><td>6Y05</td><td></td><td></td><td></td></tr>
               </tbody>
             </table>
           </div>
-          <p>{{ tr('English worksheet, for example Sample_Eng, uses the same IDs and group positions with English names.', '英文工作表（例如 Sample_Eng）使用相同學生編號及組別位置，姓名欄填寫英文姓名。') }}</p>
           <ul>
-            <li>{{ tr('Each group occupies two columns: student ID, then student name.', '每組佔兩欄：第一欄為班別＋學號，第二欄為學生姓名。') }}</li>
+            <li>{{ tr('The worksheet name identifies the timetable grade and subject; Eng alone is not enough.', '系統按工作表名稱識別時間表的年級及科目；只寫 Eng 並不足夠。') }}</li>
+            <li>{{ tr('Each group occupies two columns. Name + student ID and student ID + name are both accepted.', '每組佔兩欄；「姓名＋學生編號」或「學生編號＋姓名」兩種次序都接受。') }}</li>
             <li>{{ tr('Groups may begin in any column, with one or more empty columns between them.', '分組可由任何欄開始，組與組之間可有一欄或多欄空白。') }}</li>
             <li>{{ tr('Accepted headers include Group1, Group 1, 第一組, 第二組 and so on.', '組別標題可使用 Group1、Group 1、第一組、第二組等。') }}</li>
             <li>{{ tr('Student IDs use class plus student number, such as 1Y04; leading zeros are preserved.', '學生編號使用班別＋學號，例如 1Y04；學號開首的 0 會保留。') }}</li>
-            <li>{{ tr('Chinese and English names are matched by student ID, never by name.', '中英文姓名只會按學生編號配對，不會按姓名配對。') }}</li>
-            <li>{{ tr('The same student must belong to the same group on Chinese and English worksheets.', '同一學生在中文及英文工作表必須屬於相同組別。') }}</li>
+            <li>{{ tr('Group 1, 2, 3 are matched in order to the same number of timetable lesson groups.', 'Group 1、2、3會按次序配對時間表內相同數量的小組課堂。') }}</li>
+            <li>{{ tr('Use a different valid Abbreviation for each teacher group, and optionally write Group1, Group2, etc. in Details for clarity.', '每個老師小組必須使用不同且有效的 Abbreviation；亦可在 Details 填寫 Group1、Group2 等，方便辨認。') }}</li>
+            <li>{{ tr('The same student may belong to different groups in different subject worksheets.', '同一學生可在不同科目的工作表屬於不同組別。') }}</li>
           </ul>
         </div>
         <ul v-else>
           <li>{{ tr('REGNO identifies students for add or update.', '系統按 REGNO 新增或更新學生。') }}</li>
-          <li>{{ tr('Student import accepts CSV only.', '學生資料只接受 CSV。') }}</li>
+          <li>{{ tr('Student import accepts CSV or Excel (.xlsx/.xls).', '學生資料可接受 CSV 或 Excel（.xlsx/.xls）。') }}</li>
           <li>{{ tr('sex must be M or F.', 'sex 必須為 M 或 F。') }}</li>
-          <li>{{ tr('Students not listed in the CSV will not be deleted.', 'CSV 沒有列出的學生不會被刪除。') }}</li>
+          <li>{{ tr('Students not listed in the uploaded file will not be deleted.', '上傳檔案沒有列出的學生不會被刪除。') }}</li>
         </ul>
       </div>
     </section>
@@ -233,24 +255,71 @@
           <h2>{{ tr('Import Preview', '導入預覽') }}</h2>
           <p>{{ tr('Review every record before saving.', '儲存前請檢查每項記錄。') }}</p>
         </div>
-        <button type="button" class="template-button" :disabled="groupPreview.hasErrors || savingGroup" @click="saveGroupImport">
-          {{ savingGroup ? tr('Importing...', '導入中...') : tr('Import Timetable and Groups', '導入時間表及分組') }}
-        </button>
+        <div class="preview-actions">
+          <button v-if="groupPreview.issues && groupPreview.issues.length" type="button" class="clear-button" @click="downloadGroupErrorReport">
+            {{ tr('Download Error Report', '下載錯誤報告') }}
+          </button>
+          <button type="button" class="template-button" :disabled="groupPreview.hasFatalErrors || !groupPreviewCount('importable') || savingGroup" @click="saveGroupImport">
+            {{ savingGroup ? tr('Importing...', '導入中...') : (groupPreviewCount('skipped') ? tr('Import Valid Records Only', '只導入有效資料') : tr('Import Timetable and Groups', '導入時間表及分組')) }}
+          </button>
+        </div>
+      </div>
+      <div class="group-preview-summary">
+        <div class="summary-item valid"><strong>{{ groupPreviewCount('valid') }}</strong><span>{{ tr('Ready', '可導入') }}</span></div>
+        <div class="summary-item warning"><strong>{{ groupPreviewCount('warning') }}</strong><span>{{ tr('Warnings (will import)', '警告（仍會導入）') }}</span></div>
+        <div class="summary-item error"><strong>{{ groupPreviewCount('skipped') }}</strong><span>{{ tr('Errors (will skip)', '錯誤（將跳過）') }}</span></div>
+      </div>
+      <p v-if="groupPreview.hasFatalErrors" class="fatal-import-message">
+        {{ tr('A structural or group conflict was found. Fix the affected worksheet before importing.', '發現結構或分組衝突，請先修正受影響的工作表，暫不能導入。') }}
+      </p>
+      <p v-else-if="groupPreviewCount('skipped')" class="partial-import-message">
+        {{ tr('Valid records can be imported. Error rows shown below will be skipped.', '可以只導入有效資料；下列錯誤資料將會跳過。') }}
+      </p>
+      <div class="preview-toolbar">
+        <div>
+          <span class="preview-toolbar-label">{{ tr('Show records', '顯示記錄') }}</span>
+          <div class="preview-filter" role="group" :aria-label="tr('Preview filter', '預覽篩選')">
+            <button type="button" class="preview-filter-button" :class="{ active: previewFilter === 'all' }" @click="setPreviewFilter('all')">
+              {{ tr('All', '全部') }} ({{ groupPreview.records.length }})
+            </button>
+            <button type="button" class="preview-filter-button" :class="{ active: previewFilter === 'warning' }" @click="setPreviewFilter('warning')">
+              {{ tr('Warnings', '警告') }} ({{ groupPreviewCount('warning') }})
+            </button>
+            <button type="button" class="preview-filter-button" :class="{ active: previewFilter === 'error' }" @click="setPreviewFilter('error')">
+              {{ tr('Errors', '錯誤') }} ({{ groupPreviewCount('skipped') }})
+            </button>
+          </div>
+        </div>
+        <strong class="preview-toolbar-range">{{ previewRangeLabel }}</strong>
       </div>
       <div class="history-table-wrap">
         <table class="history-table">
-          <thead><tr><th>{{ tr('Group', '組別') }}</th><th>{{ tr('Class / No.', '班別／學號') }}</th><th>{{ tr('Chinese name', '中文姓名') }}</th><th>{{ tr('English name', '英文姓名') }}</th><th>{{ tr('Status', '狀態') }}</th><th>{{ tr('Message', '訊息') }}</th></tr></thead>
+          <thead><tr><th>{{ tr('Grade', '年級') }}</th><th>{{ tr('Subject', '科目') }}</th><th>{{ tr('Group', '組別') }}</th><th>{{ tr('Class / No.', '班別／學號') }}</th><th>{{ tr('Chinese name', '中文姓名') }}</th><th>{{ tr('English name', '英文姓名') }}</th><th>{{ tr('Status', '狀態') }}</th><th>{{ tr('Message', '訊息') }}</th></tr></thead>
           <tbody>
-            <tr v-for="record in groupPreview.records" :key="record.studentKey">
-              <td>{{ record.groupCode }}</td><td>{{ record.studentKey }}</td><td>{{ record.nameZh || '-' }}</td><td>{{ record.nameEn || '-' }}</td>
+            <tr v-for="record in paginatedGroupRecords" :key="`${record.gradeLevel}-${record.subjectCode}-${record.studentKey}`">
+              <td>{{ record.gradeLevel || '-' }}</td><td>{{ record.subjectCode || '-' }}</td><td>{{ record.groupCode }}</td><td>{{ record.studentKey }}</td><td>{{ record.nameZh || '-' }}</td><td>{{ record.nameEn || '-' }}</td>
               <td><span class="status-pill" :class="record.validationStatus">{{ validationStatusLabel(record.validationStatus) }}</span></td>
               <td>{{ record.messages.length ? record.messages.join(' ') : tr('Ready', '可導入') }}</td>
             </tr>
-            <tr v-for="(issue, index) in unlinkedGroupIssues" :key="`issue-${index}`">
-              <td>{{ issue.groupCode || '-' }}</td><td>{{ issue.studentKey || '-' }}</td><td>-</td><td>-</td><td><span class="status-pill error">{{ tr('Error', '錯誤') }}</span></td><td>{{ issue.message }}</td>
+            <tr v-for="(issue, index) in visibleUnlinkedGroupIssues" :key="`issue-${index}`">
+              <td>-</td><td>-</td><td>{{ issue.groupCode || '-' }}</td><td>{{ issue.studentKey || '-' }}</td><td>-</td><td>-</td><td><span class="status-pill error">{{ tr('Error', '錯誤') }}</span></td><td>{{ issue.message }}</td>
+            </tr>
+            <tr v-if="!paginatedGroupRecords.length && !visibleUnlinkedGroupIssues.length">
+              <td colspan="8" class="empty-preview">{{ tr('No records match this filter.', '沒有符合此篩選的記錄。') }}</td>
             </tr>
           </tbody>
         </table>
+      </div>
+      <div v-if="filteredGroupRecords.length" class="history-footer preview-footer">
+        <span>{{ tr('Page', '頁數') }} {{ previewPage }} / {{ previewTotalPages }}</span>
+        <div class="history-pager">
+          <button type="button" class="clear-button small" :disabled="previewPage === 1" @click="previewPage -= 1">
+            {{ tr('Previous', '上一頁') }}
+          </button>
+          <button type="button" class="clear-button small" :disabled="previewPage === previewTotalPages" @click="previewPage += 1">
+            {{ tr('Next', '下一頁') }}
+          </button>
+        </div>
       </div>
     </section>
 
@@ -407,7 +476,7 @@ const TEXT = {
   uploading: '\u4e0a\u8f09\u4e2d...',
   clear: '\u6e05\u9664',
   chooseFile: '\u8acb\u9078\u64c7\u6a94\u6848\u3002',
-  csvOnly: '\u8acb\u4e0a\u8f09 .csv \u6a94\u6848\u3002',
+  studentFileOnly: '\u8acb\u4e0a\u8f09 .csv\u3001.xlsx \u6216 .xls \u6a94\u6848\u3002',
   timetableFileOnly: '\u8acb\u4e0a\u8f09 .csv\u3001.xlsx \u6216 .xls \u6a94\u6848\u3002',
   loginFirst: '\u8acb\u5148\u767b\u5165\u518d\u4e0a\u8f09\u3002',
   failed: '\u4e0a\u8f09\u5931\u6557\u3002',
@@ -424,12 +493,17 @@ export default {
       file: null,
       dragging: false,
       uploading: false,
+      importStage: '',
+      uploadProgress: 0,
       historyLoading: false,
       rollbackLoading: false,
       studentHistoryLoading: false,
       studentRollbackLoading: false,
       savingGroup: false,
       groupPreview: null,
+      previewFilter: 'all',
+      previewPage: 1,
+      previewPageSize: 10,
       message: '',
       messageType: '',
       lastImportResult: null,
@@ -453,22 +527,46 @@ export default {
       return `${sizeInKb} KB`;
     },
     acceptedFileTypes() {
-      if (this.activeTab !== 'students') {
-        return '.csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
-      }
-      return '.csv,text/csv';
+      return '.csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
     },
     fileTypeLabel() {
-      return this.activeTab !== 'students' ? 'CSV/XLSX' : 'CSV';
+      return 'CSV/XLSX';
     },
     uploadButtonLabel() {
-      if (this.uploading) return this.tr('Checking and importing...', '檢查及導入中...');
+      if (this.importStage === 'uploading') {
+        return this.tr(`Uploading ${this.uploadProgress}%...`, `上傳中 ${this.uploadProgress}%...`);
+      }
+      if (this.importStage === 'previewing') return this.tr('Checking worksheets...', '正在檢查工作表...');
+      if (this.importStage === 'processing') return this.tr('Validating and saving...', '正在驗證及儲存...');
       return this.tr('Start Import', '開始導入');
     },
     unlinkedGroupIssues() {
       if (!this.groupPreview) return [];
       const recordKeys = new Set(this.groupPreview.records.map(record => record.studentKey));
-      return this.groupPreview.issues.filter(issue => !recordKeys.has(issue.studentKey));
+      return this.groupPreview.issues.filter(issue => issue.affectsRecord === false || !recordKeys.has(issue.studentKey));
+    },
+    visibleUnlinkedGroupIssues() {
+      return this.previewFilter === 'warning' ? [] : this.unlinkedGroupIssues;
+    },
+    filteredGroupRecords() {
+      if (!this.groupPreview) return [];
+      if (this.previewFilter === 'all') return this.groupPreview.records;
+      return this.groupPreview.records.filter(record => record.validationStatus === this.previewFilter);
+    },
+    previewTotalPages() {
+      return Math.max(1, Math.ceil(this.filteredGroupRecords.length / this.previewPageSize));
+    },
+    paginatedGroupRecords() {
+      const page = Math.min(this.previewPage, this.previewTotalPages);
+      const start = (page - 1) * this.previewPageSize;
+      return this.filteredGroupRecords.slice(start, start + this.previewPageSize);
+    },
+    previewRangeLabel() {
+      if (!this.filteredGroupRecords.length) return this.tr('No records', '沒有記錄');
+      const page = Math.min(this.previewPage, this.previewTotalPages);
+      const start = (page - 1) * this.previewPageSize + 1;
+      const end = Math.min(start + this.previewPageSize - 1, this.filteredGroupRecords.length);
+      return `${start}-${end} / ${this.filteredGroupRecords.length}`;
     },
     historyTotalPages() {
       return Math.max(1, Math.ceil(this.importBatches.length / this.historyPageSize));
@@ -483,11 +581,16 @@ export default {
       const page = Math.min(this.historyPage, this.historyTotalPages);
       const start = (page - 1) * this.historyPageSize + 1;
       const end = Math.min(start + this.historyPageSize - 1, this.importBatches.length);
+      return `${start}-${end} / ${this.importBatches.length}`;
     }
   },
   methods: {
     tr(en, zh) {
       return this.$lang.locale === 'en' ? en : zh;
+    },
+    setPreviewFilter(filter) {
+      this.previewFilter = filter;
+      this.previewPage = 1;
     },
     selectTab(tab) {
       if (tab === 'timetable' && !this.canImportTimetable) return;
@@ -498,6 +601,8 @@ export default {
       this.messageType = '';
       this.lastImportResult = null;
       this.groupPreview = null;
+      this.previewFilter = 'all';
+      this.previewPage = 1;
       if (tab === 'timetable') this.fetchImportBatches();
       if (tab === 'students') this.fetchStudentImportBatches();
     },
@@ -506,17 +611,17 @@ export default {
       this.message = '';
       this.messageType = '';
       this.groupPreview = null;
+      this.previewFilter = 'all';
+      this.previewPage = 1;
 
       if (!file) return;
-      const validFile = this.activeTab !== 'students'
-        ? /\.(csv|xlsx|xls)$/i.test(file.name)
-        : /\.csv$/i.test(file.name);
+      const validFile = /\.(csv|xlsx|xls)$/i.test(file.name);
       if (!validFile) {
         this.clearFile();
         this.showMessage(
           this.activeTab !== 'students'
             ? this.tr('Please upload a .csv, .xlsx, or .xls file.', TEXT.timetableFileOnly)
-            : this.tr('Please upload a .csv file.', TEXT.csvOnly),
+            : this.tr('Please upload a .csv, .xlsx, or .xls file.', TEXT.studentFileOnly),
           'error'
         );
         return;
@@ -546,6 +651,36 @@ export default {
       };
       return labels[status] || status;
     },
+    groupPreviewCount(key) {
+      return Number((this.groupPreview && this.groupPreview.counts && this.groupPreview.counts[key]) || 0);
+    },
+    downloadGroupErrorReport() {
+      if (!this.groupPreview || !Array.isArray(this.groupPreview.issues)) return;
+      const csvCell = value => `"${String(value === undefined || value === null ? '' : value).replace(/"/g, '""')}"`;
+      const rows = [
+        ['Severity', 'Scope', 'Worksheet', 'Row', 'Grade', 'Subject', 'Group', 'Student ID', 'Message'],
+        ...this.groupPreview.issues.map(issue => [
+          issue.severity,
+          issue.scope || 'row',
+          issue.sheetName || '',
+          issue.row || '',
+          issue.gradeLevel || '',
+          issue.subjectCode || '',
+          issue.groupCode || '',
+          issue.studentKey || '',
+          issue.message || ''
+        ])
+      ];
+      const blob = new Blob([`\uFEFF${rows.map(row => row.map(csvCell).join(',')).join('\n')}`], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `group-import-errors-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
     showMessage(message, type) {
       this.message = message;
       this.messageType = type;
@@ -553,6 +688,16 @@ export default {
     authHeaders() {
       const token = localStorage.getItem('token');
       return { Authorization: `Bearer ${token}` };
+    },
+    importRequestConfig(token, nextStage = 'processing') {
+      return {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: event => {
+          if (!event.total) return;
+          this.uploadProgress = Math.min(100, Math.round((event.loaded * 100) / event.total));
+          this.importStage = this.uploadProgress >= 100 ? nextStage : 'uploading';
+        }
+      };
     },
     formatDate(value) {
       if (!value) return '-';
@@ -707,9 +852,9 @@ export default {
     },
     downloadCsvTemplate() {
       const timetableRows = [
-        'teacher,subject,class,room,day,period',
-        'CKW,Chinese Language,1A,101,Mon,Period 1',
-        'LCW,English Language,2M,412,Tue,P2'
+        'Abbreviation,Teacher,Class,Subject,Weekday,Period,Start Time,End Time,Room,Details',
+        'CWK,CHAN WAI KIT,1Y,ENG,星期一,11,14:50,15:25,705,Group1',
+        'LCW,LEE CHI WAI,1Y,ENG,星期一,12,15:25,16:00,705,Group2'
       ];
       const studentRows = [
         'REGNO,級別,班別,學號,ClsNo,姓名,ENNAME,SEX,社別,Email,NCS,Status,語言組別,X1,X2,X3/M1/APL/OL,SUPP CLASS,數學/Maths,公社,退選科目,備註',
@@ -768,6 +913,7 @@ export default {
         this.formatList('Duplicate class number', data.duplicateClassNumbers),
         this.formatList('Missing elective', data.missingElectives),
         this.formatList('Group validation', (data.issues || []).map(issue => issue.message)),
+        this.formatList('Worksheet / timetable matching', data.contextErrors),
         this.formatList('Students not found', (data.missingStudents || []).map(issue => issue.message)),
         this.formatInvalidRows(data.invalidRows)
       ].filter(Boolean);
@@ -789,14 +935,21 @@ export default {
       const formData = new FormData();
       formData.append('file', this.file);
       this.uploading = true;
+      this.importStage = 'uploading';
+      this.uploadProgress = 0;
 
       try {
-        if (this.activeTab === 'timetable' && this.canManageStudents && !this.groupPreview) {
-          const previewRes = await axios.post('/api/import/groups/preview', formData, {
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
-          });
+        const isExcelTimetable = this.activeTab === 'timetable' && /\.(xlsx|xls)$/i.test(this.file.name);
+        if (isExcelTimetable && this.canManageStudents && !this.groupPreview) {
+          const previewRes = await axios.post(
+            '/api/import/groups/preview',
+            formData,
+            this.importRequestConfig(token, 'previewing')
+          );
           if (previewRes.data.hasGroups) {
             this.groupPreview = previewRes.data;
+            this.previewFilter = 'all';
+            this.previewPage = 1;
             this.showMessage(this.tr('Group worksheets found. Review the preview below before importing the timetable.', '找到分組工作表，請先檢查下方預覽再導入時間表。'), 'success');
             return;
           }
@@ -804,15 +957,12 @@ export default {
         const endpoint = this.activeTab === 'timetable'
           ? '/api/import/csv'
           : '/api/import/students/file';
+        this.importStage = 'uploading';
+        this.uploadProgress = 0;
         const res = await axios.post(
           endpoint,
           formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'multipart/form-data'
-            }
-          }
+          this.importRequestConfig(token)
         );
 
         const resultLines = this.activeTab === 'timetable'
@@ -851,10 +1001,20 @@ export default {
         }
       } finally {
         this.uploading = false;
+        this.importStage = '';
+        this.uploadProgress = 0;
       }
     },
     async saveGroupImport() {
-      if (!this.groupPreview || this.groupPreview.hasErrors) return;
+      if (!this.groupPreview || this.groupPreview.hasFatalErrors || !this.groupPreviewCount('importable')) return;
+      const skipped = this.groupPreviewCount('skipped');
+      if (skipped) {
+        const confirmed = window.confirm(this.tr(
+          `${skipped} invalid record(s) will not be imported. Continue with the valid records?`,
+          `有 ${skipped} 筆錯誤資料不會導入，是否繼續導入其餘有效資料？`
+        ));
+        if (!confirmed) return;
+      }
       this.savingGroup = true;
       try {
         const formData = new FormData();
@@ -864,7 +1024,15 @@ export default {
         });
         const groupRes = await axios.post('/api/import/groups/save', { records: this.groupPreview.records }, { headers: this.authHeaders() });
         this.lastImportResult = timetableRes.data;
-        this.showMessage(`${timetableRes.data.message}\n${groupRes.data.message}\nUpdated group rows: ${groupRes.data.updatedRows}`, 'success');
+        const resultLines = [
+          timetableRes.data.message,
+          groupRes.data.message,
+          `${this.tr('Imported group rows', '已導入分組資料')}: ${groupRes.data.updatedRows}`,
+          `${this.tr('Skipped group rows', '已跳過分組資料')}: ${Number(groupRes.data.skippedRows || 0)}`,
+          this.formatList(this.tr('Unmatched worksheets', '未能配對的工作表'), groupRes.data.contextErrors),
+          this.formatList(this.tr('Students not found', '找不到的學生'), (groupRes.data.missingStudents || []).map(issue => issue.message))
+        ].filter(Boolean);
+        this.showMessage(resultLines.join('\n'), 'success');
         this.groupPreview = null;
         this.clearFile();
         await this.fetchImportBatches();
@@ -1897,6 +2065,163 @@ ul {
 
 .group-preview-panel {
   margin-top: 38px;
+}
+
+.group-preview-panel .group-preview-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 18px 38px;
+}
+
+.group-preview-panel .fatal-import-message,
+.group-preview-panel .partial-import-message {
+  margin-left: 38px;
+  margin-right: 38px;
+}
+
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.preview-toolbar {
+  align-items: flex-end;
+  background: #f7fafb;
+  border: 2px solid #c8d7de;
+  border-radius: 10px 10px 0 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 38px 0;
+  padding: 12px 14px;
+}
+
+.preview-toolbar-label {
+  color: var(--text-muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.preview-toolbar-range {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding-bottom: 9px;
+  white-space: nowrap;
+}
+
+.preview-filter {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preview-filter-button {
+  align-items: center;
+  background: #fff;
+  border: 2px solid #8da8b4;
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 800;
+  min-height: 36px;
+  padding: 6px 11px;
+}
+
+.preview-filter-button:hover,
+.preview-filter-button.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.preview-toolbar + .history-table-wrap .history-table {
+  border-top: 0;
+}
+
+.preview-toolbar + .history-table-wrap {
+  border-bottom: 2px solid #c8d7de;
+  border-left: 2px solid #c8d7de;
+  border-right: 2px solid #c8d7de;
+  margin-left: 38px;
+  margin-right: 38px;
+}
+
+.preview-footer {
+  margin: 14px 38px 0;
+}
+
+.empty-preview {
+  color: var(--text-muted);
+  font-weight: 700;
+  text-align: center !important;
+}
+
+.summary-item {
+  border: 1px solid #dbe4e9;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.summary-item strong {
+  font-size: 24px;
+}
+
+.summary-item.valid { background: #edf9f1; color: #047857; }
+.summary-item.warning { background: #fff9e8; color: #8a5a00; }
+.summary-item.error { background: #fff0f0; color: #b42318; }
+
+.fatal-import-message,
+.partial-import-message {
+  border-radius: 8px;
+  font-weight: 800;
+  padding: 12px 14px;
+}
+
+.fatal-import-message {
+  background: #ffe1e1;
+  color: #9f1c1c;
+}
+
+.partial-import-message {
+  background: #fff3cd;
+  color: #765000;
+}
+
+@media (max-width: 760px) {
+  .group-preview-panel .group-preview-summary {
+    grid-template-columns: 1fr;
+    margin-left: 18px;
+    margin-right: 18px;
+  }
+
+  .preview-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    margin-left: 18px;
+    margin-right: 18px;
+  }
+
+  .preview-toolbar-range {
+    padding-bottom: 0;
+  }
+
+  .preview-toolbar + .history-table-wrap,
+  .group-preview-panel .fatal-import-message,
+  .group-preview-panel .partial-import-message,
+  .preview-footer {
+    margin-left: 18px;
+    margin-right: 18px;
+  }
 }
 
 .group-preview-panel td:last-child {

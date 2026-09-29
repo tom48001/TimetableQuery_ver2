@@ -33,6 +33,7 @@
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 import { roomLabel, subjectLabel } from '../utils/timetableLabels';
+import { timetablePeriodLabel } from '../utils/timetablePeriodLabel';
 
 export default {
   name: 'Home',
@@ -56,7 +57,7 @@ export default {
         this.periodLabel(7, '13:30-14:05'),
         this.periodLabel(8, '14:05-14:40'),
         this.periodLabel(9, '14:40-15:15', '14:50-15:25'),
-        this.periodLabel(10, '15:25-16:00', '15:25-16:00')
+        this.periodLabel(10, '15:15-16:00', '15:25-16:00')
       ];
     }
   },
@@ -70,10 +71,8 @@ export default {
     displayRoom(roomName) {
       return roomLabel(roomName, this.$lang.locale);
     },
-    periodLabel(period, time, redTime) {
-      const label = this.$lang.locale === 'en' ? `Period ${period}` : `\u7b2c${period}\u7bc0`;
-      const redLine = redTime ? `<br><span class="red-time">\u7d05 (${redTime})</span>` : '';
-      return `${label}<br><small>(${time})${redLine}</small>`;
+    periodLabel(period, time, alternateTime) {
+      return timetablePeriodLabel(this.$lang.locale, period, time, alternateTime);
     },
     periodRowClass(periodNumber) {
       return [3, 4, 7, 8, 11, 12].includes(periodNumber) ? 'period-row-blue' : 'period-row-purple';

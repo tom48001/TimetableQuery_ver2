@@ -11,6 +11,14 @@
         </button>
       </header>
 
+      <div v-if="message" class="notification-row" role="status" aria-live="polite">
+        <div class="message-toast" :class="{ success: messageType === 'success', error: messageType === 'error' }">
+          <span class="message-icon">{{ messageType === 'success' ? '✓' : '!' }}</span>
+          <p>{{ message }}</p>
+          <button type="button" class="message-close" :aria-label="tr('Close notification', '關閉提示')" @click="message = ''">×</button>
+        </div>
+      </div>
+
       <div class="group-filters">
         <label class="search-box">
           <span>{{ tr('Search', '搜尋') }}</span>
@@ -79,10 +87,37 @@
               <div>
                 <h2>{{ gradeLabel(selectedGroup.grade_level) }} · {{ selectedGroup.class_name }} · {{ subjectLabel(selectedGroup) }} · {{ selectedGroup.group_count }} {{ tr('groups', '組') }}</h2>
               </div>
-              <button type="button" class="primary-btn" :disabled="saving" @click="saveAssignments">
-                {{ saving ? tr('Saving...', '儲存中...') : tr('Save Assignments', '儲存分組') }}
-              </button>
+              <div class="title-actions">
+                <button v-if="canAddTeacher" type="button" class="secondary-btn" @click="showAddTeacher = !showAddTeacher">
+                  {{ tr('Add Teacher', '新增老師') }}
+                </button>
+                <button type="button" class="primary-btn" :disabled="saving" @click="saveAssignments">
+                  {{ saving ? tr('Saving...', '儲存中...') : tr('Save Assignments', '儲存分組') }}
+                </button>
+              </div>
             </div>
+
+            <form v-if="canAddTeacher && showAddTeacher" class="add-teacher-form" @submit.prevent="addTeacher">
+              <label>
+                <span>{{ tr('Teacher', '老師') }}</span>
+                <select v-model.number="newTeacherId" required>
+                  <option :value="null" disabled>{{ tr('Select a teacher', '選擇老師') }}</option>
+                  <option v-for="teacher in availableTeachers" :key="teacher.teacher_id" :value="teacher.teacher_id">
+                    {{ teacher.teacher_name }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                <span>{{ tr('Room', '課室') }}</span>
+                <select v-model.number="newRoomId" required>
+                  <option :value="null" disabled>{{ tr('Select a room', '選擇課室') }}</option>
+                  <option v-for="room in rooms" :key="room.room_id" :value="room.room_id">{{ room.room_name }}</option>
+                </select>
+              </label>
+              <button type="submit" class="primary-btn" :disabled="addingTeacher || !newTeacherId || !newRoomId">
+                {{ addingTeacher ? tr('Adding...', '新增中...') : tr('Confirm Add', '確認新增') }}
+              </button>
+            </form>
 
             <div class="lesson-options">
               <div v-for="lesson in lessons" :key="lesson.timetable_id" class="lesson-option">
@@ -91,6 +126,16 @@
                 <small>{{ assignmentCount(lesson.timetable_id) }} {{ tr('students', '學生') }}</small>
                 <button type="button" class="assign-all-btn" @click="assignAllTo(lesson.timetable_id)">
                   {{ tr('Select all students', '選擇全部學生') }}
+                </button>
+                <button
+                  v-if="canAddTeacher"
+                  type="button"
+                  class="delete-teacher-btn"
+                  :disabled="lessons.length <= 2 || deletingTeacherId === lesson.timetable_id"
+                  :title="lessons.length <= 2 ? tr('At least two teachers are required.', '分組課最少需要保留兩位老師。') : tr('Delete teacher', '刪除老師')"
+                  @click="deleteTeacher(lesson)"
+                >
+                  {{ deletingTeacherId === lesson.timetable_id ? tr('Deleting...', '刪除中...') : tr('Delete Teacher', '刪除老師') }}
                 </button>
               </div>
             </div>
@@ -116,17 +161,23 @@
             </div>
 
             <div class="table-wrap">
-              <table>
+              <table class="assignment-table">
+                <colgroup>
+                  <col class="number-column" />
+                  <col class="student-column" />
+                  <col v-for="lesson in visibleLessons" :key="`col-${lesson.timetable_id}`" class="teacher-column" />
+                  <col class="teacher-column" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>{{ tr('No.', '班號') }}</th>
                     <th>{{ tr('Student', '學生') }}</th>
-                    <th v-for="lesson in lessons" :key="lesson.timetable_id">
-                      {{ lesson.teacher_name }}<br />
-                      <small>{{ lesson.room_name }}</small>
+                    <th v-for="lesson in visibleLessons" :key="lesson.timetable_id" class="teacher-heading">
+                      <span class="teacher-header-name">{{ lesson.teacher_name }}</span>
+                      <small class="teacher-header-room">{{ lesson.room_name }}</small>
                     </th>
-                    <th>
-                      {{ tr('Unassigned', '未分配') }}<br />
+                    <th class="teacher-heading">
+                      <span class="teacher-header-name">{{ tr('Unassigned', '未分配') }}</span>
                       <button type="button" class="assign-all-btn compact" @click="assignAllTo(null)">
                         {{ tr('Select all', '全部選擇') }}
                       </button>
@@ -136,7 +187,7 @@
                 <tbody>
                   <template v-for="group in groupedFilteredStudents">
                     <tr :key="`class-${group.className}`" class="class-divider">
-                      <td :colspan="lessons.length + 3">
+                      <td :colspan="visibleLessons.length + 3">
                         {{ group.className }} · {{ group.students.length }} {{ tr('students', '學生') }}
                       </td>
                     </tr>
@@ -146,21 +197,11 @@
                         <strong>{{ student.student_name }}</strong>
                         <span>{{ student.english_name }}</span>
                       </td>
-                      <td v-for="lesson in lessons" :key="lesson.timetable_id">
-                        <input
-                          type="radio"
-                          :name="`student-${student.student_id}`"
-                          :value="lesson.timetable_id"
-                          v-model="assignments[student.student_id]"
-                        />
+                      <td v-for="lesson in visibleLessons" :key="lesson.timetable_id">
+                        <input type="radio" :name="`student-${student.student_id}`" :value="lesson.timetable_id" v-model="assignments[student.student_id]" />
                       </td>
                       <td>
-                        <input
-                          type="radio"
-                          :name="`student-${student.student_id}`"
-                          :value="null"
-                          v-model="assignments[student.student_id]"
-                        />
+                        <input type="radio" :name="`student-${student.student_id}`" :value="null" v-model="assignments[student.student_id]" />
                       </td>
                     </tr>
                   </template>
@@ -174,7 +215,6 @@
         </section>
       </div>
 
-      <pre v-if="message" class="message" :class="{ success: messageType === 'success', error: messageType === 'error' }">{{ message }}</pre>
     </section>
   </main>
 </template>
@@ -199,16 +239,33 @@ export default {
       searchText: '',
       selectedGrade: '',
       showUnassignedOnly: false,
-      selectedStudentClass: ''
+      selectedStudentClass: '',
+      userRole: 'teacher',
+      teachers: [],
+      rooms: [],
+      showAddTeacher: false,
+      newTeacherId: null,
+      newRoomId: null,
+      addingTeacher: false,
+      deletingTeacherId: null
     };
   },
   computed: {
+    canAddTeacher() {
+      return this.userRole === 'manager' || this.userRole === 'subject_head';
+    },
+    availableTeachers() {
+      const currentTeacherIds = new Set(this.lessons.map(lesson => Number(lesson.teacher_id)));
+      return this.teachers.filter(teacher => !currentTeacherIds.has(Number(teacher.teacher_id)));
+    },
+    visibleLessons() {
+      return this.lessons.slice(0, 6);
+    },
     gradeOptions() {
       return Array.from(new Set(
         this.groups
-          .map(group => String(group.class_name || '').trim().match(/^\d+/))
+          .map(group => this.gradeNumber(group))
           .filter(Boolean)
-          .map(match => match[0])
       )).sort((a, b) => Number(a) - Number(b));
     },
     filteredGroups() {
@@ -223,7 +280,7 @@ export default {
           this.groupScheduleLabel(group)
         ].join(' ').toLowerCase();
         const matchesKeyword = !keyword || haystack.includes(keyword);
-        const matchesGrade = !this.selectedGrade || className.startsWith(this.selectedGrade);
+        const matchesGrade = !this.selectedGrade || this.gradeNumber(group) === this.selectedGrade;
         const assigned = Number(group.assigned_students || 0);
         const total = Number(group.student_count || 0);
         const matchesUnassigned = !this.showUnassignedOnly || !total || assigned < total;
@@ -293,6 +350,12 @@ export default {
       const match = value.match(/(\d+)/);
       return match ? `S${match[1]}` : (value || '-');
     },
+    gradeNumber(group) {
+      const gradeLevel = String((group && group.grade_level) || '').trim();
+      const className = String((group && group.class_name) || '').trim();
+      const match = gradeLevel.match(/([1-6])/) || className.match(/^[SF]?([1-6])/i);
+      return match ? match[1] : '';
+    },
     groupKey(group) {
       return [group.class_id, group.subject_id, group.family_signature || `${group.day_of_week}-${group.period_id}`].join('-');
     },
@@ -331,6 +394,9 @@ export default {
       this.selectedGroup = group;
       this.loadingDetail = true;
       this.message = '';
+      this.showAddTeacher = false;
+      this.newTeacherId = null;
+      this.newRoomId = null;
       try {
         const res = await axios.get('/api/lesson-groups/detail', {
           headers: this.authHeaders(),
@@ -354,6 +420,102 @@ export default {
         this.loadingDetail = false;
       }
     },
+    async loadAddTeacherOptions() {
+      if (!this.canAddTeacher) return;
+      try {
+        const [teacherRes, roomRes] = await Promise.all([
+          axios.get('/api/teachers/list', { headers: this.authHeaders() }),
+          axios.get('/api/rooms', { headers: this.authHeaders() })
+        ]);
+        this.teachers = teacherRes.data;
+        this.rooms = roomRes.data;
+      } catch (err) {
+        const data = err.response && err.response.data;
+        this.showMessage(data && data.error ? data.error : this.tr('Failed to load teachers or rooms.', '載入老師或課室失敗。'), 'error');
+      }
+    },
+    async addTeacher() {
+      if (!this.selectedGroup || !this.newTeacherId || !this.newRoomId) return;
+      this.addingTeacher = true;
+      const group = this.selectedGroup;
+      try {
+        const res = await axios.post('/api/lesson-groups/teachers', {
+          classId: group.class_id,
+          subjectId: group.subject_id,
+          day: group.day_of_week,
+          periodId: group.period_id,
+          teacherId: this.newTeacherId,
+          roomId: this.newRoomId
+        }, { headers: this.authHeaders() });
+        const selectedTeacher = this.teachers.find(teacher => Number(teacher.teacher_id) === Number(this.newTeacherId));
+        const successMessage = this.tr(
+          `${selectedTeacher ? selectedTeacher.teacher_name : 'Teacher'} added to ${Number(res.data.occurrenceCount || 0)} matching lesson(s).`,
+          `已將 ${selectedTeacher ? selectedTeacher.teacher_name : '老師'} 新增至 ${Number(res.data.occurrenceCount || 0)} 個相同課節。`
+        );
+        this.showAddTeacher = false;
+        this.newTeacherId = null;
+        this.newRoomId = null;
+        await this.fetchGroups();
+        const updated = this.groups.find(item => {
+          const sameCourse = Number(item.class_id) === Number(group.class_id) && Number(item.subject_id) === Number(group.subject_id);
+          const occurrences = Array.isArray(item.occurrences) ? item.occurrences : [];
+          return sameCourse && occurrences.some(occurrence => occurrence.day_of_week === group.day_of_week && Number(occurrence.period_id) === Number(group.period_id));
+        });
+        if (updated) await this.selectGroup(updated);
+        this.showMessage(successMessage, 'success');
+      } catch (err) {
+        const data = err.response && err.response.data;
+        this.showMessage(data && data.error ? data.error : this.tr('Failed to add teacher.', '新增老師失敗。'), 'error');
+      } finally {
+        this.addingTeacher = false;
+      }
+    },
+    async deleteTeacher(lesson) {
+      if (!this.selectedGroup || !lesson || this.lessons.length <= 2) return;
+      const assigned = this.assignmentCount(lesson.timetable_id);
+      const confirmed = window.confirm(this.tr(
+        `Delete ${lesson.teacher_name} from this lesson group and all matching periods? ${assigned} assigned student(s) will become unassigned.`,
+        `確定從此分組課及所有相同課節刪除 ${lesson.teacher_name}？目前有 ${assigned} 位學生屬於此組，刪除後會變成未分配。`
+      ));
+      if (!confirmed) return;
+
+      const group = this.selectedGroup;
+      this.deletingTeacherId = lesson.timetable_id;
+      try {
+        const res = await axios.delete(`/api/lesson-groups/teachers/${lesson.timetable_id}`, {
+          headers: this.authHeaders(),
+          params: {
+            classId: group.class_id,
+            subjectId: group.subject_id,
+            day: group.day_of_week,
+            periodId: group.period_id
+          }
+        });
+        await this.fetchGroups();
+        const updated = this.groups.find(item => {
+          const sameCourse = Number(item.class_id) === Number(group.class_id) && Number(item.subject_id) === Number(group.subject_id);
+          const occurrences = Array.isArray(item.occurrences) ? item.occurrences : [];
+          return sameCourse && occurrences.some(occurrence => occurrence.day_of_week === group.day_of_week && Number(occurrence.period_id) === Number(group.period_id));
+        });
+        if (updated) await this.selectGroup(updated);
+        else {
+          this.selectedGroup = null;
+          this.lessons = [];
+          this.students = [];
+          this.assignments = {};
+        }
+        const unassigned = Number(res.data.unassignedStudents || 0);
+        this.showMessage(this.tr(
+          `${lesson.teacher_name} was deleted. ${unassigned} student(s) are now unassigned.`,
+          `已刪除 ${lesson.teacher_name}；${unassigned} 位學生現為未分配。`
+        ), 'success');
+      } catch (err) {
+        const data = err.response && err.response.data;
+        this.showMessage(data && data.error ? data.error : this.tr('Failed to delete teacher.', '刪除老師失敗。'), 'error');
+      } finally {
+        this.deletingTeacherId = null;
+      }
+    },
     async saveAssignments() {
       if (!this.selectedGroup) return;
       this.saving = true;
@@ -370,13 +532,14 @@ export default {
           assignments
         }, { headers: this.authHeaders() });
 
-        this.showMessage(res.data.message || this.tr('Assignments saved.', '分組已儲存。'), 'success');
+        const successMessage = res.data.message || this.tr('Assignments saved.', '分組已儲存。');
         await this.fetchGroups();
         const current = this.groups.find(group => this.groupKey(group) === this.groupKey(this.selectedGroup));
         if (current) {
           this.selectedGroup = current;
           await this.selectGroup(current);
         }
+        this.showMessage(successMessage, 'success');
       } catch (err) {
         const data = err.response && err.response.data;
         this.showMessage(data && data.error ? data.error : this.tr('Failed to save assignments.', '儲存分組失敗。'), 'error');
@@ -386,7 +549,17 @@ export default {
     }
   },
   mounted() {
+    const user = localStorage.getItem('user');
+    if (user) {
+      try {
+        const parsed = JSON.parse(user);
+        this.userRole = String(parsed.role || 'teacher').trim().toLowerCase();
+      } catch (error) {
+        console.error('Failed to parse user role:', error);
+      }
+    }
     this.fetchGroups();
+    this.loadAddTeacherOptions();
   }
 };
 </script>
@@ -570,6 +743,37 @@ p {
   margin: 16px 0;
 }
 
+.title-actions,
+.add-teacher-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.add-teacher-form {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f7fafb;
+  margin: 14px 0;
+  padding: 14px;
+}
+
+.add-teacher-form label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-teacher-form select {
+  min-width: 180px;
+  height: 42px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: #fff;
+  padding: 0 10px;
+}
+
 .lesson-option {
   display: flex;
   flex-direction: column;
@@ -603,13 +807,69 @@ p {
   padding: 4px 7px;
 }
 
+.delete-teacher-btn {
+  min-height: 34px;
+  height: auto;
+  border: 1px solid #e0b4b4;
+  background: #fff;
+  color: #a02626;
+  font-size: 12px;
+  margin-top: 4px;
+  padding: 7px 10px;
+}
+
+.delete-teacher-btn:hover:not(:disabled) {
+  border-color: #c43d3d;
+  background: #fff0f0;
+}
+
 .table-wrap {
-  overflow: auto;
+  overflow: visible;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+}
+
+.assignment-table {
+  table-layout: fixed;
+}
+
+.assignment-table .number-column {
+  width: 64px;
+}
+
+.assignment-table .student-column {
+  width: 36%;
+}
+
+.assignment-table .teacher-column {
+  width: auto;
+}
+
+.teacher-heading {
+  height: 104px;
+  overflow-wrap: anywhere;
+  padding: 10px 7px;
+}
+
+.teacher-header-name,
+.teacher-header-room {
+  display: block;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.teacher-header-name {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.teacher-header-room {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 7px;
 }
 
 th,
@@ -645,8 +905,8 @@ td span {
 }
 
 input[type="radio"] {
-  width: 18px;
   height: 18px;
+  width: 18px;
 }
 
 button {
@@ -681,32 +941,109 @@ button:disabled {
   text-align: center;
 }
 
-.message {
-  white-space: pre-wrap;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #f5f8fa;
-  color: var(--text);
-  margin: 18px 0 0;
-  padding: 14px;
+.notification-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 18px;
 }
 
-.message.success {
+.message-toast {
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(15, 45, 60, 0.12);
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 30px;
+  max-width: 620px;
+  padding: 13px 12px 13px 14px;
+  width: min(100%, 620px);
+}
+
+.message-toast p {
+  line-height: 1.45;
+  margin: 1px 8px 0;
+  white-space: pre-wrap;
+}
+
+.message-icon {
+  align-items: center;
+  border-radius: 50%;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 900;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.message-close {
+  align-items: center;
+  align-self: start;
+  background: transparent !important;
+  color: currentColor !important;
+  display: inline-flex;
+  font-size: 24px;
+  height: 28px;
+  justify-content: center;
+  opacity: 0.65;
+  padding: 0;
+}
+
+.message-toast.success {
   border-color: #a8d0b5;
   background: #edf8f0;
   color: #1c5634;
 }
 
-.message.error {
+.message-toast.success .message-icon {
+  background: #c8ead3;
+}
+
+.message-toast.error {
   border-color: #e0b4b4;
   background: #fff0f0;
   color: #8a1f1f;
 }
 
+.message-toast.error .message-icon {
+  background: #f3cccc;
+}
+
 @media (max-width: 880px) {
   .group-filters,
-  .layout {
+  .layout,
+  .add-teacher-form {
     grid-template-columns: 1fr;
   }
+
+  .selected-title,
+  .add-teacher-form,
+  .title-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .notification-row {
+    justify-content: stretch;
+    margin-top: 0;
+  }
+
+  .message-toast {
+    max-width: none;
+  }
+
+  .assignment-table .number-column {
+    width: 54px;
+  }
+
+  .assignment-table .student-column {
+    width: 34%;
+  }
+
+  .assignment-table th,
+  .assignment-table td {
+    padding: 8px 6px;
+  }
+
 }
 </style>

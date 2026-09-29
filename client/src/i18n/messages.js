@@ -23,7 +23,13 @@ const messages = {
   roles: {
     staff: { zh: 'Staff', en: 'Staff' },
     manager: { zh: 'Manager', en: 'Manager' },
-    teacher: { zh: 'Teacher', en: 'Teacher' }
+    teacher: { zh: '\u8001\u5e2b', en: 'Teacher' },
+    subject_head: { zh: '\u79d1\u4e3b\u7ba1', en: 'Subject Head' }
+  },
+  forbidden: {
+    title: { zh: '\u6c92\u6709\u6b0a\u9650', en: 'Access denied' },
+    message: { zh: '\u4f60\u7684\u5e33\u865f\u6c92\u6709\u6b0a\u9650\u958b\u555f\u9019\u500b\u9801\u9762\u3002', en: 'Your account does not have permission to open this page.' },
+    backHome: { zh: '\u8fd4\u56de\u9996\u9801', en: 'Back to home' }
   },
   nav: {
     timetable: { zh: '\u6642\u9593\u8868\u61c9\u7528', en: 'Timetable' },
@@ -35,7 +41,7 @@ const messages = {
     freeTeacher: { zh: '\u641c\u5c0b\u7a7a\u5802\u8001\u5e2b', en: 'Free Teachers' },
     classTimetable: { zh: '\u5404\u73ed\u4e0a\u8ab2\u6642\u9593\u8868', en: 'Class Timetable' },
     roomTimetable: { zh: '\u5404\u623f\u9593\u4e0a\u8ab2\u6642\u9593\u8868', en: 'Room Timetable' },
-    electives: { zh: '\u53ef\u89c0\u8ab2\u8ab2\u8868', en: 'Elective Timetable' },
+    electives: { zh: '\u9078\u4fee\u8ab2\u8ab2\u8868', en: 'Elective Timetable' },
     studentTimetable: { zh: '\u67e5\u95b1\u5b78\u751f\u4e0a\u8ab2\u6642\u9593\u8868', en: 'Student Timetable' },
     lessonGroups: { zh: '\u5206\u7d44\u8ab2\u8a2d\u5b9a', en: 'Split Lesson Groups' },
     bla: { zh: '\u6700\u4f73\u5b78\u7fd2\u614b\u5ea6\u63d0\u540d', en: 'Best Learning Attitude Nomination' },

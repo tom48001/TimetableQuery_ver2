@@ -3,11 +3,16 @@
     <section class="entry-panel">
       <header class="page-header">
         <div>
-          <h1>{{ tr('Enter Learning Goal Total (First Term)', '輸入學生完成目標總數（上學期）') }}</h1>
+          <h1>{{ tr(`Enter Learning Goal Total (${termLabel})`, `輸入學生完成目標總數（${termLabel}）`) }}</h1>
         </div>
       </header>
 
       <section class="class-picker">
+        <label for="semesterSelect">{{ tr('Term', '學期') }}</label>
+        <select id="semesterSelect" v-model="selectedSemester" @change="changeSemester">
+          <option value="first">{{ tr('First Term', '上學期') }}</option>
+          <option value="second">{{ tr('Second Term', '下學期') }}</option>
+        </select>
         <label for="classSelect">{{ tr('Class', '班別') }}</label>
         <select id="classSelect" v-model="selectedClassId" @change="fetchSelectedClassStudents">
           <option value="">{{ tr('Select class', '選擇班別') }}</option>
@@ -32,6 +37,7 @@
             <input
               type="number"
               min="0"
+              max="8"
               step="1"
               v-model.number="goalCounts[student.student_id]"
               @focus="$event.target.select()"
@@ -69,6 +75,7 @@ export default {
   data() {
     return {
       classList: [],
+      selectedSemester: 'first',
       selectedClassId: '',
       students: [],
       goalCounts: {},
@@ -78,6 +85,10 @@ export default {
     };
   },
   computed: {
+    termLabel() {
+      if (this.selectedSemester === 'second') return this.tr('Second Term', '下學期');
+      return this.tr('First Term', '上學期');
+    },
     regularClasses() {
       return this.classList.filter(cls => this.isRegularClass(cls.class_name));
     }
@@ -93,6 +104,11 @@ export default {
       const className = student.class_name || '';
       const classNumber = String(student.class_number || '').padStart(2, '0');
       return `${className}${classNumber}`;
+    },
+    async changeSemester() {
+      this.goalCounts = {};
+      await this.fetchExistingGoals();
+      if (this.selectedClassId) await this.fetchSelectedClassStudents();
     },
     async fetchClasses() {
       const token = localStorage.getItem('token');
@@ -124,7 +140,10 @@ export default {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const params = this.teacher_id ? { teacher_id: this.teacher_id } : {};
+      const params = {
+        semester: this.selectedSemester,
+        ...(this.teacher_id ? { teacher_id: this.teacher_id } : {})
+      };
 
       try {
         const res = await axios.get('/api/learning-goals/records', {
@@ -181,13 +200,14 @@ export default {
 
       const records = this.students.map(student => ({
         student_id: student.student_id,
-        completed_goals: Math.max(0, Number(this.goalCounts[student.student_id]) || 0)
+        completed_goals: Math.min(8, Math.max(0, Number(this.goalCounts[student.student_id]) || 0))
       }));
 
       this.saving = true;
       try {
         await axios.post('/api/learning-goals/records', {
           teacher_id: this.teacher_id,
+          semester: this.selectedSemester,
           records
         }, {
           headers: { Authorization: `Bearer ${token}` }

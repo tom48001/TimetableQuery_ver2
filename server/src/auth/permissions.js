@@ -18,6 +18,14 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     manageStudents: false,
     importTimetable: false
   },
+  subject_head: {
+    timetable: true,
+    nominations: true,
+    changePassword: true,
+    manageUsers: false,
+    manageStudents: false,
+    importTimetable: false
+  },
   staff: {
     timetable: true,
     nominations: true,
@@ -29,7 +37,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
   manager: {
     timetable: true,
     nominations: true,
-    changePassword: false,
+    changePassword: true,
     manageUsers: true,
     manageStudents: true,
     importTimetable: true
@@ -47,6 +55,21 @@ export async function ensurePermissionsColumn() {
     if (error.code !== 'ER_DUP_FIELDNAME' && error.errno !== 1060) {
       throw error;
     }
+  }
+
+  try {
+    await db.query('ALTER TABLE user ADD COLUMN subject_head_subject_id BIGINT NULL');
+  } catch (error) {
+    if (error.code !== 'ER_DUP_FIELDNAME' && error.errno !== 1060) throw error;
+  }
+
+  const [roleColumns] = await db.query(`
+    SELECT COLUMN_TYPE
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user' AND COLUMN_NAME = 'role'
+  `);
+  if (roleColumns.length && !String(roleColumns[0].COLUMN_TYPE).includes("'subject_head'")) {
+    await db.query("ALTER TABLE user MODIFY COLUMN role ENUM('teacher','subject_head','staff','manager') DEFAULT 'teacher'");
   }
 
   permissionsColumnReady = true;
@@ -107,5 +130,12 @@ export function requireAnyPermission(permissions) {
       code: 'NO_PERMISSION',
       error: `No permission. Required one of: ${permissions.join(', ')}.`
     });
+  };
+}
+
+export function requireRole(requiredRole) {
+  return (req, res, next) => {
+    if (normalizeRole(req.user?.role) === requiredRole) return next();
+    return res.status(403).json({ code: 'NO_PERMISSION', error: `Required role: ${requiredRole}.` });
   };
 }

@@ -67,7 +67,12 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="student in paginatedStudents" :key="student.student_id" :class="{ inactive: student.status === 'inactive' }">
+              <tr
+                v-for="student in paginatedStudents"
+                :key="student.student_id"
+                :class="{ inactive: student.status === 'inactive', 'needs-review': student.elective_review_required }"
+                :title="student.elective_review_required ? student.elective_review_note : ''"
+              >
                 <template v-if="editingStudentId === student.student_id">
                   <td><input v-model.trim="editStudent.regno" /></td>
                   <td>{{ student.student_id }}</td>
@@ -104,7 +109,10 @@
                   <td>{{ student.class_name || '-' }}</td>
                   <td :class="{ duplicate: student.duplicate_class_number }">{{ student.class_number }}<small v-if="student.duplicate_class_number">{{ tr('Duplicate', '重複') }}</small></td>
                   <td>{{ student.class_code || '-' }}</td>
-                  <td class="name-cell">{{ student.student_ch_name }}</td>
+                  <td class="name-cell">
+                    {{ student.student_ch_name }}
+                    <small v-if="student.elective_review_required" class="review-badge">{{ tr('Review elective', '檢查選修科') }}</small>
+                  </td>
                   <td>{{ student.student_eng_name }}</td>
                   <td :class="{ duplicate: student.duplicate_email }">{{ student.email || '-' }}<small v-if="student.duplicate_email">{{ tr('Duplicate', '重複') }}</small></td>
                   <td><span class="status-pill" :class="student.status">{{ student.status }}</span></td>
@@ -222,6 +230,7 @@ export default {
       if (!this.filteredStudents.length) return this.tr('No students', '沒有學生');
       const start = (this.currentPage - 1) * this.pageSize + 1;
       const end = Math.min(start + this.pageSize - 1, this.filteredStudents.length);
+      return `${start}-${end} / ${this.filteredStudents.length}`;
     },
     pageItems() {
       const pages = [];
@@ -480,7 +489,12 @@ h1 {
   height: 100%;
   outline: 0;
   padding: 0;
+  text-align: center;
   width: 100%;
+}
+
+.filter-select select {
+  text-align-last: center;
 }
 
 .filter-select {
@@ -671,6 +685,21 @@ button {
 
 .student-table tr.inactive td.action-cell {
   background: #f8fafc;
+}
+
+.student-table tr.needs-review {
+  box-shadow: inset 4px 0 #c57b00;
+}
+
+.review-badge {
+  background: #fff1cc;
+  border-radius: 999px;
+  color: #875400;
+  display: inline-flex;
+  font-size: 10px;
+  margin-left: 6px;
+  padding: 2px 6px;
+  white-space: nowrap;
 }
 
 .name-cell {

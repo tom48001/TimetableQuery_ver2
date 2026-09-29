@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import xlsx from 'xlsx';
-import { parseGroupWorkbook, parseStudentId } from '../src/utils/groupImport.js';
+import { parseGroupWorkbook, parseSheetContext, parseStudentId } from '../src/utils/groupImport.js';
 
 function workbook(sheets) {
   const book = xlsx.utils.book_new();
@@ -13,6 +13,49 @@ function workbook(sheets) {
 
 test('parses IDs without losing the leading zero', () => {
   assert.deepEqual(parseStudentId(' 1Y04 '), { studentKey: '1Y04', className: '1Y', studentNo: '04' });
+});
+
+test('parses grade and subject from the worksheet name', () => {
+  assert.deepEqual(parseSheetContext('S6_STEM'), { gradeLevel: 'S6', subjectCode: 'STEM' });
+  assert.deepEqual(parseSheetContext('5_中文'), { gradeLevel: 'S5', subjectCode: '中文' });
+});
+
+test('accepts name then student ID columns in a grade_subject worksheet', () => {
+  const result = parseGroupWorkbook(workbook({
+    S6_STEM: [
+      ['Group 1', '', 'Group 2'],
+      ['劉明欣', '6Y02', '陳美軒', '6Y03'],
+      ['HO GRACE', '6Y04']
+    ]
+  }));
+  assert.equal(result.hasErrors, false);
+  assert.deepEqual(result.records.map(record => ({
+    studentKey: record.studentKey,
+    gradeLevel: record.gradeLevel,
+    subjectCode: record.subjectCode,
+    groupCode: record.groupCode
+  })), [
+    { studentKey: '6Y02', gradeLevel: 'S6', subjectCode: 'STEM', groupCode: 'Group1' },
+    { studentKey: '6Y04', gradeLevel: 'S6', subjectCode: 'STEM', groupCode: 'Group1' },
+    { studentKey: '6Y03', gradeLevel: 'S6', subjectCode: 'STEM', groupCode: 'Group2' }
+  ]);
+});
+
+test('rejects a student whose form does not match the worksheet grade', () => {
+  const result = parseGroupWorkbook(workbook({
+    S1_Eng: [
+      ['Group 1'],
+      ['6Y02', '劉明欣']
+    ]
+  }));
+  assert.equal(result.hasErrors, true);
+  assert.equal(result.hasFatalErrors, false);
+  assert.equal(result.counts.importable, 0);
+  assert.equal(result.counts.skipped, 1);
+  assert.ok(result.issues.some(issue => (
+    issue.studentKey === '6Y02' &&
+    /Form 6.*labelled S1/.test(issue.message)
+  )));
 });
 
 test('detects spaced and Chinese group headers in non-fixed columns and merges languages', () => {
@@ -47,6 +90,7 @@ test('rejects bilingual group conflicts', () => {
     English: [['Group2'], ['1Y04', 'WONG MEI HIN']]
   }));
   assert.equal(result.hasErrors, true);
+  assert.equal(result.hasFatalErrors, true);
   assert.match(result.issues.find(issue => issue.severity === 'error').message, /Student 1Y04 is in Group1.*Group2/);
 });
 
@@ -60,6 +104,9 @@ test('rejects duplicate IDs and invalid IDs, and warns for a missing language', 
     ]
   }));
   assert.equal(result.hasErrors, true);
+  assert.equal(result.hasFatalErrors, false);
+  assert.equal(result.counts.importable, 1);
+  assert.equal(result.counts.skipped, 2);
   assert.ok(result.issues.some(issue => /Duplicate student ID 1Y04/.test(issue.message)));
   assert.ok(result.issues.some(issue => /Invalid student ID/.test(issue.message)));
   assert.ok(result.issues.some(issue => /no English name/.test(issue.message)));

@@ -1,5 +1,6 @@
 import db from '../db.js';
 import { ensureStudentAdminSchema } from './manageStudentController.js';
+import { parseElectiveSubjectCode } from '../utils/subjectCanonicalKey.js';
 
 const SUBJECT_ALIAS_GROUPS = [
   ['PHY', 'PHYSICS', '物理'],
@@ -56,17 +57,21 @@ function normalizeSubjectKey(value) {
 }
 
 function subjectCanonicalKey(subject) {
-  const candidates = [
-    subject.subject_name,
-    subject.subject_name_zh,
-    subject.subject_name_en
-  ].map(normalizeSubjectKey).filter(Boolean);
+  const subjectName = normalizeSubjectKey(subject.subject_name);
+  const chineseName = normalizeSubjectKey(subject.subject_name_zh);
+  const englishName = normalizeSubjectKey(subject.subject_name_en);
+  const candidates = [subjectName, chineseName, englishName].filter(Boolean);
 
   for (const candidate of candidates) {
+    const withoutElectiveBand = candidate.replace(/B[123]$/, '');
     if (SUBJECT_ALIAS_MAP.has(candidate)) return SUBJECT_ALIAS_MAP.get(candidate);
+    if (SUBJECT_ALIAS_MAP.has(withoutElectiveBand)) return SUBJECT_ALIAS_MAP.get(withoutElectiveBand);
   }
 
-  return candidates[0] || String(subject.subject_id || '');
+  // Timetable imports may create several codes for one displayed subject
+  // (for example CL, CHIN and the full Chinese name).  Prefer the translated
+  // curriculum name so those records become one subject-head option.
+  return chineseName || englishName || subjectName || String(subject.subject_id || '');
 }
 
 function sortSubjectRows(rows) {
@@ -88,36 +93,41 @@ async function electiveSubjectRows() {
       sub.subject_name_en,
       sub.is_elective
     FROM subject sub
-    LEFT JOIN student st
-      ON sub.subject_id IN (st.x1_subject_id, st.x2_subject_id, st.x3_subject_id)
-     AND st.status = 'active'
-    WHERE sub.is_elective = TRUE
-       OR st.student_id IS NOT NULL
+    JOIN timetable imported_tt ON imported_tt.subject_id = sub.subject_id
+    WHERE sub.subject_name REGEXP '-B[123]$'
     ORDER BY sub.subject_name
   `);
 
   const grouped = new Map();
   rows.forEach(row => {
     const key = subjectCanonicalKey(row);
+    const parsedCode = parseElectiveSubjectCode(row.subject_name);
+    const electiveBlocks = parsedCode.electiveGroup ? [parsedCode.electiveGroup] : [];
     const existing = grouped.get(key);
     if (!existing) {
-      grouped.set(key, { ...row, alias_subject_ids: [row.subject_id] });
+      const subject = { ...row };
+      subject.subject_code = parsedCode.subjectCode;
+      subject.imported_subject_code = parsedCode.importedCode;
+      subject.elective_block = parsedCode.block;
+      subject.subject_name = parsedCode.subjectCode;
+      grouped.set(key, { ...subject, alias_subject_ids: [row.subject_id], elective_blocks: electiveBlocks });
       return;
     }
 
     existing.alias_subject_ids.push(row.subject_id);
+    electiveBlocks.forEach(block => {
+      if (!existing.elective_blocks.includes(block)) existing.elective_blocks.push(block);
+    });
     if (!existing.subject_name_zh && row.subject_name_zh) existing.subject_name_zh = row.subject_name_zh;
     if (!existing.subject_name_en && row.subject_name_en) existing.subject_name_en = row.subject_name_en;
-    if (String(existing.subject_name || '').length > String(row.subject_name || '').length) {
-      existing.subject_name = row.subject_name;
-      existing.subject_id = row.subject_id;
-    }
+    // Keep the display code suffix-free. The imported codes remain available
+    // through imported_subject_code and alias_subject_ids.
   });
 
   return sortSubjectRows(Array.from(grouped.values()));
 }
 
-async function resolveSubjectIds(subjectId) {
+export async function resolveSubjectIds(subjectId) {
   const [selectedRows] = await db.query(
     'SELECT subject_id, subject_name, subject_name_zh, subject_name_en FROM subject WHERE subject_id = ?',
     [subjectId]
@@ -134,6 +144,45 @@ async function resolveSubjectIds(subjectId) {
     .filter(row => subjectCanonicalKey(row) === selectedKey)
     .map(row => row.subject_id);
 }
+
+export const getSubjectHeadOptions = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT DISTINCT
+        sub.subject_id,
+        sub.subject_name,
+        sub.subject_name_zh,
+        sub.subject_name_en,
+        sub.is_elective
+      FROM subject sub
+      JOIN timetable tt ON tt.subject_id = sub.subject_id
+      ORDER BY sub.subject_name
+    `);
+
+    const grouped = new Map();
+    rows.forEach(row => {
+      const key = subjectCanonicalKey(row);
+      const existing = grouped.get(key);
+      if (!existing) {
+        grouped.set(key, { ...row, alias_subject_ids: [row.subject_id] });
+        return;
+      }
+
+      existing.alias_subject_ids.push(row.subject_id);
+      if (!existing.subject_name_zh && row.subject_name_zh) existing.subject_name_zh = row.subject_name_zh;
+      if (!existing.subject_name_en && row.subject_name_en) existing.subject_name_en = row.subject_name_en;
+      if (String(existing.subject_name || '').length > String(row.subject_name || '').length) {
+        existing.subject_name = row.subject_name;
+        existing.subject_id = row.subject_id;
+      }
+    });
+
+    res.json(sortSubjectRows(Array.from(grouped.values())));
+  } catch (error) {
+    console.error('Error fetching subject-head options:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
 
 export const getElectives = async (req, res) => {
   try {
@@ -173,7 +222,7 @@ export const getElectiveSubjectOptions = async (req, res) => {
 };
 
 export const getStudentElectives = async (req, res) => {
-  const { form, subject } = req.body;
+  const { form, subject, block } = req.body;
   if (!form || !subject) {
     return res.status(400).json({ error: 'Please provide form and subject.' });
   }
@@ -185,6 +234,18 @@ export const getStudentElectives = async (req, res) => {
     if (!subjectIds.length) {
       return res.status(404).json({ error: 'Subject not found.' });
     }
+
+    const blockColumn = {
+      X1: 's.x1_subject_id',
+      X2: 's.x2_subject_id',
+      X3: 's.x3_subject_id'
+    }[String(block || '').toUpperCase()];
+    const electiveFilter = blockColumn
+      ? `${blockColumn} IN (?)`
+      : '(s.x1_subject_id IN (?) OR s.x2_subject_id IN (?) OR s.x3_subject_id IN (?))';
+    const electiveFilterParams = blockColumn
+      ? [subjectIds]
+      : [subjectIds, subjectIds, subjectIds];
 
     const [rows] = await db.query(
       `
@@ -222,11 +283,7 @@ export const getStudentElectives = async (req, res) => {
       LEFT JOIN subject sub ON tt.subject_id = sub.subject_id
       WHERE c.grade_level = ?
         AND s.status = 'active'
-        AND (
-          s.x1_subject_id IN (?)
-          OR s.x2_subject_id IN (?)
-          OR s.x3_subject_id IN (?)
-        )
+        AND ${electiveFilter}
       ORDER BY
         CAST(LEFT(c.class_name, 1) AS UNSIGNED),
         FIELD(SUBSTRING(c.class_name, 2, 1), 'M', 'A', 'R', 'Y'),
@@ -236,7 +293,7 @@ export const getStudentElectives = async (req, res) => {
         tt.day_of_week,
         p.period_id
       `,
-      [subjectIds, form, form.replace('F', 'S'), form, subjectIds, subjectIds, subjectIds]
+      [subjectIds, form, form.replace('F', 'S'), form, ...electiveFilterParams]
     );
 
     res.json(rows);

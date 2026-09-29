@@ -5,6 +5,7 @@
         <div>
           <h1>{{ tr('Student Timetable', '學生上課時間表') }}</h1>
         </div>
+        <span class="count-badge">{{ studentSelectionLabel }}</span>
       </header>
 
       <section class="selector-section">
@@ -20,18 +21,20 @@
       <section v-if="students.length > 0" class="selector-section">
         <h2>{{ tr('Student', '學生') }}</h2>
         <input v-model.trim="studentSearch" class="search-input" type="text" :placeholder="tr('Search student...', '搜尋學生...')" />
+        <p v-if="studentSearch && filteredStudents.length" class="search-feedback">{{ studentSearchResultLabel }}</p>
 
-        <div class="student-list">
+        <div v-if="filteredStudents.length" class="student-list">
           <label v-for="student in filteredStudents" :key="student.student_id" class="student-row" :class="{ selected: selectedStudent === student.student_id }">
             <input type="radio" :value="student.student_id" v-model="selectedStudent" />
             <span class="student-number">{{ studentNumber(student) }}</span>
-            <span class="student-name">{{ studentDisplayName(student) }}</span>
+            <span class="student-name" :title="studentDisplayName(student)">{{ studentDisplayName(student) }}</span>
           </label>
         </div>
+        <p v-else class="empty-message">{{ emptyStudentResultLabel }}</p>
       </section>
 
       <button type="button" class="primary-btn" :disabled="!selectedStudent" @click="goToResult">
-        {{ tr('View Timetable', '查看時間表') }}
+        {{ studentViewButtonLabel }}
       </button>
     </section>
   </main>
@@ -62,6 +65,25 @@ export default {
         if (numberA !== numberB) return numberA - numberB;
         return String(a.class_number || '').localeCompare(String(b.class_number || ''));
       });
+    },
+    selectedStudentRecord() {
+      return this.students.find(student => student.student_id === this.selectedStudent) || null;
+    },
+    studentSelectionLabel() {
+      return this.selectedStudent ? this.tr('1 student selected', '已選 1 位學生') : this.tr('No student selected', '未選擇學生');
+    },
+    studentSearchResultLabel() {
+      const count = this.filteredStudents.length;
+      return this.tr(`Found ${count} student${count === 1 ? '' : 's'}`, `找到 ${count} 位學生`);
+    },
+    emptyStudentResultLabel() {
+      if (!this.studentSearch) return this.tr('No students found', '找不到學生');
+      return this.tr(`No students match "${this.studentSearch}"`, `找不到符合「${this.studentSearch}」的學生`);
+    },
+    studentViewButtonLabel() {
+      if (!this.selectedStudentRecord) return this.tr('View Timetable', '查看時間表');
+      const name = this.studentDisplayName(this.selectedStudentRecord);
+      return this.tr(`View ${name}'s timetable`, `查看 ${name} 的時間表`);
     }
   },
   async mounted() {
@@ -119,6 +141,23 @@ export default {
   text-transform: uppercase;
 }
 
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.count-badge {
+  border: 1px solid #b8cad3;
+  border-radius: 999px;
+  background: #f7fafb;
+  color: #607683;
+  font-weight: 700;
+  padding: 9px 14px;
+  white-space: nowrap;
+}
+
 h1,
 h2 {
   color: #122635;
@@ -154,14 +193,17 @@ h2 {
 }
 
 .student-list {
-  max-height: 380px;
+  height: 380px;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  overflow-y: auto;
+  grid-auto-rows: min-content;
+  align-content: start;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
 }
 
 .option-card,
 .student-row {
-  min-height: 38px;
+  min-height: 34px;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -172,7 +214,7 @@ h2 {
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
-  padding: 5px 8px;
+  padding: 4px 7px;
 }
 
 .option-card:hover,
@@ -208,6 +250,22 @@ h2 {
   padding: 0 12px;
 }
 
+.search-feedback {
+  color: #607683;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 10px 0 -4px;
+}
+
+.empty-message {
+  border: 1px dashed #b8cad3;
+  border-radius: 8px;
+  color: #607683;
+  margin: 14px 0 0;
+  padding: 24px;
+  text-align: center;
+}
+
 input {
   accent-color: #0b7285;
 }
@@ -234,6 +292,11 @@ input {
 @media (max-width: 720px) {
   .student-panel {
     padding: 20px;
+  }
+
+  .page-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .student-list {

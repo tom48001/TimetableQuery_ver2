@@ -20,6 +20,7 @@ import prefectRoutes from './routes/prefectRoutes.js';
 import learningGoalRoutes from './routes/learningGoalRoutes.js';
 import lessonGroupRoutes from './routes/lessonGroupRoutes.js';
 import nominationAdminRoutes from './routes/nominationAdminRoutes.js';
+import systemSettingsRoutes from './routes/systemSettingsRoutes.js';
 
 import importRoutes from "./routes/importRoutes.js";
 
@@ -68,7 +69,12 @@ app.use('/api/prefect', prefectRoutes);
 app.use('/api/learning-goals', learningGoalRoutes);
 app.use('/api/lesson-groups', lessonGroupRoutes);
 app.use('/api/nominations', nominationAdminRoutes);
+app.use('/api/system-settings', systemSettingsRoutes);
 app.use('/api/import', importRoutes);
 
 // Server
-app.listen(3000, () => console.log('Server running on port 3000'));
+const port = process.env.PORT || 3000;
+
+app.listen(port, '127.0.0.1', () => {
+  console.log(`Server running on http://127.0.0.1:${port}`);
+});

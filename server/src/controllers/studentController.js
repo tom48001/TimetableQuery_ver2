@@ -1,6 +1,9 @@
 import pool from '../db.js';
 import { ensureStudentAdminSchema } from './manageStudentController.js';
 import { ensureLessonGroupSchema } from './lessonGroupController.js';
+import { subjectCanonicalKey } from '../utils/subjectCanonicalKey.js';
+import { loadSchoolSettings } from './systemSettingsController.js';
+import { juniorClassGroup, juniorRuleAllows } from '../utils/juniorAllocation.js';
 
 function normaliseClassListSql(alias) {
   return `
@@ -99,7 +102,7 @@ export const getStudentsByClassNSubject = async (req, res) => {
     `;
 
     const [subjectRows] = await pool.query(
-      'SELECT is_elective FROM subject WHERE subject_id = ?',
+      'SELECT subject_id, subject_name, subject_name_zh, subject_name_en, is_elective FROM subject WHERE subject_id = ?',
       [subjectId]
     );
 
@@ -111,6 +114,14 @@ export const getStudentsByClassNSubject = async (req, res) => {
       const [students] = await pool.query(baseSql, [classId]);
       return res.json(students);
     }
+
+    const [allSubjects] = await pool.query(
+      'SELECT subject_id, subject_name, subject_name_zh, subject_name_en FROM subject'
+    );
+    const selectedKey = subjectCanonicalKey(subjectRows[0]);
+    const electiveSubjectIds = allSubjects
+      .filter(subject => subjectCanonicalKey(subject) === selectedKey)
+      .map(subject => subject.subject_id);
 
     const [electiveStudents] = await pool.query(
       `
@@ -125,18 +136,16 @@ export const getStudentsByClassNSubject = async (req, res) => {
       FROM student s
       JOIN class c ON s.class_id = c.class_id
       WHERE s.class_id = ? AND s.status = 'active'
-        AND ? IN (s.x1_subject_id, s.x2_subject_id, s.x3_subject_id)
+        AND (
+          s.x1_subject_id IN (?)
+          OR s.x2_subject_id IN (?)
+          OR s.x3_subject_id IN (?)
+        )
       ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name
       `,
-      [classId, subjectId]
+      [classId, electiveSubjectIds, electiveSubjectIds, electiveSubjectIds]
     );
-
-    if (electiveStudents.length > 0) {
-      return res.json(electiveStudents);
-    }
-
-    const [classStudents] = await pool.query(baseSql, [classId]);
-    return res.json(classStudents);
+    return res.json(electiveStudents);
   } catch (error) {
     console.error('Failed to load students by class and subject:', error);
     res.status(500).json({ error: 'Failed to load students' });
@@ -149,6 +158,15 @@ export const getStudentTimetable = async (req, res) => {
   try {
     await ensureStudentAdminSchema();
     await ensureLessonGroupSchema();
+    const [studentRows] = await pool.query(
+      `SELECT s.student_id, c.class_name, c.grade_level
+       FROM student s
+       JOIN class c ON c.class_id = s.class_id
+       WHERE s.student_id = ? AND s.status = 'active'`,
+      [studentId]
+    );
+    if (!studentRows.length) return res.json([]);
+    const student = studentRows[0];
     const [rows] = await pool.query(`
       SELECT 
         t.teacher_name,
@@ -212,7 +230,28 @@ export const getStudentTimetable = async (req, res) => {
       ORDER BY tt.day_of_week, tt.period_id
     `, [studentId]);
 
-    res.json(rows);
+    if (!['F1', 'F2', 'F3'].includes(student.grade_level)) return res.json(rows);
+
+    const settings = await loadSchoolSettings();
+    const [allocationRules] = await pool.query(
+      `SELECT subject_id, semester, class_group
+       FROM junior_subject_allocation_rule
+       WHERE grade = ?`,
+      [student.grade_level]
+    );
+    const managedSubjectIds = new Set(allocationRules.map(rule => Number(rule.subject_id)));
+    const activeRules = new Map(
+      allocationRules
+        .filter(rule => Number(rule.semester) === settings.current_semester)
+        .map(rule => [Number(rule.subject_id), rule])
+    );
+    const classGroup = juniorClassGroup(student.class_name);
+    const filteredRows = rows.filter(row => {
+      const subjectId = Number(row.subject_id);
+      if (!managedSubjectIds.has(subjectId)) return true;
+      return juniorRuleAllows(activeRules.get(subjectId), classGroup);
+    });
+    res.json(filteredRows);
   } catch (error) {
     console.error('查詢學生課表失敗:', error);
     res.status(500).json({ error: '無法查詢課表' });
