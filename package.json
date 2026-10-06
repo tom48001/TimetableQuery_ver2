@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "start": "concurrently --kill-others --names server,client \"npm --prefix server start\" \"npm --prefix client start\"",
+    "start": "docker compose up --build",
+    "start:local": "concurrently --kill-others --names server,client \"npm --prefix server start\" \"npm --prefix client start\"",
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"

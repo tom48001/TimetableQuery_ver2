@@ -30,7 +30,7 @@ The repository root contains `compose.yml`, which runs MySQL 8, the Express back
 
 1. Keep the existing MySQL database until the Docker installation has been verified. Back it up before migration.
 2. Copy `.env.docker.example` to `.env.docker` and replace every `CHANGE_ME` value. `DB_PASS` must equal `MYSQL_PASSWORD`.
-3. For Google login, register `http://localhost:8080/auth/google/callback` as an authorized redirect URI (replace `localhost` with the real HTTPS hostname in production). Set `CLIENT_ORIGIN` and `GOOGLE_CALLBACK_URL` to that same public site.
+3. For local Google login, register `http://localhost:3000/auth/google/callback` as an authorized redirect URI. In production, replace it with the real HTTPS callback URL. `CLIENT_ORIGIN` remains the public frontend URL.
 4. Start the stack from the repository root:
 
    ```sh

@@ -2,9 +2,11 @@ client/node_modules/
 server/node_modules/
 outputs/
 
+server/.env
 **/server/.env
 **/server/src/.env
 **/server/src/db.js
+
 .DS_Store
 *.log
 client-dev.*.log

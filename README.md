@@ -51,7 +51,9 @@ The recommended deployment runs the frontend, backend and MySQL 8 with Docker Co
 ```sh
 cp .env.docker.example .env.docker
 # Edit .env.docker and replace every CHANGE_ME value.
-docker compose up --build -d
+npm start
 ```
 
 Open `http://localhost:8080`. MySQL Workbench can connect to `127.0.0.1:3307`.
+
+`npm start` now starts the complete Docker stack in the foreground. Press `Ctrl+C` to stop it. Use `npm run docker:up` to run it in the background. The previous non-Docker development command remains available as `npm run start:local` when a compatible legacy Node.js version is installed and the Docker ports are not in use.
