@@ -10,6 +10,7 @@ outputs/
 client-dev.*.log
 server-dev.*.log
 server/uploads/
+.env.docker
 
 client/.env
 client/.env.*

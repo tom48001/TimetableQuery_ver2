@@ -1,33 +1,6 @@
 import db from '../db.js';
 import { ensureStudentAdminSchema } from './manageStudentController.js';
-import { parseElectiveSubjectCode } from '../utils/subjectCanonicalKey.js';
-
-const SUBJECT_ALIAS_GROUPS = [
-  ['PHY', 'PHYSICS', '物理'],
-  ['CHEM', 'CHEMISTRY', '化學'],
-  ['BIO', 'BIOLOGY', '生物'],
-  ['ECON', 'ECONOMICS', '經濟'],
-  ['ICT', 'INFORMATIONANDCOMMUNICATIONTECHNOLOGY', '資訊及通訊科技'],
-  ['JAP', 'JAPANESE', '日語'],
-  ['CLIT', 'CHINESELITERATURE', '中國文學'],
-  ['CHIST', 'CHINESEHISTORY', '中國歷史'],
-  ['GEOG', 'GEOGRAPHY', '地理'],
-  ['HIST', 'HISTORY', '歷史'],
-  ['MATHM1', 'MATH(M1)', 'MATHEMATICSM1', '數學延伸單元一', '數學M1'],
-  ['BAFS', 'BUSINESSACCOUNTINGANDFINANCIALSTUDIES', '企業、會計與財務概論'],
-  ['HMSC', 'HEALTHMANAGEMENTANDSOCIALCARE', '健康管理與社會關懷'],
-  ['VA', 'VISUALARTS', '視覺藝術'],
-  ['TL', 'TECHNOLOGYANDLIVING', '科技與生活'],
-  ['SPANISH', '西班牙語'],
-  ['STEM'],
-  ['APL']
-];
-
-const SUBJECT_ALIAS_MAP = new Map();
-SUBJECT_ALIAS_GROUPS.forEach(group => {
-  const canonical = group[0];
-  group.forEach(alias => SUBJECT_ALIAS_MAP.set(normalizeSubjectKey(alias), canonical));
-});
+import { ensureSubjectImportSchema } from '../utils/subjectImportSchema.js';
 
 const normaliseClassListSql = `
   REPLACE(
@@ -57,21 +30,7 @@ function normalizeSubjectKey(value) {
 }
 
 function subjectCanonicalKey(subject) {
-  const subjectName = normalizeSubjectKey(subject.subject_name);
-  const chineseName = normalizeSubjectKey(subject.subject_name_zh);
-  const englishName = normalizeSubjectKey(subject.subject_name_en);
-  const candidates = [subjectName, chineseName, englishName].filter(Boolean);
-
-  for (const candidate of candidates) {
-    const withoutElectiveBand = candidate.replace(/B[123]$/, '');
-    if (SUBJECT_ALIAS_MAP.has(candidate)) return SUBJECT_ALIAS_MAP.get(candidate);
-    if (SUBJECT_ALIAS_MAP.has(withoutElectiveBand)) return SUBJECT_ALIAS_MAP.get(withoutElectiveBand);
-  }
-
-  // Timetable imports may create several codes for one displayed subject
-  // (for example CL, CHIN and the full Chinese name).  Prefer the translated
-  // curriculum name so those records become one subject-head option.
-  return chineseName || englishName || subjectName || String(subject.subject_id || '');
+  return normalizeSubjectKey(subject.subject_name) || String(subject.subject_id || '');
 }
 
 function sortSubjectRows(rows) {
@@ -85,31 +44,32 @@ function sortSubjectRows(rows) {
 }
 
 async function electiveSubjectRows() {
+  await ensureSubjectImportSchema();
   const [rows] = await db.query(`
     SELECT DISTINCT
       sub.subject_id,
       sub.subject_name,
       sub.subject_name_zh,
       sub.subject_name_en,
+      sub.import_name,
+      sub.block,
       sub.is_elective
     FROM subject sub
     JOIN timetable imported_tt ON imported_tt.subject_id = sub.subject_id
-    WHERE sub.subject_name REGEXP '-B[123]$'
+    WHERE sub.block IS NOT NULL
     ORDER BY sub.subject_name
   `);
 
   const grouped = new Map();
   rows.forEach(row => {
     const key = subjectCanonicalKey(row);
-    const parsedCode = parseElectiveSubjectCode(row.subject_name);
-    const electiveBlocks = parsedCode.electiveGroup ? [parsedCode.electiveGroup] : [];
+    const electiveBlocks = row.block ? [row.block] : [];
     const existing = grouped.get(key);
     if (!existing) {
       const subject = { ...row };
-      subject.subject_code = parsedCode.subjectCode;
-      subject.imported_subject_code = parsedCode.importedCode;
-      subject.elective_block = parsedCode.block;
-      subject.subject_name = parsedCode.subjectCode;
+      subject.subject_code = row.subject_name;
+      subject.imported_subject_code = row.import_name;
+      subject.elective_block = row.block;
       grouped.set(key, { ...subject, alias_subject_ids: [row.subject_id], elective_blocks: electiveBlocks });
       return;
     }

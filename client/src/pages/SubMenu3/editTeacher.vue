@@ -376,9 +376,7 @@ export default {
     },
     subjectLabel(subject) {
       if (!subject) return '-';
-      return this.$lang.locale === 'en'
-        ? (subject.subject_name_en || subject.subject_name || subject.subject_name_zh)
-        : (subject.subject_name_zh || subject.subject_name || subject.subject_name_en);
+      return subject.subject_name || '-';
     },
     subjectName(subjectId) {
       return this.subjectLabel(this.subjects.find(subject =>

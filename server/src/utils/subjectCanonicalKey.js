@@ -20,7 +20,7 @@ export function parseElectiveSubjectCode(value) {
 }
 
 export function subjectCanonicalKey(subject = {}) {
-  return String(subject.subject_name_zh || subject.subject_name_en || subject.subject_name || '')
+  return String(subject.subject_name || subject.subject_name_zh || subject.subject_name_en || '')
     .trim()
     .replace(/[-－]\s*[123]$/u, '')
     .replace(/-B[123]$/iu, '')

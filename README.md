@@ -44,3 +44,14 @@ cd server
 npm install
 npm start
 ```
+# Docker quick start
+
+The recommended deployment runs the frontend, backend and MySQL 8 with Docker Compose. See [database/README.md](database/README.md) for the complete safe installation and migration procedure.
+
+```sh
+cp .env.docker.example .env.docker
+# Edit .env.docker and replace every CHANGE_ME value.
+docker compose up --build -d
+```
+
+Open `http://localhost:8080`. MySQL Workbench can connect to `127.0.0.1:3307`.

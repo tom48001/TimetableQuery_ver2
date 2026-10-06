@@ -30,7 +30,9 @@ CREATE TABLE class (
 
 CREATE TABLE subject (
   subject_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  subject_name VARCHAR(255) NOT NULL UNIQUE,
+  import_name VARCHAR(255) NULL UNIQUE,
+  subject_name VARCHAR(255) NOT NULL,
+  block ENUM('X1', 'X2', 'X3') NULL,
   subject_name_zh VARCHAR(255) NULL,
   subject_name_en VARCHAR(255) NULL,
   is_elective BOOLEAN DEFAULT FALSE,

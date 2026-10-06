@@ -50,6 +50,10 @@ app.use(session({
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:8080', credentials: true }));
 app.use(bodyParser.json());
 
+// Lightweight container/orchestrator health check. It intentionally does not
+// expose application data or require authentication.
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+
 // Auth. Keep /auth for existing local callbacks; use /api/auth for deployment through Apache reverse proxy.
 app.use('/auth', authRoutes);
 app.use('/api/auth', authRoutes);
@@ -74,7 +78,8 @@ app.use('/api/import', importRoutes);
 
 // Server
 const port = process.env.PORT || 3000;
+const host = process.env.HOST || '127.0.0.1';
 
-app.listen(port, '127.0.0.1', () => {
-  console.log(`Server running on http://127.0.0.1:${port}`);
+app.listen(port, host, () => {
+  console.log(`Server running on http://${host}:${port}`);
 });

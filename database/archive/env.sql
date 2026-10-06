@@ -64,7 +64,9 @@ CREATE TABLE class (
 -- 科目表
 CREATE TABLE subject (
     subject_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    import_name VARCHAR(255) NOT NULL UNIQUE,
     subject_name VARCHAR(255) NOT NULL,
+    block ENUM('X1', 'X2', 'X3') NULL,
     is_elective BOOLEAN DEFAULT FALSE, -- 是否選修科目
     is_nominatable BOOLEAN NOT NULL DEFAULT TRUE -- 是否可作最佳學習態度提名
 );

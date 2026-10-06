@@ -8,7 +8,8 @@ import { requirePermission } from '../auth/permissions.js';
 import { ensureStudentAdminSchema } from '../controllers/manageStudentController.js';
 import { ensureLessonGroupSchema } from '../controllers/lessonGroupController.js';
 import { readGroupFile, parseStudentId } from '../utils/groupImport.js';
-import { parseElectiveSubjectCode, subjectCanonicalKey } from '../utils/subjectCanonicalKey.js';
+import { subjectCanonicalKey } from '../utils/subjectCanonicalKey.js';
+import { ensureSubjectImportSchema, subjectImportRecord } from '../utils/subjectImportSchema.js';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
@@ -112,50 +113,6 @@ const dayMap = {
   '周六': 'Sat'
 };
 
-const subjectAliasMap = {
-  ENG: 'ENG',
-  ENGLISH: 'ENG',
-  'ENGLISH LANGUAGE': 'ENG',
-  '英國語文': 'ENG',
-  MATH: 'MATH',
-  MATHS: 'MATH',
-  MATHEMATICS: 'MATH',
-  '數學': 'MATH',
-  PHY: 'PHY',
-  PHYSICS: 'PHY',
-  '物理': 'PHY',
-  CHEM: 'CHEM',
-  CHEMISTRY: 'CHEM',
-  '化學': 'CHEM',
-  BIO: 'BIO',
-  BIOLOGY: 'BIO',
-  '生物': 'BIO',
-  ECON: 'ECON',
-  ECONOMICS: 'ECON',
-  '經濟': 'ECON',
-  ICT: 'ICT',
-  '資訊及通訊科技': 'ICT',
-  BAFS: 'BAFS',
-  '企業、會計與財務概論': 'BAFS',
-  JAP: 'JAP',
-  JAPANESE: 'JAP',
-  '日語': 'JAP',
-  CLIT: 'CLIT',
-  '中國文學': 'CLIT',
-  CHIST: 'CHIS',
-  CHIS: 'CHIS',
-  '中國歷史': 'CHIS',
-  GEOG: 'GEOG',
-  GEOGRAPHY: 'GEOG',
-  '地理': 'GEOG',
-  HIST: 'HIST',
-  HISTORY: 'HIST',
-  '歷史': 'HIST',
-  'MATH(M1)': 'Math(M1)',
-  MATHM1: 'Math(M1)',
-  '數學延伸單元一': 'Math(M1)'
-};
-
 const NON_TIMETABLE_SUBJECTS = new Set(['OFF', 'CLPC', 'CLPE', 'CLPP']);
 
 function isTimetableImportFile(fileName) {
@@ -180,24 +137,22 @@ function normalizePeriod(period) {
 }
 
 function normalizeSubject(subject) {
-  const raw = subject.toString().trim();
-  return subjectAliasMap[raw.toUpperCase()] || raw;
+  return subject.toString().trim();
 }
 
 async function markInvalidElectiveSelectionsForReview(conn) {
   const [activeSubjects] = await conn.query(`
-    SELECT DISTINCT s.subject_id, s.subject_name, s.subject_name_zh, s.subject_name_en
+    SELECT DISTINCT s.subject_id, s.subject_name, s.subject_name_zh, s.subject_name_en, s.import_name, s.block
     FROM timetable tt
     JOIN subject s ON s.subject_id = tt.subject_id
-    WHERE s.subject_name REGEXP '-B[123]$'
+    WHERE s.block IS NOT NULL
   `);
   const activeGroupsBySubject = new Map();
   activeSubjects.forEach(subject => {
-    const parsed = parseElectiveSubjectCode(subject.subject_name);
-    if (!parsed.electiveGroup) return;
+    if (!subject.block) return;
     const key = subjectCanonicalKey(subject);
     const groups = activeGroupsBySubject.get(key) || new Set();
-    groups.add(parsed.electiveGroup);
+    groups.add(subject.block);
     activeGroupsBySubject.set(key, groups);
   });
 
@@ -225,7 +180,7 @@ async function markInvalidElectiveSelectionsForReview(conn) {
       };
       const currentGroups = activeGroupsBySubject.get(subjectCanonicalKey(selected));
       if (currentGroups && !currentGroups.has(group)) {
-        invalid.push(`${group}: ${parseElectiveSubjectCode(selected.subject_name).subjectCode} is now ${Array.from(currentGroups).join('/')}`);
+        invalid.push(`${group}: ${selected.subject_name} is now ${Array.from(currentGroups).join('/')}`);
       }
     });
 
@@ -684,6 +639,7 @@ router.post(
       }
 
       await ensureImportHistoryTables(conn);
+      await ensureSubjectImportSchema(conn);
 
       if (!isTimetableImportFile(req.file.originalname)) {
         return respondImportError(req, res, 400, {
@@ -806,7 +762,7 @@ router.post(
       const [missingSubjects] = await conn.query(`
         SELECT DISTINCT st.subject
         FROM staging_timetable st
-        LEFT JOIN subject s ON TRIM(st.subject) = TRIM(s.subject_name)
+        LEFT JOIN subject s ON TRIM(st.subject) = TRIM(s.import_name)
         WHERE s.subject_id IS NULL
       `);
 
@@ -843,11 +799,19 @@ router.post(
         );
       }
 
-      if (missingSubjects.length) {
+      const [importedSubjectCodes] = await conn.query('SELECT DISTINCT subject FROM staging_timetable');
+      if (importedSubjectCodes.length) {
         await insertRowsInBatches(
           conn,
-          'INSERT INTO subject (subject_name, is_elective) VALUES ?',
-          missingSubjects.map(({ subject }) => [subject, /(?:^|-)B[123]$/i.test(subject)])
+          `INSERT INTO subject (import_name, subject_name, block, is_elective) VALUES ?
+           ON DUPLICATE KEY UPDATE
+             subject_name = VALUES(subject_name),
+             block = VALUES(block),
+             is_elective = VALUES(is_elective)`,
+          importedSubjectCodes.map(({ subject }) => {
+            const record = subjectImportRecord(subject);
+            return [record.import_name, record.subject_name, record.block, record.is_elective];
+          })
         );
       }
 
@@ -929,7 +893,7 @@ router.post(
           p.period_id
         FROM staging_timetable st
         JOIN teacher t ON TRIM(st.teacher_code) = TRIM(t.teacher_code)
-        JOIN subject s ON TRIM(st.subject) = TRIM(s.subject_name)
+        JOIN subject s ON TRIM(st.subject) = TRIM(s.import_name)
         JOIN class c ON TRIM(st.class) = TRIM(c.class_name)
         JOIN room r ON TRIM(st.room) = TRIM(r.room_name)
         JOIN period p ON TRIM(st.period) = TRIM(p.period_name)
@@ -1013,6 +977,7 @@ router.post(
 
       await ensureStudentAdminSchema();
       await ensureStudentImportHistoryTables(conn);
+      await ensureSubjectImportSchema(conn);
       const workbook = xlsx.read(await fs.promises.readFile(req.file.path), { type: 'buffer' });
       const rows = studentSheetRows(workbook);
 
@@ -1120,23 +1085,40 @@ router.post(
       const batchId = batchResult.insertId;
 
       let [subjectRows] = await conn.query(
-        'SELECT subject_id, subject_name FROM subject'
+        'SELECT subject_id, import_name, subject_name, block FROM subject'
       );
-      let subjectMap = new Map(
-        subjectRows.map(row => [String(row.subject_name).trim().toUpperCase(), row.subject_id])
+      const hasImportedOrDisplayCode = subjectCode => subjectRows.some(subject =>
+        String(subject.import_name).trim().toUpperCase() === subjectCode.toUpperCase() ||
+        String(subject.subject_name).trim().toUpperCase() === subjectCode.toUpperCase()
       );
-      const missingElectiveCodes = electiveCodes.filter(subjectName => !subjectMap.has(subjectName.toUpperCase()));
+      const missingElectiveCodes = electiveCodes.filter(subjectCode => !hasImportedOrDisplayCode(subjectCode));
       if (missingElectiveCodes.length) {
         await insertRowsInBatches(
           conn,
-          'INSERT INTO subject (subject_name, is_elective) VALUES ?',
-          missingElectiveCodes.map(subjectName => [subjectName, true])
+          `INSERT INTO subject (import_name, subject_name, block, is_elective) VALUES ?
+           ON DUPLICATE KEY UPDATE
+             subject_name = VALUES(subject_name),
+             block = VALUES(block),
+             is_elective = TRUE`,
+          missingElectiveCodes.map(subjectCode => {
+            const record = subjectImportRecord(subjectCode);
+            return [record.import_name, record.subject_name, record.block, true];
+          })
         );
-        [subjectRows] = await conn.query('SELECT subject_id, subject_name FROM subject');
-        subjectMap = new Map(
-          subjectRows.map(row => [String(row.subject_name).trim().toUpperCase(), row.subject_id])
-        );
+        [subjectRows] = await conn.query('SELECT subject_id, import_name, subject_name, block FROM subject');
       }
+      const resolveStudentSubject = (subjectCode, block) => {
+        const wanted = String(subjectCode || '').trim().toUpperCase();
+        if (!wanted) return null;
+        const exact = subjectRows.find(subject => String(subject.import_name).trim().toUpperCase() === wanted);
+        if (exact) return exact.subject_id;
+        const blockMatch = subjectRows.find(subject =>
+          String(subject.subject_name).trim().toUpperCase() === wanted && subject.block === block
+        );
+        if (blockMatch) return blockMatch.subject_id;
+        const displayMatches = subjectRows.filter(subject => String(subject.subject_name).trim().toUpperCase() === wanted);
+        return displayMatches.length === 1 ? displayMatches[0].subject_id : null;
+      };
 
       const [existingStudentRows] = await conn.query(
         `SELECT student_id, regno, email, student_ch_name, student_eng_name,
@@ -1228,9 +1210,9 @@ router.post(
               row.sex,
               row.status,
               row.is_ncs,
-              subjectMap.get(row.x1.toUpperCase()) || null,
-              subjectMap.get(row.x2.toUpperCase()) || null,
-              subjectMap.get(row.x3.toUpperCase()) || null,
+              resolveStudentSubject(row.x1, 'X1'),
+              resolveStudentSubject(row.x2, 'X2'),
+              resolveStudentSubject(row.x3, 'X3'),
               row.class_code || null,
               row.house || null,
               row.language_group || null,
@@ -1253,9 +1235,9 @@ router.post(
             sex: row.sex,
             status: row.status,
             is_ncs: row.is_ncs,
-            x1_subject_id: subjectMap.get(row.x1.toUpperCase()) || null,
-            x2_subject_id: subjectMap.get(row.x2.toUpperCase()) || null,
-            x3_subject_id: subjectMap.get(row.x3.toUpperCase()) || null,
+            x1_subject_id: resolveStudentSubject(row.x1, 'X1'),
+            x2_subject_id: resolveStudentSubject(row.x2, 'X2'),
+            x3_subject_id: resolveStudentSubject(row.x3, 'X3'),
             class_code: row.class_code || null,
             house: row.house || null,
             language_group: row.language_group || null,
@@ -1285,9 +1267,9 @@ router.post(
               row.sex,
               row.status,
               row.is_ncs,
-              subjectMap.get(row.x1.toUpperCase()) || null,
-              subjectMap.get(row.x2.toUpperCase()) || null,
-              subjectMap.get(row.x3.toUpperCase()) || null,
+              resolveStudentSubject(row.x1, 'X1'),
+              resolveStudentSubject(row.x2, 'X2'),
+              resolveStudentSubject(row.x3, 'X3'),
               row.class_code || null,
               row.house || null,
               row.language_group || null,
@@ -1315,9 +1297,9 @@ router.post(
             sex: row.sex,
             status: row.status,
             is_ncs: row.is_ncs,
-            x1_subject_id: subjectMap.get(row.x1.toUpperCase()) || null,
-            x2_subject_id: subjectMap.get(row.x2.toUpperCase()) || null,
-            x3_subject_id: subjectMap.get(row.x3.toUpperCase()) || null,
+            x1_subject_id: resolveStudentSubject(row.x1, 'X1'),
+            x2_subject_id: resolveStudentSubject(row.x2, 'X2'),
+            x3_subject_id: resolveStudentSubject(row.x3, 'X3'),
             class_code: row.class_code || null,
             house: row.house || null,
             language_group: row.language_group || null,

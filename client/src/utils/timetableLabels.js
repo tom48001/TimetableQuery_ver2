@@ -64,29 +64,8 @@ export const SUBJECT_NAME_LABELS = {
   'Tourism and Hospitality Studies': 'Tourism and Hospitality Studies',
   'Physical Education': 'Physical Education'
 };
-function compact(value) {
-  return String(value || '').replace(/\s+/g, '').trim();
-}
-
-export function subjectLabel(item, locale) {
-  const isEnglish = String(locale).toLowerCase() === 'en';
-  const fallback = item.subject_name || item.subject || '';
-
-  if (!isEnglish) {
-    return item.subject_name_zh || fallback;
-  }
-
-  if (item.subject_name_en) return item.subject_name_en;
-
-  const normalized = compact(fallback);
-  const direct = SUBJECT_NAME_LABELS[fallback] || SUBJECT_NAME_LABELS[normalized];
-  if (direct) return direct;
-
-  const byId = SUBJECT_LABELS[Number(item.subject_id)];
-  if (byId) return byId;
-
-  const partial = Object.keys(SUBJECT_NAME_LABELS).find(name => normalized.includes(compact(name)));
-  return partial ? SUBJECT_NAME_LABELS[partial] : fallback;
+export function subjectLabel(item) {
+  return item.subject_name || item.subject || '';
 }
 
 export function roomLabel(roomName, locale) {
