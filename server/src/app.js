@@ -4,12 +4,9 @@ import passport from './auth/auth.js';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
-<<<<<<< HEAD
 import { initializeImportJobs } from './utils/importJobs.js';
-=======
 import path from 'path';
 import { fileURLToPath } from 'url';
->>>>>>> d6a1450c48436382ae2a528ceb66d21ef8679bfa
 
 import authRoutes from './routes/authRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
@@ -87,15 +84,6 @@ app.use('/api/system-settings', systemSettingsRoutes);
 app.use('/api/import', importRoutes);
 
 // Server
-<<<<<<< HEAD
-const port = process.env.PORT || 3000;
-const host = process.env.HOST || '127.0.0.1';
-
-await initializeImportJobs();
-app.listen(port, host, () => {
-  console.log(`Server running on http://${host}:${port}`);
-});
-=======
 app.use(express.static(clientDistPath));
 
 app.get('*', (req, res, next) => {
@@ -107,4 +95,3 @@ app.get('*', (req, res, next) => {
 });
 
 app.listen(3000, () => console.log('Server running on port 3000'));
->>>>>>> d6a1450c48436382ae2a528ceb66d21ef8679bfa
