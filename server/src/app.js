@@ -4,7 +4,12 @@ import passport from './auth/auth.js';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
+<<<<<<< HEAD
 import { initializeImportJobs } from './utils/importJobs.js';
+=======
+import path from 'path';
+import { fileURLToPath } from 'url';
+>>>>>>> d6a1450c48436382ae2a528ceb66d21ef8679bfa
 
 import authRoutes from './routes/authRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
@@ -34,6 +39,10 @@ if (missingEnv.length > 0) {
 }
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const clientDistPath = path.resolve(__dirname, '../../client/dist');
 
 // Database connection
 app.use(session({
@@ -78,6 +87,7 @@ app.use('/api/system-settings', systemSettingsRoutes);
 app.use('/api/import', importRoutes);
 
 // Server
+<<<<<<< HEAD
 const port = process.env.PORT || 3000;
 const host = process.env.HOST || '127.0.0.1';
 
@@ -85,3 +95,16 @@ await initializeImportJobs();
 app.listen(port, host, () => {
   console.log(`Server running on http://${host}:${port}`);
 });
+=======
+app.use(express.static(clientDistPath));
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
+
+app.listen(3000, () => console.log('Server running on port 3000'));
+>>>>>>> d6a1450c48436382ae2a528ceb66d21ef8679bfa
