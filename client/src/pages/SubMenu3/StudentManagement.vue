@@ -228,14 +228,11 @@ export default {
     },
     pageRangeLabel() {
       if (!this.filteredStudents.length) return this.tr('No students', '沒有學生');
-<<<<<<< HEAD
       const start = (this.currentPage - 1) * this.pageSize + 1;
       const end = Math.min(start + this.pageSize - 1, this.filteredStudents.length);
       return `${start}-${end} / ${this.filteredStudents.length}`;
-=======
       // const start = (this.currentPage - 1) * this.pageSize + 1;
       // const end = Math.min(start + this.pageSize - 1, this.filteredStudents.length);
->>>>>>> d6a1450c48436382ae2a528ceb66d21ef8679bfa
     },
     pageItems() {
       const pages = [];
