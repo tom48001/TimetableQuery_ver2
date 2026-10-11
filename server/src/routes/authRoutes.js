@@ -1,3 +1,4 @@
+import { subjectHeadIds } from '../utils/subjectHeadSubjects.js';
 import express from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
@@ -47,7 +48,7 @@ router.post('/login', async (req, res) => {
     }
 
     const user = users[0];
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const passwordMatch = user.password ? await bcrypt.compare(password, user.password) : false;
     if (!passwordMatch) {
       return res.status(401).json({ error: MESSAGES.invalidCredentials });
     }
@@ -61,7 +62,8 @@ router.post('/login', async (req, res) => {
         user_name: user.user_name,
         email: user.email,
         permissions,
-        subject_head_subject_id: user.subject_head_subject_id || null
+        subject_head_subject_id: user.subject_head_subject_id || null,
+        subject_head_subject_ids: subjectHeadIds(user)
       },
       process.env.JWT_SECRET,
       { expiresIn: '2h' }
@@ -96,7 +98,8 @@ router.get('/google/callback',
         user_name: req.user.user_name,
         email: req.user.email,
         permissions,
-        subject_head_subject_id: req.user.subject_head_subject_id || null
+        subject_head_subject_id: req.user.subject_head_subject_id || null,
+        subject_head_subject_ids: subjectHeadIds(req.user)
       },
       process.env.JWT_SECRET,
       { expiresIn: '2h' }

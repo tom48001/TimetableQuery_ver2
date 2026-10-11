@@ -1,3 +1,5 @@
+import { normalizeImportFilename, normalizeUploadedFilename } from '../utils/importFilename.js';
+import { fillChineseSubjectNames } from '../utils/subjectDisplayNames.js';
 import express from 'express';
 import multer from 'multer';
 import xlsx from 'xlsx';
@@ -10,8 +12,13 @@ import { ensureLessonGroupSchema } from '../controllers/lessonGroupController.js
 import { readGroupFile, parseStudentId } from '../utils/groupImport.js';
 import { subjectCanonicalKey } from '../utils/subjectCanonicalKey.js';
 import { ensureSubjectImportSchema, subjectImportRecord } from '../utils/subjectImportSchema.js';
+import { gradeLevelForClass } from '../utils/classReference.js';
+import teacherImportRoutes from './teacherImportRoutes.js';
+import { withImportJob, getImportProgress, setImportTotal, setImportProcessed } from '../utils/importJobs.js';
 
 const router = express.Router();
+router.use('/teachers', teacherImportRoutes);
+router.get('/progress/:jobId', ensureJWT, getImportProgress);
 const upload = multer({ dest: 'uploads/' });
 const DATABASE_BATCH_SIZE = 500;
 let importHistorySchemaReady = false;
@@ -70,7 +77,7 @@ const STUDENT_COLUMN_ALIASES = {
   supp_class: ['supp_class', 'supplementary_class', 'support_class', '支援班', '補課班'],
   maths_group: ['maths', 'math', '數學_maths', '數學'],
   citizenship: ['citizenship', 'citizenship_social_development', '公社'],
-  dropped_subjects: ['dropped_subjects', 'withdrawn_subjects', '退選科目'],
+  dropped_subjects: ['dropped_subjects', 'withdrawn_subjects', '退選科目', '選修科目'],
   remarks: ['remarks', 'remark', 'notes', '備註']
 };
 
@@ -220,11 +227,6 @@ function sourceValue(sourceRow, aliases) {
   return '';
 }
 
-function gradeLevelForClass(className) {
-  const match = String(className || '').trim().toUpperCase().match(/^[SF]?(\d)/);
-  return match && Number(match[1]) >= 1 && Number(match[1]) <= 6 ? `F${match[1]}` : '';
-}
-
 function normalizeColumnName(value) {
   return String(value || '')
     .replace(/^\uFEFF/, '')
@@ -256,8 +258,11 @@ export function normalizeStudentRow(sourceRow) {
   return normalizeAliasedRow(sourceRow, STUDENT_COLUMN_ALIASES);
 }
 
-export function studentSheetRows(workbook) {
-  for (const sheetName of workbook.SheetNames) {
+export function studentSheetSelection(workbook, selectedSheet = '') {
+  // Prefer the current annual roster over archived class/statistics sheets.
+  const names = selectedSheet ? workbook.SheetNames.filter(name => name === selectedSheet)
+    : [...workbook.SheetNames].sort((a, b) => Number(/^\d{4}\s+Students$/i.test(b)) - Number(/^\d{4}\s+Students$/i.test(a)));
+  for (const sheetName of names) {
     const matrix = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
       header: 1,
       defval: '',
@@ -275,11 +280,16 @@ export function studentSheetRows(workbook) {
     if (headerIndex < 0) continue;
 
     const headers = matrix[headerIndex].map(value => String(value || '').trim());
-    return matrix.slice(headerIndex + 1)
+    const rows = matrix.slice(headerIndex + 1)
       .filter(row => row.some(value => String(value || '').trim()))
       .map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ''])));
+    return { sheetName, rows, skippedSheets: workbook.SheetNames.filter(name => name !== sheetName) };
   }
-  return [];
+  return { sheetName: '', rows: [], skippedSheets: workbook.SheetNames };
+}
+
+export function studentSheetRows(workbook) {
+  return studentSheetSelection(workbook).rows;
 }
 
 export function timetableSheetRows(workbook) {
@@ -491,7 +501,7 @@ router.get('/batches', ensureJWT, requirePermission('importTimetable'), async (r
       ORDER BY b.created_at DESC, b.batch_id DESC
       LIMIT 20
     `);
-    res.json(rows);
+    res.json(rows.map(row => row.file_name ? { ...row, file_name: normalizeImportFilename(row.file_name) } : row));
   } catch (err) {
     console.error('Load import batches error:', err);
     res.status(500).json({ code: 'DATABASE_ERROR', message: 'Failed to load import history.' });
@@ -534,7 +544,7 @@ router.get('/batches/:batchId/json', ensureJWT, requirePermission('importTimetab
     `, [batchId]);
 
     res.json({
-      batch: batches[0],
+      batch: { ...batches[0], file_name: normalizeImportFilename(batches[0].file_name) },
       snapshotRows
     });
   } catch (err) {
@@ -626,7 +636,8 @@ router.post(
   ensureJWT,
   requirePermission('importTimetable'),
   upload.single('file'),
-  async (req, res) => {
+  normalizeUploadedFilename,
+  withImportJob(async (req, res) => {
     const conn = await pool.getConnection();
     let importLockAcquired = false;
 
@@ -650,6 +661,7 @@ router.post(
 
       const workbook = xlsx.read(await fs.promises.readFile(req.file.path), { type: 'buffer' });
       const rows = timetableSheetRows(workbook);
+      await setImportTotal(req, rows.length);
       if (rows.length === 0) {
         return respondImportError(req, res, 400, {
           code: 'EMPTY_FILE',
@@ -881,7 +893,12 @@ router.post(
 
       await conn.query('DELETE FROM timetable');
 
-      const [insertResult] = await conn.query(`
+      const [stagedIds] = await conn.query('SELECT staging_timetable_id FROM staging_timetable ORDER BY staging_timetable_id');
+      let processedRows = invalidRows.length + skippedNonTimetableRows + skippedExternalRows;
+      await setImportProcessed(req, processedRows);
+      const insertResult = { affectedRows: 0 };
+      for (const batch of chunks(stagedIds)) {
+        const [batchResult] = await conn.query(`
         INSERT INTO timetable
           (teacher_id, subject_id, class_id, room_id, day_of_week, period_id)
         SELECT
@@ -897,7 +914,12 @@ router.post(
         JOIN class c ON TRIM(st.class) = TRIM(c.class_name)
         JOIN room r ON TRIM(st.room) = TRIM(r.room_name)
         JOIN period p ON TRIM(st.period) = TRIM(p.period_name)
-      `);
+        WHERE st.staging_timetable_id IN (?)
+      `, [batch.map(row => row.staging_timetable_id)]);
+        insertResult.affectedRows += batchResult.affectedRows;
+        processedRows += batch.length;
+        await setImportProcessed(req, processedRows);
+      }
 
       const electiveReviewCount = await markInvalidElectiveSelectionsForReview(conn);
 
@@ -906,6 +928,7 @@ router.post(
         [insertResult.affectedRows, batchId]
       );
       await conn.query('INSERT INTO import_schedule (file_name) VALUES (?)', [req.file.originalname]);
+      await fillChineseSubjectNames(conn);
       await conn.commit();
 
       return res.json({
@@ -949,15 +972,16 @@ router.post(
       }
       conn.release();
     }
-  }
+  })
 );
 
 router.post(
-  '/students/file',
+  ['/students/file', '/students/roster'],
   ensureJWT,
   requirePermission('manageStudents'),
   upload.single('file'),
-  async (req, res) => {
+  normalizeUploadedFilename,
+  withImportJob(async (req, res) => {
     const conn = await pool.getConnection();
 
     try {
@@ -975,11 +999,16 @@ router.post(
         });
       }
 
-      await ensureStudentAdminSchema();
-      await ensureStudentImportHistoryTables(conn);
-      await ensureSubjectImportSchema(conn);
+      const previewOnly = req.query.preview === '1';
+      if (!previewOnly) {
+        await ensureStudentAdminSchema();
+        await ensureStudentImportHistoryTables(conn);
+        await ensureSubjectImportSchema(conn);
+      }
       const workbook = xlsx.read(await fs.promises.readFile(req.file.path), { type: 'buffer' });
-      const rows = studentSheetRows(workbook);
+      const selection = studentSheetSelection(workbook, String(req.body.sheetName || ''));
+      const rows = selection.rows;
+      await setImportTotal(req, rows.length);
 
       if (rows.length === 0) {
         return res.status(400).json({
@@ -1071,6 +1100,18 @@ router.post(
           message: 'Student import failed. Please fix the file data first.',
           invalidRows,
           missingClasses
+        });
+      }
+
+      if (previewOnly) {
+        return res.json({
+          sheetName: selection.sheetName,
+          skippedSheets: selection.skippedSheets,
+          totalRows: normalizedRows.length,
+          electiveRows: normalizedRows.filter(row => [row.x1, row.x2, row.x3].some(code => code && !['NA', 'DROPPED'].includes(code.toUpperCase()))).length,
+          records: normalizedRows,
+          duplicateRegnos: Array.from(new Set(duplicateRegnos)),
+          duplicateEmails: Array.from(new Set(duplicateEmails))
         });
       }
 
@@ -1311,6 +1352,10 @@ router.post(
           });
           insertedStudents += 1;
         }
+        const processedRows = insertedStudents + updatedStudents;
+        if (processedRows % 50 === 0 || processedRows === normalizedRows.length) {
+          await setImportProcessed(req, processedRows);
+        }
       }
 
       await conn.query(
@@ -1319,6 +1364,7 @@ router.post(
          WHERE batch_id = ?`,
         [insertedStudents, updatedStudents, batchId]
       );
+      await fillChineseSubjectNames(conn);
       await conn.commit();
       return res.json({
         code: 'STUDENT_IMPORT_OK',
@@ -1341,7 +1387,7 @@ router.post(
       if (req.file) fs.unlink(req.file.path, () => {});
       conn.release();
     }
-  }
+  })
 );
 
 router.get('/students/batches', ensureJWT, requirePermission('manageStudents'), async (req, res) => {
@@ -1355,7 +1401,7 @@ router.get('/students/batches', ensureJWT, requirePermission('manageStudents'), 
       ORDER BY b.created_at DESC, b.batch_id DESC
       LIMIT 20
     `);
-    res.json(rows);
+    res.json(rows.map(row => row.file_name ? { ...row, file_name: normalizeImportFilename(row.file_name) } : row));
   } catch (error) {
     console.error('Load student import batches error:', error);
     res.status(500).json({ code: 'DATABASE_ERROR', message: 'Failed to load student import history.' });
@@ -1385,7 +1431,7 @@ router.get('/students/batches/:batchId/json', ensureJWT, requirePermission('mana
        ORDER BY h.history_id`,
       [batchId]
     );
-    res.json({ batch: batches[0], snapshotRows });
+    res.json({ batch: { ...batches[0], file_name: normalizeImportFilename(batches[0].file_name) }, snapshotRows });
   } catch (error) {
     console.error('Load student import batch JSON error:', error);
     res.status(500).json({ code: 'DATABASE_ERROR', message: 'Failed to load student import batch JSON.' });
@@ -1487,7 +1533,8 @@ router.post('/students/rollback/:batchId', ensureJWT, requirePermission('manageS
   }
 });
 
-router.post('/groups/preview', ensureJWT, requirePermission('manageStudents'), upload.single('file'), async (req, res) => {
+router.post('/groups/preview', ensureJWT, requirePermission('manageStudents'), upload.single('file'),
+  normalizeUploadedFilename, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ code: 'MISSING_FILE', message: 'Please upload an Excel or CSV file.' });
     if (!/\.(csv|xlsx|xls)$/i.test(req.file.originalname)) {
@@ -1511,10 +1558,11 @@ router.post('/groups/preview', ensureJWT, requirePermission('manageStudents'), u
   }
 });
 
-router.post('/groups/save', ensureJWT, requirePermission('manageStudents'), async (req, res) => {
+router.post('/groups/save', ensureJWT, requirePermission('manageStudents'), withImportJob(async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const records = Array.isArray(req.body.records) ? req.body.records : [];
+    await setImportTotal(req, records.length);
     if (!records.length) return res.status(400).json({ code: 'EMPTY_GROUP_IMPORT', message: 'No group records were provided.' });
     const invalidRecords = records.filter(record => (
       !parseStudentId(record.studentKey) ||
@@ -1664,8 +1712,13 @@ router.post('/groups/save', ensureJWT, requirePermission('manageStudents'), asyn
     });
 
     await conn.beginTransaction();
+    let processedGroupRows = invalidRecords.length + missingStudents.length
+      + contextualRecords.length - contextAssignments.reduce((total, context) => total + context.records.length, 0);
+    await setImportProcessed(req, processedGroupRows);
     for (const record of legacyRecords) {
       await conn.query('UPDATE student SET language_group = ? WHERE student_id = ?', [record.groupCode, record.studentId]);
+      processedGroupRows += 1;
+      if (processedGroupRows % 50 === 0) await setImportProcessed(req, processedGroupRows);
     }
     for (const context of contextAssignments) {
       const studentIds = context.records.map(record => record.studentId);
@@ -1684,7 +1737,10 @@ router.post('/groups/save', ensureJWT, requirePermission('manageStudents'), asyn
           [values]
         );
       }
+      processedGroupRows += context.records.length;
+      await setImportProcessed(req, processedGroupRows);
     }
+    await setImportProcessed(req, processedGroupRows);
     await conn.commit();
     const importedContextRows = contextAssignments.reduce((total, context) => total + context.records.length, 0);
     const skippedContextRows = contextualRecords.length - importedContextRows;
@@ -1709,6 +1765,6 @@ router.post('/groups/save', ensureJWT, requirePermission('manageStudents'), asyn
   } finally {
     conn.release();
   }
-});
+}));
 
 export default router;

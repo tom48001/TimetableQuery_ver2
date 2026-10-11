@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS user (
   password VARCHAR(255) NULL,
   role ENUM('teacher', 'subject_head', 'staff', 'manager') NOT NULL DEFAULT 'teacher',
   permissions TEXT NULL,
-  subject_head_subject_id BIGINT NULL
+  subject_head_subject_id BIGINT NULL,
+  subject_head_subject_ids JSON NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS teacher (
@@ -30,6 +31,9 @@ CREATE TABLE IF NOT EXISTS teacher (
   user_id BIGINT NULL UNIQUE,
   teacher_name VARCHAR(100) NOT NULL,
   teacher_code VARCHAR(50) NULL UNIQUE,
+  source_login VARCHAR(255) NULL,
+  english_name VARCHAR(255) NULL,
+  chinese_name VARCHAR(255) NULL,
   status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   CONSTRAINT fk_teacher_user_account
     FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE SET NULL
@@ -250,6 +254,19 @@ CREATE TABLE IF NOT EXISTS learning_goal_reward_rule (
   merit_offset_count INT NOT NULL DEFAULT 0,
   display_order INT NOT NULL DEFAULT 0,
   UNIQUE KEY unique_learning_goal_rule_range (min_goals, max_goals)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS import_jobs (
+  job_id CHAR(36) PRIMARY KEY,
+  owner_id BIGINT NOT NULL,
+  status ENUM('pending','processing','success','failed') NOT NULL DEFAULT 'pending',
+  total_rows INT UNSIGNED NOT NULL DEFAULT 0,
+  processed_rows INT UNSIGNED NOT NULL DEFAULT 0,
+  error_message TEXT NULL,
+  result_json JSON NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_import_jobs_owner (owner_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS import_schedule (

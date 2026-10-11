@@ -1,3 +1,4 @@
+import { resolveHeadSubjectIds } from '../utils/subjectHeadSubjects.js';
 import pool from '../db.js';
 import { ensureStudentAdminSchema } from './manageStudentController.js';
 import { resolveSubjectIds } from './subjectController.js';
@@ -8,14 +9,13 @@ async function lessonGroupScope(user) {
 
   if (role === 'subject_head') {
     const [users] = await pool.query(
-      'SELECT subject_head_subject_id FROM user WHERE user_id = ? LIMIT 1',
+      'SELECT subject_head_subject_id, subject_head_subject_ids FROM user WHERE user_id = ? LIMIT 1',
       [user?.id]
     );
-    const subjectId = Number(users[0]?.subject_head_subject_id) || 0;
+    const subjectIds = await resolveHeadSubjectIds(users[0] || {}, resolveSubjectIds);
     return {
       type: 'subject',
-      subjectId,
-      subjectIds: subjectId ? await resolveSubjectIds(subjectId) : []
+      subjectIds
     };
   }
 
@@ -387,6 +387,9 @@ export async function saveSplitLessonGroupAssignments(req, res) {
 }
 
 export async function addSplitLessonGroupTeacher(req, res) {
+  if (String(req.user?.role || '').trim().toLowerCase() !== 'manager') {
+    return res.status(403).json({ code: 'GROUP_TEACHER_ACCESS_DENIED', error: 'Only a manager can add a teacher.' });
+  }
   const classId = Number(req.body.classId);
   const subjectId = Number(req.body.subjectId);
   const day = String(req.body.day || '');

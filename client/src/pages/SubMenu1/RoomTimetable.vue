@@ -1,7 +1,7 @@
 <template>
   <main class="selector-page">
     <section class="selector-panel">
-      <header class="page-header"><div><h1>{{ tr('Room Timetable', '\u623f\u9593\u6642\u9593\u8868') }}</h1></div><span class="count-badge">{{ roomSelectionLabel }}</span></header>
+      <header class="page-header"><div><h1>{{ tr('Room Timetable', '\u623f\u9593\u6642\u9593\u8868') }}</h1></div></header>
       <div class="toolbar">
         <input v-model.trim="searchText" class="search-input" type="text" :placeholder="tr('Search room, e.g. 301 or Room...', '\u641c\u5c0b\u623f\u9593\uff0c\u4f8b\u5982 301 \u6216 Room...')" />
         <div class="floor-tabs" aria-label="room filters">
@@ -12,7 +12,7 @@
       <div class="room-list" v-if="filteredRooms.length">
         <label v-for="room in filteredRooms" :key="room.room_id" class="room-card" :class="{ selected: selectedRoom === room.room_id }" :title="localizedRoomName(room)">
           <input type="radio" :value="room.room_id" v-model="selectedRoom" />
-          <span class="room-code">{{ roomCode(room.room_name) }}</span>
+          <span v-if="roomCode(room.room_name)" class="room-code">{{ roomCode(room.room_name) }}</span>
           <span v-if="roomLabel(room)" class="room-name">{{ roomLabel(room) }}</span>
         </label>
       </div>
@@ -44,7 +44,7 @@ export default {
       const keyword = this.searchText.toLowerCase();
       return this.roomList.filter(room => {
         const roomName = String(room.room_name || '');
-        const lowerName = [roomName, room.room_name_zh, room.room_name_en]
+        const lowerName = [roomName, room.room_name_zh, room.room_name_en, this.localizedRoomName(room)]
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
@@ -54,9 +54,6 @@ export default {
     selectedRoomName() {
       const selected = this.roomList.find(room => room.room_id === this.selectedRoom);
       return selected ? this.localizedRoomName(selected) : '';
-    },
-    roomSelectionLabel() {
-      return this.selectedRoom ? this.tr('1 room selected', '\u5df2\u9078 1 \u500b\u623f\u9593') : this.tr('No room selected', '\u672a\u9078\u64c7\u623f\u9593');
     },
     roomSearchResultLabel() {
       const count = this.filteredRooms.length;
@@ -78,7 +75,8 @@ export default {
     roomCode(roomName) { const match = String(roomName || '').match(/^([A-Za-z]?\d+[A-Za-z]?|G\d+[A-Za-z]?)\b/); return match ? match[1] : ''; },
     localizedRoomName(room) {
       const localizedName = this.$lang.locale === 'en' ? room.room_name_en : room.room_name_zh;
-      return String(localizedName || room.room_name || '').trim();
+      const name = String(localizedName || room.room_name || '').trim();
+      return name && name === this.roomCode(name) ? `${name} ${this.tr('Classroom', '課室')}` : name;
     },
     roomLabel(room) {
       const roomName = this.localizedRoomName(room);
@@ -139,16 +137,6 @@ h1 {
   font-size: 32px;
   letter-spacing: 0;
   margin: 0;
-}
-
-.count-badge {
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  font-weight: 800;
-  padding: 9px 14px;
-  white-space: nowrap;
 }
 
 .toolbar {

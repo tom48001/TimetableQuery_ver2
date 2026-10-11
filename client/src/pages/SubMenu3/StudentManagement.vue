@@ -63,7 +63,7 @@
                 <th>Status</th><th>NCS</th><th>X1</th><th>X2</th><th>X3</th>
                 <th>{{ tr('House', '社別') }}</th><th>{{ tr('Language', '語言') }}</th><th>SUPP</th>
                 <th>{{ tr('Maths', '數學') }}</th><th>{{ tr('Citizenship', '公社') }}</th>
-                <th>{{ tr('Dropped', '退選') }}</th><th>{{ tr('Remarks', '備註') }}</th><th class="action-cell">{{ tr('Action', '操作') }}</th>
+                <th>{{ tr('Elective Subjects', '選修科目') }}</th><th>{{ tr('Remarks', '備註') }}</th><th class="action-cell">{{ tr('Action', '操作') }}</th>
               </tr>
             </thead>
             <tbody>

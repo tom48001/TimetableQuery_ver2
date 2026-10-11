@@ -9,13 +9,17 @@
         <div class="language-switch" :aria-label="$t('common.languageEn')">
           <button
             type="button"
+            class="locale-button"
+            :aria-pressed="$lang.locale === 'zh'"
             :class="{ active: $lang.locale === 'zh' }"
             @click="$setLocale('zh')"
           >
-            {{ $t('common.languageZh') }}
+            中文
           </button>
           <button
             type="button"
+            class="locale-button"
+            :aria-pressed="$lang.locale === 'en'"
             :class="{ active: $lang.locale === 'en' }"
             @click="$setLocale('en')"
           >
@@ -81,7 +85,7 @@
         <ul id="SubMenu3" class="sub-menu" style="display: none;">
           <li><router-link to="/editTeacher">{{ $t('nav.editTeacher') }}</router-link></li>
           <li v-if="canManageStudents"><router-link to="/StudentManagement">{{ $t('nav.studentManagement') }}</router-link></li>
-          <li v-if="canImportTimetable || canManageStudents"><router-link to="/ImportTeacher">{{ $t('nav.importTeacher') }}</router-link></li>
+          <li v-if="canImportTimetable || canManageStudents || canManageUsers"><router-link to="/ImportTeacher">{{ $t('nav.importTeacher') }}</router-link></li>
           <li v-if="userRole === 'manager'"><router-link to="/SemesterSettings">{{ $lang.locale === 'en' ? 'Semester Settings' : '學期及初中科目設定' }}</router-link></li>
         </ul>
       </span>
@@ -207,11 +211,13 @@ export default {
 
 h1 {
   color: var(--text);
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 21px;
   line-height: 1.2;
   margin: 0;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 h1 a {
@@ -221,14 +227,15 @@ h1 a {
 .account-info {
   display: flex;
   align-items: center;
-  flex: 1 1 auto;
-  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   min-width: 0;
 }
 
 .language-switch {
+  flex: 0 0 auto;
   display: inline-flex;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -397,6 +404,10 @@ a {
   .top-row {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .account-info {
+    max-width: 100%;
   }
 
   .account-info,

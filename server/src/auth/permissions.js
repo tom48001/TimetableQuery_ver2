@@ -63,6 +63,12 @@ export async function ensurePermissionsColumn() {
     if (error.code !== 'ER_DUP_FIELDNAME' && error.errno !== 1060) throw error;
   }
 
+  try {
+    await db.query('ALTER TABLE user ADD COLUMN subject_head_subject_ids JSON NULL');
+  } catch (error) {
+    if (error.code !== 'ER_DUP_FIELDNAME' && error.errno !== 1060) throw error;
+  }
+
   const [roleColumns] = await db.query(`
     SELECT COLUMN_TYPE
     FROM information_schema.COLUMNS

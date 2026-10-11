@@ -57,3 +57,16 @@ npm start
 Open `http://localhost:8080`. MySQL Workbench can connect to `127.0.0.1:3307`.
 
 `npm start` now starts the complete Docker stack in the foreground. Press `Ctrl+C` to stop it. Use `npm run docker:up` to run it in the background. The previous non-Docker development command remains available as `npm run start:local` when a compatible legacy Node.js version is installed and the Docker ports are not in use.
+
+### Root-only frontend navigation
+
+Vue Router uses abstract (in-memory) mode. Existing route names, query parameters,
+components and authorization guards still apply, while the browser address stays
+at `/`. The current internal route is saved in per-tab session storage for refresh
+and scoped to the signed-in user. If storage is unavailable, refresh opens Home
+or Login. Legacy paths are read on entry and replaced with `/`; Google callback
+parameters are consumed from the internal route and are not saved in session storage.
+API routes and the database schema are unchanged. The existing nginx SPA fallback
+must remain enabled for legacy entry URLs.
+
+Run routing regression tests with `cd client` then `npm run test:navigation`.

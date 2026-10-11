@@ -29,27 +29,33 @@
 
       <section class="settings-card">
         <div class="rules-header">
-          <div><h2>{{ tr('Junior subject allocation rules', '初中科目分組規則') }}</h2><p>{{ tr('A = odd, B = even, continuing by class letter.', 'A 為單數組、B 為雙數組，按班別字母順序類推。') }}</p></div>
+          <div><h2>{{ tr('Junior subject allocation rules', '初中科目分組規則') }}</h2><p>{{ tr('Groups follow student numbers. Set the first semester; the second automatically swaps odd/even. All students and disabled stay unchanged.', '按學生學號分組：01、03 為單數；02、04 為雙數。只需設定上學期，下學期自動對調；全班及停用則維持不變。') }}</p></div>
           <button type="button" class="secondary-btn" @click="addRule">{{ tr('Add rule', '新增規則') }}</button>
         </div>
 
         <div v-if="rules.length" class="rule-list">
           <div v-for="(rule, index) in rules" :key="rule.localKey" class="rule-row">
             <select v-model="rule.grade"><option v-for="grade in grades" :key="grade" :value="grade">{{ grade }}</option></select>
-            <select v-model.number="rule.semester">
-              <option :value="1">{{ tr('First Semester', '上學期') }}</option>
-              <option :value="2">{{ tr('Second Semester', '下學期') }}</option>
-            </select>
             <select v-model.number="rule.subject_id">
               <option value="">{{ tr('Select subject', '選擇科目') }}</option>
               <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">{{ subjectLabel(subject) }}</option>
             </select>
-            <select v-model="rule.class_group">
+            <label><span>{{ tr('First Semester', '上學期') }}</span><select v-model="rule.class_group">
               <option value="odd">{{ tr('Odd', '單數') }}</option>
               <option value="even">{{ tr('Even', '雙數') }}</option>
-              <option value="all">{{ tr('All classes', '全班') }}</option>
+              <option value="all">{{ tr('All students', '全班') }}</option>
               <option value="disabled">{{ tr('Disabled', '停用') }}</option>
             </select>
+            </label>
+            <label><span>{{ tr('Second Semester', '下學期') }}</span>
+              <select v-model="rule.second_group">
+                <option value="auto">{{ tr('Auto: ', '自動：') + groupLabel(oppositeGroup(rule.class_group)) }}</option>
+                <option value="odd">{{ tr('Odd', '單數') }}</option>
+                <option value="even">{{ tr('Even', '雙數') }}</option>
+                <option value="all">{{ tr('All students', '全班') }}</option>
+                <option value="disabled">{{ tr('Disabled', '停用') }}</option>
+              </select>
+            </label>
             <button type="button" class="remove-btn" @click="rules.splice(index, 1)">{{ tr('Delete', '刪除') }}</button>
           </div>
         </div>
@@ -64,6 +70,7 @@
 
 <script>
 import axios from 'axios';
+import { pairRules, expandRules, oppositeGroup } from '../../utils/juniorRulePairs';
 import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 
 export default {
@@ -82,18 +89,17 @@ export default {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     subjectLabel(subject) { return formatSubjectLabel(subject, this.$lang.locale); },
     headers() { return { Authorization: `Bearer ${localStorage.getItem('token')}` }; },
-    normalizedRule(rule) {
-      return { grade: rule.grade, semester: Number(rule.semester), subject_id: Number(rule.subject_id), class_group: rule.class_group };
-    },
+    oppositeGroup,
+    groupLabel(group) { return { odd: this.tr('Odd', '單數'), even: this.tr('Even', '雙數'), all: this.tr('All students', '全班'), disabled: this.tr('Disabled', '停用') }[group]; },
     addRule() {
-      this.rules.push({ localKey: `new-${this.nextKey++}`, grade: 'F1', semester: 1, subject_id: '', class_group: 'disabled' });
+      this.rules.push({ localKey: `new-${this.nextKey++}`, grade: 'F1', subject_id: '', class_group: 'odd', second_group: 'auto' });
     },
     async load() {
       try {
         const { data } = await axios.get('/api/system-settings/semester', { headers: this.headers() });
         this.settings = data.settings;
         this.subjects = data.subjects;
-        this.rules = data.rules.map(rule => ({ ...rule, localKey: `saved-${rule.rule_id}` }));
+        this.rules = pairRules(data.rules);
       } catch (error) {
         console.error(error);
         alert(this.tr('Failed to load settings.', '載入設定失敗。'));
@@ -113,7 +119,7 @@ export default {
       if (this.rules.some(rule => !rule.subject_id)) { alert(this.tr('Please select a subject for every rule.', '請為每項規則選擇科目。')); return; }
       this.savingRules = true;
       try {
-        await axios.put('/api/system-settings/junior-subject-rules', { rules: this.rules.map(this.normalizedRule) }, { headers: this.headers() });
+        await axios.put('/api/system-settings/junior-subject-rules', { rules: expandRules(this.rules) }, { headers: this.headers() });
         await this.load();
         alert(this.tr('Rules saved.', '規則已儲存。'));
       } catch (error) {
@@ -140,7 +146,7 @@ input, select { border: 1px solid #b8cad3; border-radius: 6px; background: #fff;
 .rules-header { align-items: center; display: flex; justify-content: space-between; gap: 16px; }
 .rules-header p { color: #607683; font-size: 13px; margin: 6px 0 0; }
 .rule-list { display: grid; gap: 9px; margin-top: 18px; }
-.rule-row { display: grid; grid-template-columns: 90px 150px minmax(220px,1fr) 130px 70px; gap: 9px; }
+.rule-row { display: grid; grid-template-columns: 80px minmax(150px,1fr) 130px 150px 70px; align-items: end; gap: 9px; }
 .primary-btn, .secondary-btn, .remove-btn { border: 0; border-radius: 6px; cursor: pointer; font-weight: 800; min-height: 40px; padding: 0 16px; }
 .primary-btn { background: #0b7285; color: #fff; margin-top: 18px; }
 .secondary-btn { background: #e0f1f2; color: #0a5260; }

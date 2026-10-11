@@ -21,6 +21,8 @@
       >
         {{ tr('Import Student Data CSV/Excel', '導入學生資料 CSV/Excel') }}
       </button>
+      <button v-if="canManageStudents" type="button" :class="{ active: activeTab === 'studentRoster' }" @click="selectTab('studentRoster')">{{ tr('Student roster and electives', '學生名單與選修名單') }}</button>
+      <button v-if="canManageUsers" type="button" :class="{ active: activeTab === 'teachers' }" @click="selectTab('teachers')">{{ tr('Teacher roster', '老師名單') }}</button>
     </nav>
 
     <section class="import-layout">
@@ -58,7 +60,7 @@
           <button
           type="button"
           class="upload-button"
-          :disabled="!file || uploading"
+          :disabled="!file || uploading || savingGroup"
           @click="uploadFile"
         >
             {{ uploadButtonLabel }}
@@ -67,11 +69,21 @@
             v-if="file"
             type="button"
             class="clear-button"
-            :disabled="uploading"
+            :disabled="uploading || savingGroup"
             @click="clearFile"
           >
             {{ tr('Clear', '清除') }}
           </button>
+        </div>
+
+        <div v-if="importProgress" class="import-progress" aria-live="polite">
+          <strong>{{ progressLabel }}</strong>
+          <progress :value="importPercentage" max="100" :aria-label="progressLabel"></progress>
+          <div class="progress-counts">
+            <span>{{ importPercentage }}%</span>
+            <span>{{ importProgress.processedRows }} / {{ importProgress.totalRows }}</span>
+          </div>
+          <small v-if="progressError" class="progress-error">{{ progressError }}</small>
         </div>
 
         <pre
@@ -96,6 +108,12 @@
               <dd>{{ lastImportResult.snapshotRows }}</dd>
             </div>
           </dl>
+          <dl v-else-if="activeTab === 'teachers'">
+            <div><dt>新增老師</dt><dd>{{ lastImportResult.createdTeachers }}</dd></div>
+            <div><dt>更新老師</dt><dd>{{ lastImportResult.updatedTeachers }}</dd></div>
+            <div><dt>新增帳戶</dt><dd>{{ lastImportResult.createdAccounts }}</dd></div>
+            <div><dt>未建立帳戶</dt><dd>{{ lastImportResult.withoutAccounts }}</dd></div>
+          </dl>
           <dl v-else>
             <div>
               <dt>{{ tr('Added students', '新增學生') }}</dt>
@@ -113,7 +131,7 @@
         </div>
       </div>
 
-      <div class="format-panel">
+      <div v-if="activeTab !== 'teachers' && activeTab !== 'studentRoster'" class="format-panel">
         <div class="format-header">
           <div>
             <h2>{{ activeTab === 'timetable' ? tr('Timetable CSV/Excel Format', '時間表 CSV/Excel 格式') : tr('Student CSV/Excel Format', '學生 CSV/Excel 格式') }}</h2>
@@ -246,6 +264,43 @@
           <li>{{ tr('sex must be M or F.', 'sex 必須為 M 或 F。') }}</li>
           <li>{{ tr('Students not listed in the uploaded file will not be deleted.', '上傳檔案沒有列出的學生不會被刪除。') }}</li>
         </ul>
+      </div>
+    </section>
+
+    <section v-if="activeTab === 'studentRoster' && studentRosterPreview" class="history-panel">
+      <div v-if="studentRosterPreview">
+        <p>工作表：<strong>{{ studentRosterPreview.sheetName }}</strong> · 共 {{ studentRosterPreview.totalRows }} 筆 · 有選修資料 {{ studentRosterPreview.electiveRows }} 筆</p>
+        <p v-if="studentRosterPreview.skippedSheets.length">不會導入的工作表：{{ studentRosterPreview.skippedSheets.join('、') }}</p>
+        <p v-if="studentRosterPreview.duplicateRegnos.length" class="progress-error">重複 REGNO：{{ studentRosterPreview.duplicateRegnos.join('、') }}。請核對；系統會沿用 REGNO、班別及學號的識別方式。</p>
+        <p v-if="studentRosterPreview.duplicateEmails.length" class="progress-error">重複電郵：{{ studentRosterPreview.duplicateEmails.join('、') }}</p>
+        <p>以下顯示首 50 筆，確認後會導入所選工作表全部資料。</p>
+        <div class="table-wrap roster-scroll"><table>
+          <thead><tr><th>REGNO</th><th>班別／學號</th><th>姓名</th><th>ENNAME</th><th>X1</th><th>X2</th><th>X3/M1/APL/OL</th></tr></thead>
+          <tbody><tr v-for="(row, index) in studentRosterPreview.records.slice(0, 50)" :key="index">
+            <td>{{ row.regno }}</td><td>{{ row.class_name }} / {{ row.class_number }}</td><td>{{ row.student_ch_name }}</td><td>{{ row.student_eng_name }}</td><td>{{ row.x1 || '—' }}</td><td>{{ row.x2 || '—' }}</td><td>{{ row.x3 || '—' }}</td>
+          </tr></tbody>
+        </table></div>
+        <button type="button" class="upload-button" :disabled="uploading || !file" @click="uploadFile(true)">確認導入學生及選修</button>
+      </div>
+    </section>
+
+    <section v-if="activeTab === 'teachers' && rosterPreview" class="history-panel">
+      <div v-if="rosterPreview">
+        <p>請修正以下問題，重新驗證後確認導入。共 {{ rosterPreview.records.length }} 位老師。</p>
+        <div class="table-wrap roster-scroll"><table>
+          <thead><tr><th>列／UserLogin</th><th>EnglishName</th><th>ChineseName</th><th>Email</th><th>結果／問題</th></tr></thead>
+          <tbody><tr v-for="(row, index) in rosterPreview.records" :key="index">
+            <td>{{ row.sheet }} {{ row.row }}<br>{{ row.source_login }}<br>老師編號：{{ row.teacher_number || '儲存後自動產生' }}<small v-if="row.mappingReused">已沿用之前的配對</small></td>
+            <td><input v-model.trim="row.english_name" :disabled="uploading" @input="rosterDirty = true"></td>
+            <td><input v-model.trim="row.chinese_name" :disabled="uploading" @input="rosterDirty = true"></td>
+            <td><input v-model.trim="row.email" :disabled="uploading" @input="rosterDirty = true"></td>
+            <td>{{ row.action }} · {{ row.accountStatus }}<div v-for="error in row.errors" :key="error" class="progress-error">{{ error }}</div><small v-for="warning in row.warnings" :key="warning">{{ warning }}</small></td>
+          </tr></tbody>
+        </table></div>
+        <div class="upload-actions">
+          <button class="template-button" :disabled="uploading" @click="validateRoster">驗證資料</button>
+          <button class="upload-button" :disabled="uploading || rosterDirty || rosterPreview.hasErrors" @click="saveRoster">確認導入</button>
+        </div>
       </div>
     </section>
 
@@ -402,7 +457,7 @@
       </div>
     </section>
 
-    <section v-if="activeTab === 'students' && canManageStudents" class="history-panel">
+    <section v-if="['students', 'studentRoster'].includes(activeTab) && canManageStudents" class="history-panel">
       <div class="history-header">
         <div>
           <h2>{{ tr('Student Import History', '學生匯入記錄') }}</h2>
@@ -488,6 +543,9 @@ export default {
   data() {
     return {
       activeTab: 'timetable',
+      rosterPreview: null,
+      studentRosterPreview: null,
+      rosterDirty: false,
       permissions: {},
       userRole: '',
       file: null,
@@ -495,6 +553,9 @@ export default {
       uploading: false,
       importStage: '',
       uploadProgress: 0,
+      importProgress: null,
+      progressError: '',
+      progressPhase: '',
       historyLoading: false,
       rollbackLoading: false,
       studentHistoryLoading: false,
@@ -515,6 +576,23 @@ export default {
     };
   },
   computed: {
+    canManageUsers() {
+      return this.userRole === 'manager' || Boolean(this.permissions.manageUsers);
+    },
+    importPercentage() {
+      if (!this.importProgress) return 0;
+      const { processedRows, totalRows, status } = this.importProgress;
+      return totalRows ? Math.round(processedRows / totalRows * 100) : (status === 'success' ? 100 : 0);
+    },
+    progressLabel() {
+      if (this.progressError) return this.tr('Progress unavailable', '無法取得導入進度');
+      if (this.importProgress.status === 'success') return this.tr('Import completed', '導入完成');
+      if (this.importProgress.status === 'failed') return this.tr('Import failed', '導入失敗');
+      if (this.importProgress.totalRows && this.importPercentage === 100) return this.tr('Saving...', '正在儲存...');
+      return this.progressPhase === 'groups'
+        ? this.tr('Importing groups...', '正在導入分組名單...')
+        : this.tr('Importing...', '正在導入...');
+    },
     canImportTimetable() {
       return this.userRole === 'manager' || Boolean(this.permissions.importTimetable);
     },
@@ -538,6 +616,8 @@ export default {
       }
       if (this.importStage === 'previewing') return this.tr('Checking worksheets...', '正在檢查工作表...');
       if (this.importStage === 'processing') return this.tr('Validating and saving...', '正在驗證及儲存...');
+      if (this.activeTab === 'studentRoster') return this.tr('Preview students and electives', '預覽學生及選修名單');
+      if (this.activeTab === 'teachers') return this.tr('Preview teacher roster', '預覽老師名單');
       return this.tr('Start Import', '開始導入');
     },
     unlinkedGroupIssues() {
@@ -585,6 +665,83 @@ export default {
     }
   },
   methods: {
+    async validateRoster() {
+      if (this.uploading) return;
+      this.uploading = true;
+      try {
+        const result = await axios.post('/api/import/teachers/validate', { records: this.rosterPreview.records.map(row => ({ ...row, teacher_code: '' })) }, { headers: this.authHeaders() });
+        this.rosterPreview = result.data;
+        this.rosterDirty = false;
+        this.showMessage(result.data.hasErrors ? '請先修正預覽錯誤。' : '驗證完成，可確認導入。', result.data.hasErrors ? 'error' : 'success');
+      } catch (error) {
+        this.rosterDirty = true;
+        this.showMessage(this.buildErrorMessage((error.response && error.response.data) || {}), 'error');
+      } finally { this.uploading = false; }
+    },
+    async saveRoster() {
+      if (this.uploading || this.rosterDirty || !this.rosterPreview || this.rosterPreview.hasErrors) return;
+      this.uploading = true;
+      this.message = '';
+      try {
+        const result = await this.runImport('/api/import/teachers/save', { records: this.rosterPreview.records.map(row => ({ ...row, teacher_code: '' })) }, { headers: this.authHeaders() });
+        this.lastImportResult = result.data;
+        this.showMessage(result.data.message, 'success');
+        this.rosterPreview = null;
+        this.studentRosterPreview = null;
+        this.clearFile();
+      } catch (error) {
+        if (axios.isCancel(error)) return;
+        const data = (error.response && error.response.data) || {};
+        if (data.records) this.rosterPreview = data;
+        this.rosterDirty = true;
+        this.showMessage(this.buildErrorMessage(data), 'error');
+      } finally { this.uploading = false; this.importStage = ''; }
+    },
+    async runImport(endpoint, payload, config, phase = '') {
+      this.importProgress = { status: 'pending', processedRows: 0, totalRows: 0 };
+      this.progressError = '';
+      this.progressPhase = phase;
+      this._progressRequest = axios.CancelToken.source();
+      try {
+        const started = await axios.post(`${endpoint}?async=1`, payload, {
+          ...config, cancelToken: this._progressRequest.token
+        });
+        if (!started.data.jobId) throw new Error('The server did not return an import job ID.');
+        this.importStage = 'processing';
+        this.importProgress = started.data;
+        while (!this._importDisposed) {
+          const response = await axios.get(`/api/import/progress/${started.data.jobId}`, {
+            headers: this.authHeaders(), cancelToken: this._progressRequest.token, timeout: 15000
+          });
+          this.importProgress = response.data;
+          if (response.data.status === 'success') return { data: response.data.result };
+          if (response.data.status === 'failed') {
+            const error = new Error(response.data.errorMessage || 'Import failed.');
+            error.response = { data: response.data.result || { message: error.message } };
+            throw error;
+          }
+          // This timer schedules an API request only. Percentages come exclusively
+          // from persisted backend row counts, never from elapsed time.
+          await new Promise(resolve => {
+            this._pollWake = resolve;
+            this._pollTimer = setTimeout(resolve, 750);
+          });
+        }
+        throw new axios.Cancel('Import page closed.');
+      } catch (error) {
+        if (!axios.isCancel(error) && this.importProgress.status !== 'failed') {
+          this.progressError = this.tr(
+            'Could not read progress. The job may still be running; check import history before retrying.',
+            '未能取得進度，後端可能仍在導入；請先檢查導入記錄，再決定是否重試。'
+          );
+        }
+        throw error;
+      } finally {
+        clearTimeout(this._pollTimer);
+        this._pollWake = null;
+        this._progressRequest = null;
+      }
+    },
     tr(en, zh) {
       return this.$lang.locale === 'en' ? en : zh;
     },
@@ -593,8 +750,14 @@ export default {
       this.previewPage = 1;
     },
     selectTab(tab) {
+      if (!['timetable', 'students', 'studentRoster', 'teachers'].includes(tab)) return;
+      if (this.uploading || this.savingGroup) return;
+      if (tab === 'teachers' && !this.canManageUsers) return;
+      this.rosterPreview = null;
+      this.studentRosterPreview = null;
+      this.importProgress = null;
       if (tab === 'timetable' && !this.canImportTimetable) return;
-      if (tab === 'students' && !this.canManageStudents) return;
+      if (['students', 'studentRoster'].includes(tab) && !this.canManageStudents) return;
       this.activeTab = tab;
       this.clearFile();
       this.message = '';
@@ -604,9 +767,13 @@ export default {
       this.previewFilter = 'all';
       this.previewPage = 1;
       if (tab === 'timetable') this.fetchImportBatches();
-      if (tab === 'students') this.fetchStudentImportBatches();
+      if (['students', 'studentRoster'].includes(tab)) this.fetchStudentImportBatches();
     },
     setFile(file) {
+      if (this.uploading || this.savingGroup) return;
+      this.rosterPreview = null;
+      this.studentRosterPreview = null;
+      this.importProgress = null;
       this.dragging = false;
       this.message = '';
       this.messageType = '';
@@ -636,6 +803,7 @@ export default {
       this.setFile(event.dataTransfer.files[0]);
     },
     clearFile() {
+      this.studentRosterPreview = null;
       this.file = null;
       this.dragging = false;
 
@@ -857,7 +1025,7 @@ export default {
         'LCW,LEE CHI WAI,1Y,ENG,星期一,12,15:25,16:00,705,Group2'
       ];
       const studentRows = [
-        'REGNO,級別,班別,學號,ClsNo,姓名,ENNAME,SEX,社別,Email,NCS,Status,語言組別,X1,X2,X3/M1/APL/OL,SUPP CLASS,數學/Maths,公社,退選科目,備註',
+        'REGNO,級別,班別,學號,ClsNo,姓名,ENNAME,SEX,社別,Email,NCS,Status,語言組別,X1,X2,X3/M1/APL/OL,SUPP CLASS,數學/Maths,公社,選修科目,備註',
         '20260001,S4,A,1,1,陳小明,CHAN SIU MING,M,Red,s20260001@school.edu.hk,N,正常,,PHY,CHEM,Math(M1),,,,,',
         '20260002,S4,A,2,2,李美玲,LEE MEI LING,F,Blue,s20260002@school.edu.hk,Y,正常,,BIO,ECON,JAP,,,,,'
       ];
@@ -899,8 +1067,11 @@ export default {
       return `${TEXT.invalidRows}:\n${rows.map(row => `Row ${row.row}`).join(', ')}`;
     },
     buildErrorMessage(data) {
+      if (data.error === 'Invalid token' || data.code === 'TOKEN_EXPIRED') {
+        return this.tr('Your login has expired or is invalid. Sign out and sign in again, then retry the upload. No data was imported by this request.', '登入已過期或憑證失效。請登出並重新登入，再上載檔案。這次請求未有導入資料。');
+      }
       const parts = [
-        data.message || this.tr('Upload failed.', TEXT.failed),
+        data.message || data.error || this.tr('Upload failed.', TEXT.failed),
         this.formatList('Missing teacher_code', data.missingTeachers),
         this.formatList('Missing subject', data.missingSubjects),
         this.formatList('Missing class', data.missingClasses),
@@ -920,7 +1091,9 @@ export default {
 
       return parts.join('\n\n');
     },
-    async uploadFile() {
+    async uploadFile(confirmRoster = false) {
+      if (this.activeTab === 'studentRoster' && confirmRoster === true && !this.studentRosterPreview) return;
+      if (this.uploading || this.savingGroup) return;
       if (!this.file) {
         this.showMessage(this.tr('Please choose a file.', TEXT.chooseFile), 'error');
         return;
@@ -934,12 +1107,32 @@ export default {
 
       const formData = new FormData();
       formData.append('file', this.file);
+      if (this.activeTab === 'studentRoster' && confirmRoster === true) formData.append('sheetName', this.studentRosterPreview.sheetName);
       this.uploading = true;
       this.importStage = 'uploading';
       this.uploadProgress = 0;
+      this.importProgress = { status: 'pending', processedRows: 0, totalRows: 0 };
+      this.progressError = '';
+      this.message = '';
 
       try {
+        if (this.activeTab === 'studentRoster' && confirmRoster !== true) {
+          this.studentRosterPreview = null;
+          const preview = await axios.post('/api/import/students/roster?preview=1', formData, this.importRequestConfig(token, 'previewing'));
+          this.studentRosterPreview = preview.data;
+          this.importProgress = null;
+          this.showMessage('請核對來源工作表、學生及選修資料，再確認導入。', 'success');
+          return;
+        }
         const isExcelTimetable = this.activeTab === 'timetable' && /\.(xlsx|xls)$/i.test(this.file.name);
+        if (this.activeTab === 'teachers') {
+          const preview = await axios.post('/api/import/teachers/preview', formData, this.importRequestConfig(token, 'previewing'));
+          this.rosterPreview = preview.data;
+          this.rosterDirty = false;
+          this.importProgress = null;
+          this.showMessage('請先核對連結的老師及電郵，再確認導入。', preview.data.hasErrors ? 'error' : 'success');
+          return;
+        }
         if (isExcelTimetable && this.canManageStudents && !this.groupPreview) {
           const previewRes = await axios.post(
             '/api/import/groups/preview',
@@ -947,6 +1140,7 @@ export default {
             this.importRequestConfig(token, 'previewing')
           );
           if (previewRes.data.hasGroups) {
+            this.importProgress = null;
             this.groupPreview = previewRes.data;
             this.previewFilter = 'all';
             this.previewPage = 1;
@@ -956,10 +1150,10 @@ export default {
         }
         const endpoint = this.activeTab === 'timetable'
           ? '/api/import/csv'
-          : '/api/import/students/file';
+          : (this.activeTab === 'studentRoster' ? '/api/import/students/roster' : '/api/import/students/file');
         this.importStage = 'uploading';
         this.uploadProgress = 0;
-        const res = await axios.post(
+        const res = await this.runImport(
           endpoint,
           formData,
           this.importRequestConfig(token)
@@ -988,6 +1182,10 @@ export default {
           await this.fetchStudentImportBatches();
         }
       } catch (err) {
+        if (axios.isCancel(err)) return;
+        if (this.importProgress && !this.importProgress.jobId) {
+          this.importProgress.status = 'failed';
+        }
         console.error('Import failed:', err);
         this.lastImportResult = null;
 
@@ -1006,6 +1204,7 @@ export default {
       }
     },
     async saveGroupImport() {
+      if (this.uploading || this.savingGroup) return;
       if (!this.groupPreview || this.groupPreview.hasFatalErrors || !this.groupPreviewCount('importable')) return;
       const skipped = this.groupPreviewCount('skipped');
       if (skipped) {
@@ -1019,10 +1218,10 @@ export default {
       try {
         const formData = new FormData();
         formData.append('file', this.file);
-        const timetableRes = await axios.post('/api/import/csv', formData, {
+        const timetableRes = await this.runImport('/api/import/csv', formData, {
           headers: { ...this.authHeaders(), 'Content-Type': 'multipart/form-data' }
         });
-        const groupRes = await axios.post('/api/import/groups/save', { records: this.groupPreview.records }, { headers: this.authHeaders() });
+        const groupRes = await this.runImport('/api/import/groups/save', { records: this.groupPreview.records }, { headers: this.authHeaders() }, 'groups');
         this.lastImportResult = timetableRes.data;
         const resultLines = [
           timetableRes.data.message,
@@ -1037,12 +1236,19 @@ export default {
         this.clearFile();
         await this.fetchImportBatches();
       } catch (err) {
+        if (axios.isCancel(err)) return;
         const data = err.response && err.response.data;
         this.showMessage(data ? this.buildErrorMessage(data) : this.tr('Save failed. Please check the server connection.', '儲存失敗，請檢查伺服器連線。'), 'error');
       } finally {
         this.savingGroup = false;
       }
     }
+  },
+  beforeDestroy() {
+    this._importDisposed = true;
+    clearTimeout(this._pollTimer);
+    if (this._pollWake) this._pollWake();
+    if (this._progressRequest) this._progressRequest.cancel('Import page closed.');
   },
   mounted() {
     const rawUser = localStorage.getItem('user');
@@ -1059,6 +1265,7 @@ export default {
     if (!this.canImportTimetable && this.canManageStudents) {
       this.activeTab = 'students';
     }
+    if (!this.canImportTimetable && !this.canManageStudents && this.canManageUsers) this.activeTab = 'teachers';
     if (this.canImportTimetable) this.fetchImportBatches();
     if (this.canManageStudents) this.fetchStudentImportBatches();
   }
@@ -1066,6 +1273,17 @@ export default {
 </script>
 
 <style scoped>
+.format-panel { max-height: 650px; overflow-y: auto; scrollbar-gutter: stable; }
+.roster-scroll { max-height: 520px; overflow: auto; }
+.roster-scroll input, .roster-scroll select { min-width: 130px; max-width: 220px; padding: 7px; border: 1px solid #cbd5e1; border-radius: 6px; }
+.roster-scroll small { display: block; color: #92400e; }
+.import-progress { margin-top: 18px; color: #334155; }
+.import-progress progress { display: block; width: 100%; height: 14px; margin: 10px 0; accent-color: #2563eb; }
+.import-progress progress::-webkit-progress-bar { background: #e2e8f0; border-radius: 8px; }
+.import-progress progress::-webkit-progress-value { background: #2563eb; border-radius: 8px; }
+.import-progress progress::-moz-progress-bar { background: #2563eb; border-radius: 8px; }
+.progress-counts { display: flex; justify-content: space-between; font-size: 13px; }
+.progress-error { display: block; color: #b91c1c; margin-top: 8px; }
 .import-page {
   max-width: 1120px;
   min-height: calc(100vh - 130px);

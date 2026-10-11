@@ -1,4 +1,6 @@
+import { fillChineseSubjectNames } from '../utils/subjectDisplayNames.js';
 import db from '../db.js';
+import { electiveSubjectKey } from '../utils/electiveSubjectKey.js';
 import { ensureStudentAdminSchema } from './manageStudentController.js';
 import { ensureSubjectImportSchema } from '../utils/subjectImportSchema.js';
 
@@ -45,6 +47,7 @@ function sortSubjectRows(rows) {
 
 async function electiveSubjectRows() {
   await ensureSubjectImportSchema();
+  await fillChineseSubjectNames(db);
   const [rows] = await db.query(`
     SELECT DISTINCT
       sub.subject_id,
@@ -62,7 +65,7 @@ async function electiveSubjectRows() {
 
   const grouped = new Map();
   rows.forEach(row => {
-    const key = subjectCanonicalKey(row);
+    const key = subjectCanonicalKey(row) + ":" + row.block;
     const electiveBlocks = row.block ? [row.block] : [];
     const existing = grouped.get(key);
     if (!existing) {
@@ -87,7 +90,7 @@ async function electiveSubjectRows() {
   return sortSubjectRows(Array.from(grouped.values()));
 }
 
-export async function resolveSubjectIds(subjectId) {
+export async function resolveSubjectIds(subjectId, elective = false) {
   const [selectedRows] = await db.query(
     'SELECT subject_id, subject_name, subject_name_zh, subject_name_en FROM subject WHERE subject_id = ?',
     [subjectId]
@@ -95,13 +98,14 @@ export async function resolveSubjectIds(subjectId) {
 
   if (!selectedRows.length) return [];
 
-  const selectedKey = subjectCanonicalKey(selectedRows[0]);
+  const keyFor = elective ? electiveSubjectKey : subjectCanonicalKey;
+  const selectedKey = keyFor(selectedRows[0]);
   const [allRows] = await db.query(
     'SELECT subject_id, subject_name, subject_name_zh, subject_name_en FROM subject'
   );
 
   return allRows
-    .filter(row => subjectCanonicalKey(row) === selectedKey)
+    .filter(row => keyFor(row) === selectedKey)
     .map(row => row.subject_id);
 }
 
@@ -147,7 +151,7 @@ export const getSubjectHeadOptions = async (req, res) => {
 export const getElectives = async (req, res) => {
   try {
     const { subject } = req.body;
-    const subjectIds = await resolveSubjectIds(subject);
+    const subjectIds = await resolveSubjectIds(subject, true);
     if (!subjectIds.length) {
       return res.status(404).json({ error: 'Subject not found.' });
     }
@@ -189,12 +193,16 @@ export const getStudentElectives = async (req, res) => {
 
   try {
     await ensureStudentAdminSchema();
-    const subjectIds = await resolveSubjectIds(subject);
+    const subjectIds = await resolveSubjectIds(subject, true);
 
     if (!subjectIds.length) {
       return res.status(404).json({ error: 'Subject not found.' });
     }
 
+    const requestedBlock = String(block || '').toUpperCase();
+    if (requestedBlock && !['X1', 'X2', 'X3'].includes(requestedBlock)) {
+      return res.status(400).json({ error: 'Invalid elective block.' });
+    }
     const blockColumn = {
       X1: 's.x1_subject_id',
       X2: 's.x2_subject_id',
@@ -232,6 +240,7 @@ export const getStudentElectives = async (req, res) => {
         JOIN class ttc ON tt.class_id = ttc.class_id
       )
         ON tt.subject_id IN (?)
+       AND (? = '' OR EXISTS (SELECT 1 FROM subject lesson_subject WHERE lesson_subject.subject_id = tt.subject_id AND lesson_subject.block = ?))
        AND (
           tt.class_id = s.class_id
           OR FIND_IN_SET(REPLACE(c.class_name, ' ', ''), ${normaliseClassListSql}) > 0
@@ -253,7 +262,7 @@ export const getStudentElectives = async (req, res) => {
         tt.day_of_week,
         p.period_id
       `,
-      [subjectIds, form, form.replace('F', 'S'), form, ...electiveFilterParams]
+      [subjectIds, requestedBlock, requestedBlock, form, form.replace('F', 'S'), form, ...electiveFilterParams]
     );
 
     res.json(rows);

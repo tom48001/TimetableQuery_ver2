@@ -3,16 +3,15 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import dotenv from 'dotenv';
 import pool from '../db.js';
 import jwt from 'jsonwebtoken';
+import { googleDomain, managerEmails, isGoogleEmailAllowed } from '../utils/googleAccess.js';
 
 dotenv.config();
 
-const MANAGER_EMAILS = process.env.MANAGER_EMAILS
-  ? process.env.MANAGER_EMAILS.split(',').map(email => email.trim()).filter(Boolean)
-  : [];
-const GOOGLE_ALLOWED_DOMAIN = process.env.GOOGLE_ALLOWED_DOMAIN || 'gmail.com';
+const MANAGER_EMAILS = managerEmails();
+const GOOGLE_ALLOWED_DOMAIN = googleDomain();
 
 async function promoteManagerIfNeeded(user) {
-  if (MANAGER_EMAILS.includes(user.email) && user.role !== 'manager') {
+  if (MANAGER_EMAILS.includes(String(user.email).trim().toLowerCase()) && user.role !== 'manager') {
     await pool.query("UPDATE user SET role = 'manager' WHERE user_id = ?", [user.user_id]);
     return { ...user, role: 'manager' };
   }
@@ -26,14 +25,14 @@ passport.use(new GoogleStrategy({
   callbackURL: process.env.GOOGLE_CALLBACK_URL
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    const email = profile.emails?.[0]?.value;
+    const email = profile.emails?.[0]?.value?.trim().toLowerCase();
     const googleId = profile.id;
 
     if (!email || !googleId) {
       return done(null, false, { message: 'Google profile is missing email or id.' });
     }
 
-    if (!email.endsWith(`@${GOOGLE_ALLOWED_DOMAIN}`)) {
+    if (!isGoogleEmailAllowed(email, GOOGLE_ALLOWED_DOMAIN, MANAGER_EMAILS)) {
       return done(null, false, { message: `Only ${GOOGLE_ALLOWED_DOMAIN} Google accounts are allowed.` });
     }
 

@@ -1,9 +1,10 @@
+import { nominationSubjectGroup } from '../utils/nominationSubjects.js';
+import { loadNominationEligibility } from '../utils/nominationEligibility.js';
 import pool from '../db.js';
 import { ensureStudentAdminSchema } from './manageStudentController.js';
 import { ensureLessonGroupSchema } from './lessonGroupController.js';
-import { subjectCanonicalKey } from '../utils/subjectCanonicalKey.js';
 import { loadSchoolSettings } from './systemSettingsController.js';
-import { juniorClassGroup, juniorRuleAllows } from '../utils/juniorAllocation.js';
+import { juniorStudentGroup, juniorRuleAllows } from '../utils/juniorAllocation.js';
 
 function normaliseClassListSql(alias) {
   return `
@@ -101,51 +102,11 @@ export const getStudentsByClassNSubject = async (req, res) => {
       ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name
     `;
 
-    const [subjectRows] = await pool.query(
-      'SELECT subject_id, subject_name, subject_name_zh, subject_name_en, is_elective FROM subject WHERE subject_id = ?',
-      [subjectId]
-    );
-
-    if (!subjectRows.length) {
-      return res.status(404).json({ error: 'Subject not found' });
-    }
-
-    if (!subjectRows[0].is_elective) {
-      const [students] = await pool.query(baseSql, [classId]);
-      return res.json(students);
-    }
-
-    const [allSubjects] = await pool.query(
-      'SELECT subject_id, subject_name, subject_name_zh, subject_name_en FROM subject'
-    );
-    const selectedKey = subjectCanonicalKey(subjectRows[0]);
-    const electiveSubjectIds = allSubjects
-      .filter(subject => subjectCanonicalKey(subject) === selectedKey)
-      .map(subject => subject.subject_id);
-
-    const [electiveStudents] = await pool.query(
-      `
-      SELECT
-        s.student_id,
-        s.student_ch_name AS student_name,
-        s.student_eng_name AS english_name,
-        s.class_number,
-        s.sex,
-        s.class_id,
-        c.class_name
-      FROM student s
-      JOIN class c ON s.class_id = c.class_id
-      WHERE s.class_id = ? AND s.status = 'active'
-        AND (
-          s.x1_subject_id IN (?)
-          OR s.x2_subject_id IN (?)
-          OR s.x3_subject_id IN (?)
-        )
-      ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name
-      `,
-      [classId, electiveSubjectIds, electiveSubjectIds, electiveSubjectIds]
-    );
-    return res.json(electiveStudents);
+    const group = await nominationSubjectGroup(pool, subjectId);
+    const eligible = await loadNominationEligibility(pool);
+    const studentIds = new Set(eligible.filter(row => Number(row.subject_id) === Number(group?.subject_id) && Number(row.class_id) === Number(classId)).map(row => Number(row.student_id)));
+    const [students] = await pool.query(baseSql, [classId]);
+    return res.json(students.filter(student => studentIds.has(Number(student.student_id))));
   } catch (error) {
     console.error('Failed to load students by class and subject:', error);
     res.status(500).json({ error: 'Failed to load students' });
@@ -159,7 +120,7 @@ export const getStudentTimetable = async (req, res) => {
     await ensureStudentAdminSchema();
     await ensureLessonGroupSchema();
     const [studentRows] = await pool.query(
-      `SELECT s.student_id, c.class_name, c.grade_level
+      `SELECT s.student_id, s.class_number, c.class_name, c.grade_level
        FROM student s
        JOIN class c ON c.class_id = s.class_id
        WHERE s.student_id = ? AND s.status = 'active'`,
@@ -245,7 +206,7 @@ export const getStudentTimetable = async (req, res) => {
         .filter(rule => Number(rule.semester) === settings.current_semester)
         .map(rule => [Number(rule.subject_id), rule])
     );
-    const classGroup = juniorClassGroup(student.class_name);
+    const classGroup = juniorStudentGroup(student.class_number);
     const filteredRows = rows.filter(row => {
       const subjectId = Number(row.subject_id);
       if (!managedSubjectIds.has(subjectId)) return true;

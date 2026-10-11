@@ -136,7 +136,7 @@ button,
   font-weight: 700;
 }
 
-.app-shell button:not(.logout-btn) {
+.app-shell button:not(.logout-btn):not(.locale-button) {
   border: none !important;
   border-radius: 6px !important;
   background: var(--primary) !important;
@@ -144,11 +144,11 @@ button,
   font-weight: 700 !important;
 }
 
-.app-shell button:not(.logout-btn):hover:not(:disabled) {
+.app-shell button:not(.logout-btn):not(.locale-button):hover:not(:disabled) {
   background: var(--primary-dark) !important;
 }
 
-.app-shell button:not(.logout-btn):disabled {
+.app-shell button:not(.logout-btn):not(.locale-button):disabled {
   background: #c7d2d8 !important;
   color: var(--muted) !important;
 }

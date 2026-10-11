@@ -19,7 +19,7 @@
               data-form-type="other"
               :readonly="searchReadonly"
               @focus="searchReadonly = false"
-              :placeholder="tr('Search name, email or role...', '搜尋姓名、Email或角色...')"
+              :placeholder="tr('Search name, email, teacher code or role...', '搜尋姓名、Email、老師代號或角色...')"
             />
           </label>
         </div>
@@ -34,6 +34,13 @@
         </div>
 
         <div class="form-grid">
+          <label>
+            <span>{{ tr('Link imported teacher', '連結已匯入老師') }}</span>
+            <select v-model="newTeacher.teacher_id" @change="fillTeacherName">
+              <option :value="null">{{ tr('No teacher link (account only)', '不連結老師（只建立帳戶）') }}</option>
+              <option v-for="profile in availableTeacherLinks(null)" :key="profile.teacher_id" :value="profile.teacher_id">{{ teacherLinkLabel(profile) }}</option>
+            </select>
+          </label>
           <label>
             <span>{{ tr('Name', '姓名') }}</span>
             <input v-model.trim="newTeacher.user_name" :placeholder="tr('Enter name', '輸入姓名')" />
@@ -57,17 +64,18 @@
             </select>
           </label>
           <label v-if="newTeacher.role === 'subject_head'">
-            <span>{{ tr('Managed subject', '主管科目') }}</span>
-            <select v-model.number="newTeacher.subject_head_subject_id">
-              <option :value="null">{{ tr('Select subject', '選擇科目') }}</option>
-              <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">{{ subjectLabel(subject) }}</option>
-            </select>
+            <span>{{ tr('Managed subjects (multiple)', '主管科目（可複選）') }}</span>
+            <div class="head-subject-options">
+              <label v-for="subject in subjects" :key="subject.subject_id"><input type="checkbox" v-model="newTeacher.subject_head_subject_ids" :value="subject.subject_id" />{{ subjectLabel(subject) }}</label>
+            </div>
           </label>
           <label>
             <span>{{ tr('Password', '密碼') }}</span>
-            <input v-model="newTeacher.password" type="password" placeholder="••••••••" />
+            <input v-model="newTeacher.password" type="password" :placeholder="tr('Optional for Google login', 'Google 登入可留空')" />
           </label>
         </div>
+        <p class="manager-permission-note">{{ tr('Choose the teacher code from the timetable to use their existing schedule. An unlinked account has no personal timetable. Use the real Google email for Google login.', '選擇時間表中的老師代號，帳戶即可沿用原有課表。未連結的帳戶沒有個人課表；Google 登入請填寫真實 Google 電郵。') }}</p>
+        <p v-if="teacherLinkError" class="manager-permission-note">{{ teacherLinkError }}</p>
         <p v-if="newTeacher.role === 'manager'" class="manager-permission-note">{{ tr('Managers always have all permissions.', 'Manager 會自動擁有所有權限。') }}</p>
 
         <div class="permission-save-row">
@@ -105,16 +113,21 @@
             <tbody>
               <tr v-for="teacher in paginatedTeachers" :key="teacher.user_id" :class="{ 'editing-row': isEditingTeacher(teacher) }">
                 <template v-if="isEditingTeacher(teacher)">
-                  <td><input v-model.trim="teacher.user_name" /></td>
+                  <td>
+                    <input v-model.trim="teacher.user_name" />
+                    <select v-model="teacher.teacher_id" :aria-label="tr('Linked teacher', '已連結老師')">
+                      <option :value="null">{{ tr('No teacher link', '未連結老師') }}</option>
+                      <option v-for="profile in availableTeacherLinks(teacher.user_id)" :key="profile.teacher_id" :value="profile.teacher_id">{{ teacherLinkLabel(profile) }}</option>
+                    </select>
+                  </td>
                   <td><input v-model.trim="teacher.email" /></td>
                   <td>
                     <select v-model="teacher.role" @change="applyDefaultPermissions(teacher)">
                       <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
                     </select>
-                    <select v-if="teacher.role === 'subject_head'" v-model.number="teacher.subject_head_subject_id" class="subject-head-select">
-                      <option :value="null">{{ tr('Select subject', '選擇科目') }}</option>
-                      <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">{{ subjectLabel(subject) }}</option>
-                    </select>
+                    <div v-if="teacher.role === 'subject_head'" class="head-subject-options">
+                      <label v-for="subject in subjects" :key="subject.subject_id"><input type="checkbox" v-model="teacher.subject_head_subject_ids" :value="subject.subject_id" />{{ subjectLabel(subject) }}</label>
+                    </div>
                   </td>
                   <td class="permission-cell">
                     <div class="permission-list">
@@ -138,13 +151,16 @@
                 <template v-else>
                   <td>
                     <div class="user-name-text">{{ teacher.user_name || '-' }}</div>
+                    <small class="subject-head-name">{{ teacher.teacher_id ? `${teacher.teacher_code || ''} · ${teacher.teacher_name} ${teacher.chinese_name || ''}` : tr('No teacher linked', '未連結老師') }}</small>
+                    <small v-if="teacher.teacher_number" class="subject-head-name">老師編號：{{ teacher.teacher_number }}</small>
+                    <small v-if="teacher.source_login" class="subject-head-name">UserLogin: {{ teacher.source_login }}</small>
                   </td>
                   <td>
                     <div class="muted-text">{{ teacher.email || '-' }}</div>
                   </td>
                   <td>
                     <span class="role-badge" :class="`role-${teacher.role}`">{{ roleLabel(teacher.role) }}</span>
-                    <small v-if="teacher.role === 'subject_head'" class="subject-head-name">{{ subjectName(teacher.subject_head_subject_id) }}</small>
+                    <small v-if="teacher.role === 'subject_head'" class="subject-head-name">{{ teacher.subject_head_subject_ids.map(subjectName).join('、') }}</small>
                   </td>
                   <td class="permission-cell readonly">
                     <div class="permission-list">
@@ -237,6 +253,9 @@ export default {
     return {
       teachers: [],
       subjects: [],
+      teacherLinks: [],
+      teacherLinkError: '',
+      savingUser: false,
       currentUserRole: 'teacher',
       searchText: '',
       selectedRole: '',
@@ -247,11 +266,12 @@ export default {
       searchReadonly: true,
       editingTeacherId: null,
       newTeacher: {
+        teacher_id: null,
         user_name: '',
         email: '',
         password: '',
         role: 'teacher',
-        subject_head_subject_id: null,
+        subject_head_subject_ids: [],
         permissions: this.defaultPermissions('teacher')
       }
     };
@@ -260,7 +280,7 @@ export default {
     roleOptions() {
       const roles = [
         { value: 'teacher', label: 'Teacher' },
-        { value: 'subject_head', label: this.tr('Subject Head', '科主管') },
+        { value: 'subject_head', label: this.tr('Subject Head', '主任') },
         { value: 'staff', label: 'Staff' }
       ];
       if (this.currentUserRole === 'manager') roles.push({ value: 'manager', label: 'Manager' });
@@ -318,7 +338,7 @@ export default {
     filteredTeachers() {
       const keyword = this.searchText.trim().toLowerCase();
       return this.teachers.filter(teacher => {
-        const haystack = `${teacher.user_name || ''} ${teacher.email || ''} ${teacher.role || ''} ${this.roleLabel(teacher.role)}`.toLowerCase();
+        const haystack = `${teacher.user_name || ''} ${teacher.email || ''} ${teacher.teacher_code || ''} ${teacher.teacher_name || ''} ${teacher.role || ''} ${this.roleLabel(teacher.role)}`.toLowerCase();
         const matchesKeyword = !keyword || haystack.includes(keyword);
         const matchesRole = !this.selectedRole || teacher.role === this.selectedRole;
         const matchesPermission = !this.selectedPermission || Boolean(teacher.permissions && teacher.permissions[this.selectedPermission]);
@@ -353,6 +373,25 @@ export default {
     }
   },
   methods: {
+    availableTeacherLinks(userId) {
+      return this.teacherLinks.filter(profile => !profile.user_id || String(profile.user_id) === String(userId));
+    },
+    teacherLinkLabel(profile) {
+      return `${profile.teacher_number} · ${profile.teacher_code || '-'} · ${profile.teacher_name} ${profile.chinese_name || ''} (${profile.lesson_count} ${this.tr('lessons', '節課')})${profile.status === 'inactive' ? this.tr(' — inactive', ' — 已停用') : ''}`;
+    },
+    fillTeacherName() {
+      const profile = this.teacherLinks.find(item => String(item.teacher_id) === String(this.newTeacher.teacher_id));
+      if (profile && !this.newTeacher.user_name) this.newTeacher.user_name = profile.teacher_name;
+    },
+    async fetchTeacherLinks() {
+      try {
+        const res = await axios.get('/api/teachers/link-options', { headers: this.authHeaders() });
+        this.teacherLinks = res.data;
+        this.teacherLinkError = '';
+      } catch (error) {
+        this.teacherLinkError = this.tr('Could not load teacher choices. Refresh before linking an account.', '未能載入老師選項，請重新整理後再連結帳戶。');
+      }
+    },
     tr(en, zh) {
       return this.$lang.locale === 'en' ? en : zh;
     },
@@ -405,9 +444,12 @@ export default {
       return this.editingTeacherId === teacher.user_id;
     },
     startEditTeacher(teacher) {
+      this.editSnapshot = JSON.parse(JSON.stringify(teacher));
       this.editingTeacherId = teacher.user_id;
     },
     cancelEditTeacher() {
+      const teacher = this.teachers.find(row => row.user_id === this.editingTeacherId);
+      if (teacher && this.editSnapshot) Object.assign(teacher, this.editSnapshot);
       this.editingTeacherId = null;
     },
     clearFilters() {
@@ -466,12 +508,14 @@ export default {
         });
         this.teachers = res.data.map(t => ({
           ...t,
+          subject_head_subject_ids: [...new Set((t.subject_head_subject_ids || (t.subject_head_subject_id ? [t.subject_head_subject_id] : [])).map(this.canonicalSubjectId))],
           role: t.role ? t.role.trim().toLowerCase() : 'teacher',
           permissions: this.normalizePermissions(t.permissions, t.role),
           newPassword: ''
         }));
         this.currentPage = 1;
         this.editingTeacherId = null;
+        await this.fetchTeacherLinks();
       } catch (err) {
         const status = err.response ? err.response.status : 0;
         const message = status === 403
@@ -491,10 +535,11 @@ export default {
     async updateTeacher(teacher) {
       try {
         await axios.put(`/api/teachers/${teacher.user_id}`, {
+          teacher_id: teacher.teacher_id,
           user_name: teacher.user_name,
           email: teacher.email,
           role: teacher.role,
-          subject_head_subject_id: teacher.role === 'subject_head' ? this.canonicalSubjectId(teacher.subject_head_subject_id) : null,
+          subject_head_subject_ids: teacher.role === 'subject_head' ? [...new Set(teacher.subject_head_subject_ids.map(this.canonicalSubjectId))] : [],
           permissions: teacher.permissions,
           newPassword: teacher.newPassword || null
         }, {
@@ -507,26 +552,30 @@ export default {
         const status = err.response ? err.response.status : 0;
         alert(status === 403
           ? this.tr('You do not have permission to update users.', '你沒有權限修改使用者。')
-          : this.tr('Failed to update user.', '修改使用者失敗。'));
+          : ((err.response && err.response.data.error) || this.tr('Failed to update user.', '修改使用者失敗。')));
+        await this.fetchTeacherLinks();
         return false;
       }
     },
     async saveTeacherRow(teacher) {
       const saved = await this.updateTeacher(teacher);
-      if (saved) this.editingTeacherId = null;
+      if (saved) await this.fetchTeachers();
     },
     async addTeacher() {
+      if (this.savingUser) return;
+      this.savingUser = true;
       try {
         await axios.post('/api/teachers', this.newTeacher, {
           headers: this.authHeaders()
         });
         alert(this.tr('User added.', '使用者已新增。'));
         this.newTeacher = {
+          teacher_id: null,
           user_name: '',
           email: '',
           password: '',
           role: 'teacher',
-          subject_head_subject_id: null,
+          subject_head_subject_ids: [],
           permissions: this.defaultPermissions('teacher')
         };
         this.fetchTeachers();
@@ -534,7 +583,10 @@ export default {
         const status = err.response ? err.response.status : 0;
         alert(status === 403
           ? this.tr('You do not have permission to add users.', '你沒有權限新增使用者。')
-          : this.tr('Failed to add user.', '新增使用者失敗。'));
+          : ((err.response && err.response.data.error) || this.tr('Failed to add user.', '新增使用者失敗。')));
+        await this.fetchTeacherLinks();
+      } finally {
+        this.savingUser = false;
       }
     },
     async deleteTeacher(id) {
@@ -565,6 +617,10 @@ export default {
 </script>
 
 <style scoped>
+.head-subject-options { display: flex; flex-wrap: wrap; gap: 8px 14px; max-height: 190px; overflow-y: auto; padding: 10px; border: 1px solid #d1e0e5; border-radius: 6px; }
+.head-subject-options label { display: flex; flex-direction: row; align-items: center; gap: 5px; }
+.head-subject-options input[type="checkbox"] { width: auto; height: auto; margin: 0; }
+
 .user-admin-page {
   box-sizing: border-box;
   min-height: calc(100vh - 126px);

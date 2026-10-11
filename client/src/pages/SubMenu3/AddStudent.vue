@@ -54,12 +54,10 @@
           <h2>{{ tr('Other Info', '其他資訊') }} (Other Info)</h2>
         </div>
         <div class="form-grid three">
-          <label><span>{{ tr('Citizenship', '公社') }} (HOUSE)</span><select v-model="student.citizenship"><option v-for="option in citizenshipOptions" :key="option" :value="option">{{ option }}</option></select></label>
           <label><span>{{ tr('House', '社別') }}</span><select v-model="student.house"><option v-for="option in houseOptions" :key="option" :value="option">{{ option }}</option></select></label>
-          <label><span>{{ tr('Language Group', '語言組別') }}</span><select v-model="student.language_group"><option v-for="option in languageGroupOptions" :key="option" :value="option">{{ option }}</option></select></label>
           <label><span>SUPP CLASS</span><select v-model="student.supp_class"><option v-for="option in suppClassOptions" :key="option" :value="option">{{ option }}</option></select></label>
           <label><span>{{ tr('Maths', '數學/MATHS') }}</span><select v-model="student.maths_group"><option v-for="option in mathsOptions" :key="option" :value="option">{{ option }}</option></select></label>
-          <label><span>{{ tr('Dropped Subjects', '退選科目') }}</span><input v-model.trim="student.dropped_subjects" :placeholder="tr('Enter dropped subjects', '請輸入退選科目')" /></label>
+          <label><span>{{ tr('Elective Subjects', '選修科目') }}</span><input v-model.trim="student.dropped_subjects" :placeholder="tr('Enter elective subjects', '請輸入選修科目')" /></label>
         </div>
       </section>
 
@@ -117,10 +115,8 @@ function blankStudent() {
     x2_subject_id: '',
     x3_subject_id: '',
     house: '紅社',
-    language_group: '英文組(EMI)',
     supp_class: '無',
     maths_group: '核心課程(英文)',
-    citizenship: '公民、經濟與社會',
     dropped_subjects: '',
     remarks: ''
   };
@@ -138,11 +134,9 @@ export default {
         { key: 'x2_subject_id', label: 'X2' },
         { key: 'x3_subject_id', label: 'X3' }
       ],
-      languageGroupOptions: ['英文組(EMI)', '純英文組(EMI)', '中文組(CMI)'],
       houseOptions: ['紅社', '藍社', '黃社', '綠社'],
       ncsOptions: ['N', 'Y'],
       mathsOptions: ['核心課程(英文)', '核心課程(中文)'],
-      citizenshipOptions: ['公民、經濟與社會', '修讀 (DSE)'],
       suppClassOptions: ['無', '中文提升班', '數學試前補底', '英文拔尖班']
     };
   },
@@ -150,7 +144,9 @@ export default {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     authHeaders() { return { Authorization: `Bearer ${localStorage.getItem('token')}` }; },
     usesDse(student) {
-      return String((student && student.citizenship) || '').trim() === '修讀 (DSE)';
+      const selected = this.classes.find(item => Number(item.class_id) === Number(student && student.class_id));
+      if (!selected) return false;
+      return /^(?:F|S)?[456]/i.test(String(selected.grade_level || selected.class_name || '').trim());
     },
     studentPayload(student) {
       const payload = { ...student };

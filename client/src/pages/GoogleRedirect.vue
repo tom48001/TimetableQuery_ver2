@@ -8,8 +8,7 @@ import { jwtDecode } from 'jwt-decode';
 
 export default {
   async mounted() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
+    const token = this.$route.query.token;
 
     if (!token) {
       console.error('Missing Google login token');

@@ -1,10 +1,12 @@
+import { groupNominationSubjects } from '../utils/nominationSubjects.js';
 import express from 'express';
 import { ensureJWT } from '../auth/auth.js';
 import { requireAnyPermission } from '../auth/permissions.js';
 import db from '../db.js';
 import { getStudentElectives, getElectives, getElectiveSubjectOptions, getSubjectHeadOptions } from '../controllers/subjectController.js';
 import { ensureStudentAdminSchema } from '../controllers/manageStudentController.js';
-import { subjectCanonicalKey } from '../utils/subjectCanonicalKey.js';
+import { loadNominationEligibility } from '../utils/nominationEligibility.js';
+import { fillChineseSubjectNames } from '../utils/subjectDisplayNames.js';
 
 const router = express.Router();
 const canReadSchoolData = requireAnyPermission(['timetable', 'nominations']);
@@ -33,6 +35,7 @@ async function ensureSubjectNominationColumn() {
 
 router.get('/', ensureJWT, canReadSchoolData, async (req, res) => {
   try {
+    await fillChineseSubjectNames(db);
     const [rows] = await db.query('SELECT * FROM subject ORDER BY subject_id');
     res.json(rows);
   } catch (error) {
@@ -41,64 +44,26 @@ router.get('/', ensureJWT, canReadSchoolData, async (req, res) => {
   }
 });
 
+router.get('/nomination-options', ensureJWT, canReadSchoolData, async (req, res) => {
+  try {
+    await fillChineseSubjectNames(db);
+    const [subjects] = await db.query('SELECT * FROM subject');
+    res.json(groupNominationSubjects(subjects));
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 router.get('/class-counts', ensureJWT, canReadSchoolData, async (req, res) => {
   try {
     await ensureSubjectNominationColumn();
     await ensureStudentAdminSchema();
-    const [subjects] = await db.query(`
-      SELECT subject_id, subject_name, subject_name_zh, subject_name_en, is_elective
-      FROM subject
-      WHERE is_nominatable = TRUE
-      ORDER BY subject_id
-    `);
-    const [classCounts] = await db.query(`
-      SELECT class_id, COUNT(*) AS student_count
-      FROM student
-      WHERE status = 'active'
-      GROUP BY class_id
-    `);
-    const [electiveChoices] = await db.query(`
-      SELECT DISTINCT
-        st.student_id,
-        st.class_id,
-        chosen.subject_name,
-        chosen.subject_name_zh,
-        chosen.subject_name_en
-      FROM student st
-      JOIN subject chosen
-        ON chosen.subject_id IN (st.x1_subject_id, st.x2_subject_id, st.x3_subject_id)
-      WHERE st.status = 'active'
-    `);
-
-    const electiveStudents = new Map();
-    electiveChoices.forEach(choice => {
-      const key = `${subjectCanonicalKey(choice)}|${choice.class_id}`;
-      if (!electiveStudents.has(key)) electiveStudents.set(key, new Set());
-      electiveStudents.get(key).add(Number(choice.student_id));
-    });
-
-    const rows = [];
-    subjects.forEach(subject => {
-      classCounts.forEach(cls => {
-        if (!subject.is_elective) {
-          rows.push({
-            subject_id: subject.subject_id,
-            class_id: cls.class_id,
-            student_count: Number(cls.student_count)
-          });
-          return;
-        }
-
-        const selected = electiveStudents.get(`${subjectCanonicalKey(subject)}|${cls.class_id}`);
-        if (selected && selected.size) {
-          rows.push({
-            subject_id: subject.subject_id,
-            class_id: cls.class_id,
-            student_count: selected.size
-          });
-        }
-      });
-    });
+    const eligible = await loadNominationEligibility(db);
+    const counts = new Map();
+    for (const row of eligible) {
+      const key = row.subject_id + ':' + row.class_id;
+      if (!counts.has(key)) counts.set(key, { subject_id: row.subject_id, class_id: row.class_id, student_count: 0 });
+      counts.get(key).student_count += 1;
+    }
+    const rows = [...counts.values()];
     res.json(rows);
   } catch (error) {
     console.error('Error fetching subject class counts:', error);

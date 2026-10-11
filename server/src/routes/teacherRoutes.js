@@ -2,7 +2,7 @@ import express from 'express';
 import db from '../db.js';
 import { ensureJWT } from '../auth/auth.js';
 import { hasPermission, requireAnyPermission, requirePermission } from '../auth/permissions.js';
-import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, syncEligibleTeacherProfiles } from '../controllers/manageTeacherRoutes.js';
+import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, getTeacherLinkOptions } from '../controllers/manageTeacherRoutes.js';
 import { getTeachersSchedule } from '../controllers/teacherScheduleController.js';
 import pool from '../db.js';
 
@@ -11,12 +11,13 @@ const router = express.Router();
 router.use(ensureJWT);
 
 router.get('/getAllTeachers', requirePermission('manageUsers'), getAllTeachers);
+router.get('/link-options', requirePermission('manageUsers'), getTeacherLinkOptions);
 router.post('/', requirePermission('manageUsers'), createTeacher);
 router.post('/schedule', requirePermission('timetable'), getTeachersSchedule);
 
 router.get('/list', requireAnyPermission(['timetable', 'nominations', 'manageUsers']), async (req, res) => {
   try {
-    await syncEligibleTeacherProfiles();
+
     const [rows] = await db.query(`
       SELECT
         t.teacher_id,
@@ -45,7 +46,7 @@ router.post('/free-teachers', requirePermission('timetable'), async (req, res) =
   }
 
   try {
-    await syncEligibleTeacherProfiles();
+
     const placeholders = period.map(() => '?').join(', ');
     const [rows] = await db.query(
       `
@@ -77,7 +78,7 @@ router.post('/free-teachers-day', requirePermission('timetable'), async (req, re
   }
 
   try {
-    await syncEligibleTeacherProfiles();
+
     const [rows] = await db.query(
       `
       SELECT
@@ -128,7 +129,7 @@ router.get('/from-user/:userId', requireAnyPermission(['timetable', 'nominations
     return res.status(403).json({ code: 'NO_PERMISSION', error: 'No permission to view another user teacher account.' });
   }
   try {
-    await syncEligibleTeacherProfiles();
+
     const [rows] = await pool.query(
       'SELECT teacher_id FROM teacher WHERE user_id = ? AND COALESCE(status, \'active\') = \'active\'',
       [userId]

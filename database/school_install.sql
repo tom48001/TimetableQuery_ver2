@@ -7,6 +7,11 @@
 --
 -- In MySQL Workbench, connect with an account allowed to create a database,
 -- open this file, review the database name, then run the entire script once.
+-- Re-running preserves existing configuration; it does NOT upgrade old tables.
+-- For an older installation, use the ordered database/migrations scripts.
+-- Docker runs this file only when its MySQL data volume is first initialized.
+
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE DATABASE IF NOT EXISTS school_management
   CHARACTER SET utf8mb4
@@ -22,7 +27,8 @@ CREATE TABLE IF NOT EXISTS user (
   password VARCHAR(255) NULL,
   role ENUM('teacher', 'subject_head', 'staff', 'manager') NOT NULL DEFAULT 'teacher',
   permissions TEXT NULL,
-  subject_head_subject_id BIGINT NULL
+  subject_head_subject_id BIGINT NULL,
+  subject_head_subject_ids JSON NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS teacher (
@@ -30,6 +36,9 @@ CREATE TABLE IF NOT EXISTS teacher (
   user_id BIGINT NULL UNIQUE,
   teacher_name VARCHAR(100) NOT NULL,
   teacher_code VARCHAR(50) NULL UNIQUE,
+  source_login VARCHAR(255) NULL,
+  english_name VARCHAR(255) NULL,
+  chinese_name VARCHAR(255) NULL,
   status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   CONSTRAINT fk_teacher_user_account
     FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE SET NULL
@@ -252,6 +261,19 @@ CREATE TABLE IF NOT EXISTS learning_goal_reward_rule (
   UNIQUE KEY unique_learning_goal_rule_range (min_goals, max_goals)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS import_jobs (
+  job_id CHAR(36) PRIMARY KEY,
+  owner_id BIGINT NOT NULL,
+  status ENUM('pending','processing','success','failed') NOT NULL DEFAULT 'pending',
+  total_rows INT UNSIGNED NOT NULL DEFAULT 0,
+  processed_rows INT UNSIGNED NOT NULL DEFAULT 0,
+  error_message TEXT NULL,
+  result_json JSON NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_import_jobs_owner (owner_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS import_schedule (
   import_id BIGINT AUTO_INCREMENT PRIMARY KEY,
   file_name VARCHAR(255) NOT NULL,
@@ -369,8 +391,7 @@ INSERT INTO period (period_name, start_time, end_time) VALUES
   ('Period 11', '14:50:00', '15:25:00'),
   ('Period 12', '15:25:00', '16:00:00')
 ON DUPLICATE KEY UPDATE
-  start_time = VALUES(start_time),
-  end_time = VALUES(end_time);
+  period_id = period.period_id;
 
 -- Default learning-goal award rules. Existing rules are preserved.
 INSERT INTO learning_goal_reward_rule
@@ -381,14 +402,12 @@ VALUES
   (5, 6, '銀獎', TRUE, 1, 3),
   (7, 8, '金獎', TRUE, 2, 4)
 ON DUPLICATE KEY UPDATE
-  award_name = VALUES(award_name),
-  has_prize = VALUES(has_prize),
-  merit_offset_count = VALUES(merit_offset_count),
-  display_order = VALUES(display_order);
+  rule_id = learning_goal_reward_rule.rule_id;
 
 -- FIRST MANAGER ACCOUNT
 -- Before launch, replace the email below with the real school Google account,
--- ensure the same email is present in MANAGER_EMAILS in server/.env, then
+-- ensure the same email is present in MANAGER_EMAILS in .env.docker (Docker)
+-- or server/.env (local), and its domain matches GOOGLE_ALLOWED_DOMAIN, then
 -- remove the leading "-- " from the INSERT lines. The manager can sign in
 -- through Google and create the remaining users from the management page.
 --
@@ -401,7 +420,96 @@ ON DUPLICATE KEY UPDATE
 --   '{"timetable":true,"nominations":true,"changePassword":true,"manageUsers":true,"manageStudents":true,"importTimetable":true}'
 -- )
 -- ON DUPLICATE KEY UPDATE
---   role = 'manager',
---   permissions = VALUES(permissions);
+--   user_id = user.user_id;
+-- Existing accounts are deliberately not modified by this example.
+-- MANAGER_EMAILS alone does not create an account: this INSERT is required
+-- for a new manager. No local password is created; use Google to sign in.
 
-SELECT 'Production schema installed successfully.' AS result;
+-- School reference data. Review these values for your school before installing.
+-- Existing records (including customized names and settings) are preserved.
+INSERT INTO class (class_name, grade_level) VALUES
+('1M', 'F1'), ('1A', 'F1'), ('1R', 'F1'), ('1Y', 'F1'),
+('2M', 'F2'), ('2A', 'F2'), ('2R', 'F2'), ('2Y', 'F2'),
+('3M', 'F3'), ('3A', 'F3'), ('3R', 'F3'), ('3Y', 'F3'),
+('4M', 'F4'), ('4A', 'F4'), ('4R', 'F4'), ('4Y', 'F4'),
+('5M', 'F5'), ('5A', 'F5'), ('5R', 'F5'), ('5Y', 'F5'),
+('6M', 'F6'), ('6A', 'F6'), ('6R', 'F6'), ('6Y', 'F6')
+ON DUPLICATE KEY UPDATE class_id = class.class_id;
+
+INSERT INTO subject
+(import_name, subject_name, block, is_elective)
+VALUES
+('CHIN', '中國語文', NULL, FALSE),
+('ENG',  '英國語文', NULL, FALSE),
+('MATH', '數學', NULL, FALSE),
+('CS',   '公民與社會發展', NULL, FALSE)
+ON DUPLICATE KEY UPDATE subject_id = subject.subject_id;
+
+INSERT INTO room (room_name) VALUES
+('G01C 會見室(一)'),
+('G01D 會見室(二)'),
+('G01K 會議室'),
+('G01R 學生活動中心'),
+('操場'),
+('有蓋操場'),
+('101 視覺藝術室'),
+('102 音樂室'),
+('111 溫室'),
+('一樓玻璃房 (Sonata)'),
+('201 Little Britain'),
+('202 1M 課室'),
+('203 1A 課室'),
+('204 1R 課室'),
+('205 1Y 課室'),
+('209A 講廳'),
+('209B 創藝室'),
+('301 課室'),
+('302 2M 課室'),
+('303 2A 課室'),
+('304 2R 課室'),
+('305 2Y 課室'),
+('309 AI Lab'),
+('311 電腦室'),
+('401 課室'),
+('402 3M 課室'),
+('403 3A 課室'),
+('404 3R 課室'),
+('405 3Y 課室'),
+('409 IS Lab'),
+('412 IS Lab'),
+('413 CAL 室'),
+('415 圖書館'),
+('501 課室'),
+('502 4M 課室'),
+('503 4A 課室'),
+('504 4R 課室'),
+('505 4Y 課室'),
+('509 地理室'),
+('511 Bio Lab'),
+('513 家政室'),
+('601 課室'),
+('602 5Y 課室'),
+('603 5R 課室'),
+('604 5A 課室'),
+('605 5M 課室'),
+('609 Chm Lab'),
+('611 Phy Lab'),
+('612 源活齋'),
+('613 源活齋'),
+('701 課室'),
+('702 6M 課室'),
+('703 6A 課室'),
+('704 6R 課室'),
+('705 6Y 課室'),
+('710 Cozy Lounge')
+ON DUPLICATE KEY UPDATE room_id = room.room_id;
+
+-- This message is reached only after all installation statements above.
+-- In Workbench, also check Action Output for errors (DDL is not transactional).
+SELECT 'School installation script completed. Check the execution log for errors.' AS result,
+  DATABASE() AS database_name,
+  (SELECT COUNT(*) FROM class) AS class_count,
+  (SELECT COUNT(*) FROM subject) AS subject_count,
+  (SELECT COUNT(*) FROM room) AS room_count,
+  (SELECT COUNT(*) FROM period) AS period_count,
+  (SELECT COUNT(*) FROM user WHERE role = 'manager') AS manager_count;

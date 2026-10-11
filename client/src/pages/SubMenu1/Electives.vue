@@ -28,8 +28,6 @@
           </button>
         </div>
 
-        <input v-model.trim="searchText" class="search-input" type="text" :placeholder="tr('Search subject...', '搜尋科目...')" />
-
         <div class="subject-heading">
           <h3>{{ activeBlock }} {{ tr('elective subjects', '選修科目') }}</h3>
           <span>{{ tr(`${currentSubjects.length} subjects`, `${currentSubjects.length} 個科目`) }}</span>
@@ -70,32 +68,20 @@ export default {
       activeBlock: 'X1',
       selectedSubject: '',
       selectedBlock: '',
-      form: '',
-      searchText: ''
+      form: ''
     };
   },
   computed: {
     subjectsByBlock() {
       return this.electiveBlocks.reduce((groups, block) => {
-        groups[block] = this.subjects.filter(subject => this.subjectBlocks(subject).includes(block));
+        groups[block] = this.subjects.filter(subject => this.subjectBlocks(subject).includes(block) && !(block === 'X3' && /^SUPP[34]$/i.test(subject.subject_name || '')));
         return groups;
       }, {});
     },
     currentSubjects() {
-      const keyword = this.searchText.toLowerCase();
-      const subjects = this.subjectsByBlock[this.activeBlock] || [];
-      if (!keyword) return subjects;
-      return subjects.filter(subject => (
-        `${subject.subject_name || ''} ${this.subjectLabel(subject)}`.toLowerCase().includes(keyword)
-      ));
+      return this.subjectsByBlock[this.activeBlock] || [];
     },
     emptySubjectMessage() {
-      if (this.searchText) {
-        return this.tr(
-          `No ${this.activeBlock} subjects match "${this.searchText}"`,
-          `找不到符合「${this.searchText}」的 ${this.activeBlock} 科目`
-        );
-      }
       return this.tr(`No subjects in ${this.activeBlock}`, `${this.activeBlock} 暫時沒有科目`);
     }
   },
@@ -230,17 +216,6 @@ h2 {
   border-color: #0b7285;
   background: #e0f1f2;
   color: #0a5260;
-}
-
-.search-input {
-  width: 100%;
-  height: 44px;
-  border: 1px solid #b8cad3;
-  border-radius: 6px;
-  box-sizing: border-box;
-  font-size: 15px;
-  margin-top: 14px;
-  padding: 0 12px;
 }
 
 .subject-grid {

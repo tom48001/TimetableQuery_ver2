@@ -69,6 +69,7 @@ export default {
     },
     subjectNames(row) {
       if (!row) return '';
+      if (Array.isArray(row.subjects)) return row.subjects.map(subject => this.subjectLabel(subject)).join(this.$lang.locale === 'en' ? ', ' : '、');
 
       const ids = String(row.subject_ids || '').split(',').map(id => id.trim()).filter(Boolean);
       const names = String(row.subject_names || '').split(/[\u3001,]/);

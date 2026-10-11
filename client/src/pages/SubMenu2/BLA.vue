@@ -7,6 +7,7 @@
         </div>
       </header>
 
+      <p>{{ tr('Only subjects taught in each class are available. Electives include enrolled students only.', '只可提名各班課表中實際修讀的科目；選修科只列出修讀該科的學生。') }}</p>
       <div class="table-wrap">
         <table class="choice-table">
           <thead>
@@ -61,7 +62,7 @@ export default {
     countKey(subjectId, classId) { return `${subjectId}-${classId}`; },
     isAvailable(subjectId, classId) { return this.counts[this.countKey(subjectId, classId)] !== undefined; },
     countFor(subjectId, classId) { const value = this.counts[this.countKey(subjectId, classId)]; return value === undefined ? '' : value; },
-    async fetchSubjects() { const token = localStorage.getItem('token'); const res = await axios.get('/api/subjects', { headers: { Authorization: `Bearer ${token}` } }); this.subjects = res.data; },
+    async fetchSubjects() { const token = localStorage.getItem('token'); const res = await axios.get('/api/subjects/nomination-options', { headers: { Authorization: `Bearer ${token}` } }); this.subjects = res.data; },
     async fetchClasses() { const token = localStorage.getItem('token'); const res = await axios.get('/api/classes', { headers: { Authorization: `Bearer ${token}` } }); this.classList = res.data; },
     async fetchCounts() {
       const token = localStorage.getItem('token');

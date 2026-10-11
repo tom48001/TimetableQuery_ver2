@@ -64,8 +64,13 @@ export const SUBJECT_NAME_LABELS = {
   'Tourism and Hospitality Studies': 'Tourism and Hospitality Studies',
   'Physical Education': 'Physical Education'
 };
-export function subjectLabel(item) {
-  return item.subject_name || item.subject || '';
+export function subjectLabel(item, locale) {
+  const code = item.subject_name || item.subject || '';
+  const fallbackNames = { ICT: '資訊及通訊科技', STEM: '科學、科技、工程及數學', BAFS: '企業、會計與財務概論' };
+  const baseCode = code.replace(/-B[123]$/i, '').replace(/\([CE]\)$/i, '').trim().toUpperCase();
+  const name = locale === 'en' ? item.subject_name_en : (item.subject_name_zh || fallbackNames[baseCode]);
+  const block = item.block ? ' · ' + item.block : '';
+  return (name || code) + block;
 }
 
 export function roomLabel(roomName, locale) {

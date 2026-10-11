@@ -1,7 +1,7 @@
 <template>
   <main class="swap-page">
     <section class="swap-panel">
-      <header class="page-header"><div><h1>{{ tr('Teacher to Swap', '需要調課老師') }}</h1></div><span class="count-badge">{{ teacherSelectionLabel }}</span></header>
+      <header class="page-header"><div><h1>{{ tr('Teacher to Swap', '需要調課老師') }}</h1></div></header>
       <label class="search-box"><span>{{ tr('Search teacher', '搜尋老師') }}</span><input v-model.trim="searchText" type="text" :placeholder="tr('Enter teacher name...', '輸入老師名稱...')" /></label>
       <p v-if="searchText && filteredTeachers.length" class="search-feedback">{{ teacherSearchResultLabel }}</p>
       <div class="teacher-list" v-if="filteredTeachers.length">
@@ -77,16 +77,6 @@ h1 {
   font-size: 32px;
   letter-spacing: 0;
   margin: 0;
-}
-
-.count-badge {
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  font-weight: 700;
-  padding: 9px 14px;
-  white-space: nowrap;
 }
 
 .search-box {

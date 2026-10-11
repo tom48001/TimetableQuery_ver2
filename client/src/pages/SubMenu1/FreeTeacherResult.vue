@@ -54,7 +54,7 @@ export default {
   data() {
     return {
       teachers: [],
-      periodNumbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      periodNumbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
       loaded: false
     };
   },
@@ -79,7 +79,7 @@ export default {
     periods() {
       return String(this.$route.query.period || '')
         .split(',')
-        .map(value => Number(value))
+        .map(value => Number(value) === 11 ? 9 : (Number(value) === 12 ? 10 : Number(value)))
         .filter(Boolean);
     },
     periodLabel() {
@@ -107,8 +107,8 @@ export default {
       return this.$lang.locale === 'en' ? 'Period ' + periodNumber : '\u7b2c' + periodNumber + '\u7bc0';
     },
     classAt(teacher, periodNumber) {
-      const lesson = (teacher.lessons || []).find(item => Number(item.period_id) === Number(periodNumber));
-      return lesson ? lesson.class_name : '';
+      const periods = Number(periodNumber) === 9 ? [9, 11] : (Number(periodNumber) === 10 ? [10, 12] : [Number(periodNumber)]);
+      return [...new Set((teacher.lessons || []).filter(item => periods.includes(Number(item.period_id))).map(item => item.class_name || this.tr('Busy', '有課')))].join(' / ');
     },
     async fetchDaySchedule() {
       const token = localStorage.getItem('token');

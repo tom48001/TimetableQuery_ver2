@@ -128,7 +128,7 @@
                   {{ tr('Select all students', '選擇全部學生') }}
                 </button>
                 <button
-                  v-if="canAddTeacher"
+                  v-if="canDeleteTeacher"
                   type="button"
                   class="delete-teacher-btn"
                   :disabled="lessons.length <= 2 || deletingTeacherId === lesson.timetable_id"
@@ -252,6 +252,9 @@ export default {
   },
   computed: {
     canAddTeacher() {
+      return this.userRole === 'manager';
+    },
+    canDeleteTeacher() {
       return this.userRole === 'manager' || this.userRole === 'subject_head';
     },
     availableTeachers() {

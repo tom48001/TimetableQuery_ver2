@@ -7,13 +7,11 @@
         <input v-model.trim="observerSearch" class="search-input" type="text" :placeholder="tr('Search observer...', '搜尋觀課老師...')" />
         <div class="selected-strip" v-if="observerTeachers.length"><button v-for="teacher in observerTeachers" :key="teacher.teacher_id" type="button" class="selected-chip" @click="toggleObserver(teacher.teacher_id)">{{ teacher.teacher_name }} <span aria-hidden="true">x</span></button></div>
         <div class="teacher-list"><label v-for="teacher in filteredObservers" :key="teacher.teacher_id" class="teacher-row" :class="{ selected: observerIds.includes(teacher.teacher_id) }"><input type="checkbox" :value="teacher.teacher_id" v-model="observerIds" /><span>{{ teacher.teacher_name }}</span></label></div>
-        <div class="list-controls"><span class="scroll-hint">{{ tr('↓ Scroll down to see more', '↓ 向下捲動查看更多') }}</span></div>
       </section>
       <section class="selector-card">
         <div class="section-title"><h2>{{ tr('Target teacher', '被觀課老師') }}</h2></div>
         <input v-model.trim="targetSearch" class="search-input" type="text" :placeholder="tr('Search target teacher...', '搜尋被觀課老師...')" />
         <div class="teacher-list target-list"><label v-for="teacher in filteredTargets" :key="teacher.teacher_id" class="teacher-row" :class="{ selected: targetId === teacher.teacher_id }"><input type="radio" name="targetTeacher" :value="teacher.teacher_id" v-model="targetId" /><span>{{ teacher.teacher_name }}</span></label></div>
-        <div class="list-controls"><span class="scroll-hint">{{ tr('↓ Scroll down to see more', '↓ 向下捲動查看更多') }}</span></div>
       </section>
       <footer class="footer-actions"><button type="button" class="primary-btn" @click="searchSchedule">{{ tr('Search Timetable', '搜尋課表') }}</button></footer>
     </section>
@@ -153,20 +151,6 @@ button {
   overflow-y: scroll;
   scrollbar-gutter: stable;
   margin-top: 12px;
-}
-
-.list-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 10px;
-}
-
-.scroll-hint {
-  color: #607683;
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .selected-chip {

@@ -3,14 +3,18 @@
     <div class="login-language-switch">
       <button
         type="button"
-        :class="{ active: $lang.locale === 'zh' }"
+        class="locale-button"
+            :aria-pressed="$lang.locale === 'zh'"
+            :class="{ active: $lang.locale === 'zh' }"
         @click="$setLocale('zh')"
       >
-        {{ $t('common.languageZh') }}
+        中文
       </button>
       <button
         type="button"
-        :class="{ active: $lang.locale === 'en' }"
+        class="locale-button"
+            :aria-pressed="$lang.locale === 'en'"
+            :class="{ active: $lang.locale === 'en' }"
         @click="$setLocale('en')"
       >
         EN

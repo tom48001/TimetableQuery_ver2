@@ -4,6 +4,7 @@ import passport from './auth/auth.js';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
+import { initializeImportJobs } from './utils/importJobs.js';
 
 import authRoutes from './routes/authRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
@@ -48,7 +49,7 @@ app.use(session({
 
 // Middleware
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:8080', credentials: true }));
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '2mb' }));
 
 // Lightweight container/orchestrator health check. It intentionally does not
 // expose application data or require authentication.
@@ -80,6 +81,7 @@ app.use('/api/import', importRoutes);
 const port = process.env.PORT || 3000;
 const host = process.env.HOST || '127.0.0.1';
 
+await initializeImportJobs();
 app.listen(port, host, () => {
   console.log(`Server running on http://${host}:${port}`);
 });

@@ -5,7 +5,6 @@
         <div>
           <h1>{{ tr('Student Timetable', '學生上課時間表') }}</h1>
         </div>
-        <span class="count-badge">{{ studentSelectionLabel }}</span>
       </header>
 
       <section class="selector-section">
@@ -68,9 +67,6 @@ export default {
     },
     selectedStudentRecord() {
       return this.students.find(student => student.student_id === this.selectedStudent) || null;
-    },
-    studentSelectionLabel() {
-      return this.selectedStudent ? this.tr('1 student selected', '已選 1 位學生') : this.tr('No student selected', '未選擇學生');
     },
     studentSearchResultLabel() {
       const count = this.filteredStudents.length;
@@ -146,16 +142,6 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-}
-
-.count-badge {
-  border: 1px solid #b8cad3;
-  border-radius: 999px;
-  background: #f7fafb;
-  color: #607683;
-  font-weight: 700;
-  padding: 9px 14px;
-  white-space: nowrap;
 }
 
 h1,

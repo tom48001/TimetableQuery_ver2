@@ -1,3 +1,6 @@
+import { nominationSubjectGroup, groupNominationSubjects } from '../utils/nominationSubjects.js';
+import { loadNominationEligibility } from '../utils/nominationEligibility.js';
+import { ensureStudentAdminSchema } from './manageStudentController.js';
 import pool from '../db.js';
 
 export const insertBLA = async (req, res) => {
@@ -12,15 +15,26 @@ export const insertBLA = async (req, res) => {
     if (student_ids.length === 0) {
       return res.json({ message: '沒有需要插入的資料', inserted: 0 });
     }
+    await ensureStudentAdminSchema();
+    const group = await nominationSubjectGroup(pool, subject_id);
+    if (!group) return res.status(404).json({ error: '科目不存在' });
+    const eligible = await loadNominationEligibility(pool);
+    const allowed = new Set(eligible.filter(row => Number(row.subject_id) === Number(group.subject_id)).map(row => Number(row.student_id)));
+    if (student_ids.some(id => !allowed.has(Number(id)))) {
+      return res.status(422).json({ error: '部分學生未修讀此科目，請重新載入科目及班別後再提名。' });
+    }
     // 避免重複插入
-    const values = student_ids.map(studentId => [teacher_id, studentId, subject_id]);
+    const [existing] = await pool.query('SELECT student_id FROM BLA WHERE teacher_id=? AND subject_id IN (?)', [teacher_id, group.alias_subject_ids]);
+    const already = new Set(existing.map(row => Number(row.student_id)));
+    const values = [...new Set(student_ids.map(Number))].filter(id => !already.has(id)).map(id => [teacher_id, id, group.subject_id]);
+    if (!values.length) return res.json({ message: '提名已存在', inserted: 0 });
     await pool.query(
       `INSERT IGNORE INTO BLA (teacher_id, student_id, subject_id) VALUES ${values.map(() => '(?)').join(',')}`,
       values
     );
 
 
-    res.json({ message: '批量插入成功', inserted: student_ids.length });
+    res.json({ message: '批量插入成功', inserted: values.length });
   } catch (error) {
     console.error('批量插入失敗:', error);
     res.status(500).json({ error: '批量插入失敗', detail: error.message });
@@ -32,9 +46,10 @@ export const getVotedStudents = async (req, res) => {
     const { subject_id } = req.params;
     const teacher_id = req.user.teacher_id;
 
+    const group = await nominationSubjectGroup(pool, subject_id);
     const [rows] = await pool.query(
-      `SELECT student_id FROM BLA WHERE subject_id = ? AND teacher_id = ?`,
-      [subject_id, teacher_id]
+      `SELECT DISTINCT student_id FROM BLA WHERE subject_id IN (?) AND teacher_id = ?`,
+      [group?.alias_subject_ids || [subject_id], teacher_id]
     );
 
     res.json(rows.map(r => r.student_id));
@@ -55,11 +70,12 @@ export const deleteBLA = async (req, res) => {
     if (removed.length > 0) {
       const placeholders = removed.map(() => '?').join(',');
       const sql = `
-        DELETE FROM bla
-        WHERE subject_id = ? AND teacher_id = ? 
+        DELETE FROM BLA
+        WHERE subject_id IN (?) AND teacher_id = ?
         AND student_id IN (${placeholders})
       `;
-      await pool.query(sql, [subjectId, teacherId, ...removed]);
+      const group = await nominationSubjectGroup(pool, subjectId);
+      await pool.query(sql, [group?.alias_subject_ids || [subjectId], teacherId, ...removed]);
     }
 
     res.json({ message: '刪除成功' });
@@ -72,28 +88,27 @@ export const deleteBLA = async (req, res) => {
 
 export const getBLAResults = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `
-      SELECT 
-        b.student_id,
-        c.class_name,
-        s.student_ch_name,
-        s.student_eng_name,
-        GROUP_CONCAT(DISTINCT sub.subject_name ORDER BY sub.subject_id SEPARATOR '、') AS subject_names,
-        GROUP_CONCAT(DISTINCT sub.subject_id ORDER BY sub.subject_id SEPARATOR ',') AS subject_ids,
-        COUNT(DISTINCT b.subject_id) AS subject_count,
-        CASE
-          WHEN COUNT(DISTINCT b.subject_id) >= 8 THEN '獲獎'
-          ELSE ''
-        END AS award
-      FROM BLA b
-      JOIN student s ON b.student_id = s.student_id
-      JOIN class c ON s.class_id = c.class_id
-      JOIN subject sub ON b.subject_id = sub.subject_id
-      GROUP BY b.student_id, c.class_name, s.student_ch_name, s.student_eng_name
-      ORDER BY c.class_name, CAST(s.class_number AS UNSIGNED), s.student_id
-      `
+    const [subjects] = await pool.query('SELECT * FROM subject');
+    const groups = groupNominationSubjects(subjects);
+    const byId = new Map(groups.flatMap(group => group.alias_subject_ids.map(id => [id, group])));
+    const [nominations] = await pool.query(
+      `SELECT b.student_id,b.subject_id,c.class_name,s.student_ch_name,s.student_eng_name
+       FROM BLA b JOIN student s ON b.student_id=s.student_id
+       JOIN class c ON c.class_id=s.class_id
+       ORDER BY c.class_name,CAST(s.class_number AS UNSIGNED),s.student_id`
     );
+    const students = new Map();
+    for (const row of nominations) {
+      const group = byId.get(Number(row.subject_id));
+      if (!group) continue;
+      if (!students.has(row.student_id)) students.set(row.student_id, { ...row, subjects: new Map() });
+      students.get(row.student_id).subjects.set(group.subject_id, group);
+    }
+    const rows = [...students.values()].map(row => {
+      const subjects = [...row.subjects.values()].sort((a,b) => a.subject_id-b.subject_id);
+      return { ...row, subjects, subject_names: subjects.map(s=>s.subject_name_zh || s.subject_name).join('、'),
+        subject_ids: subjects.map(s=>s.subject_id).join(','), subject_count: subjects.length, award: subjects.length >= 8 ? '獲獎' : '' };
+    });
 
     res.json(rows);
   } catch (error) {
@@ -111,17 +126,17 @@ export const getSelectBLA = async (req, res) => {
       return res.status(400).json({ error: "缺少必要參數" });
     }
 
+    const group = await nominationSubjectGroup(pool, subject_id);
     const [rows] = await pool.query(
       `
-      SELECT b.student_id
+      SELECT DISTINCT b.student_id
       FROM BLA b
-      WHERE b.subject_id = ? AND b.teacher_id = ?
+      WHERE b.subject_id IN (?) AND b.teacher_id = ?
       `,
-      [subject_id, teacher_id]
+      [group?.alias_subject_ids || [subject_id], teacher_id]
     );
 
     res.json(rows);
-    console.log("getSelectBLA成功:", rows);
   } catch (error) {
     console.error("查詢提名結果失敗:", error);
     res.status(500).json({ error: "查詢提名結果失敗" });

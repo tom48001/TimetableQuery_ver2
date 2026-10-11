@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import Router from 'vue-router'
+import { initializeRootNavigation } from './rootNavigation'
 
 import Login from '@/pages/Login.vue'
 import Home from '@/pages/Home.vue'
@@ -48,7 +49,7 @@ import SemesterSettings from '@/pages/SubMenu3/SemesterSettings.vue'
 Vue.use(Router)
 
 const router = new Router({
-  mode: 'history',
+  mode: 'abstract',
   routes: [
     { path: '/google-redirect', name: 'GoogleRedirect', component: GoogleRedirect },
     {
@@ -269,7 +270,7 @@ const router = new Router({
       path: '/ImportTeacher',
       name: 'ImportTeacher',
       component: ImportTeacher,
-      meta: { show: true, requiredAnyPermissions: ['importTimetable', 'manageStudents'] }
+      meta: { show: true, requiredAnyPermissions: ['importTimetable', 'manageStudents', 'manageUsers'] }
     },
     {
       path: '/StudentManagement',
@@ -359,5 +360,7 @@ router.beforeEach((to, from, next) => {
 
   next()
 })
+
+initializeRootNavigation(router, window)
 
 export default router

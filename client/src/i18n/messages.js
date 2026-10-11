@@ -24,7 +24,7 @@ const messages = {
     staff: { zh: 'Staff', en: 'Staff' },
     manager: { zh: 'Manager', en: 'Manager' },
     teacher: { zh: '\u8001\u5e2b', en: 'Teacher' },
-    subject_head: { zh: '\u79d1\u4e3b\u7ba1', en: 'Subject Head' }
+    subject_head: { zh: '\u4e3b\u4efb', en: 'Subject Head' }
   },
   forbidden: {
     title: { zh: '\u6c92\u6709\u6b0a\u9650', en: 'Access denied' },
