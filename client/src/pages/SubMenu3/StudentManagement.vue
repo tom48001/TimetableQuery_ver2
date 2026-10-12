@@ -822,7 +822,7 @@ button {
 .student-table { table-layout: fixed; }
 .student-table th:nth-child(1), .student-table td:nth-child(1) { width: 140px; left: 0; }
 .student-table th:nth-child(2), .student-table td:nth-child(2) { width: 140px; left: 140px; }
-.student-table th:nth-child(3), .student-table td:nth-child(3) { width: 220px; left: 280px; box-shadow: 2px 0 4px rgba(23,48,68,.12); }
+.student-table th:nth-child(3), .student-table td:nth-child(3) { width: 220px; left: 280px; box-shadow: none; }
 .student-table th:nth-child(-n+3), .student-table td:nth-child(-n+3) { position: sticky; box-sizing: border-box; padding: 14px 12px; overflow-wrap: anywhere; }
 .student-table td:nth-child(-n+3) { z-index: 3; background: #fff; }
 .student-table th:nth-child(-n+3) { z-index: 5; background: #eff4ff; }
@@ -842,4 +842,9 @@ button {
 .student-table th.action-cell { z-index: 6; }
 .student-table td.action-cell { z-index: 4; }
 .student-table tbody tr:hover td { background: #f3f8fa; }
+
+.student-table td.actions { display: table-cell; vertical-align: middle; white-space: normal; }
+.student-table td.actions button { margin: 3px 4px 3px 0; }
+.student-table th { letter-spacing: .04em; }
+.table-wrap { scrollbar-color: #a9bec7 #f2f6f8; }
 </style>
