@@ -2,7 +2,7 @@ import { subjectHeadIds, validateHeadSubjects } from '../utils/subjectHeadSubjec
 import db from '../db.js';
 import bcrypt from 'bcrypt';
 import { ensureTeacherRosterSchema, teacherNumber } from '../utils/teacherRoster.js';
-import { linkTeacherAccount, linkError } from '../utils/teacherAccountLink.js';
+import { linkTeacherAccount, autoLinkTeacherAccount, linkError } from '../utils/teacherAccountLink.js';
 import {
   ensurePermissionsColumn,
   permissionsForUser,
@@ -122,6 +122,7 @@ export const createTeacher = async (req, res) => {
   let conn;
   try {
     await ensurePermissionsColumn();
+    await ensureTeacherRosterSchema(db);
     const { user_name, email, password, role, permissions } = req.body;
     const normalizedRole = normalizeRole(role, req);
 
@@ -141,6 +142,7 @@ export const createTeacher = async (req, res) => {
       [user_name, email, hashed, normalizedRole, permissionText, headSubjectId, JSON.stringify(headSubjectIds)]
     );
     await linkTeacherAccount(conn, result.insertId, req.body.teacher_id);
+    if (req.body.teacher_id === undefined) await autoLinkTeacherAccount(conn, result.insertId);
     await conn.commit();
     res.json({ message: 'User created successfully.' });
   } catch (error) {
@@ -169,6 +171,7 @@ export const updateTeacher = async (req, res) => {
   try {
     await ensurePermissionsColumn();
     if (normalizedRole === 'subject_head' && !await validateHeadSubjects(db, headSubjectIds)) return res.status(400).json({ error: 'Select valid managed subjects.' });
+    await ensureTeacherRosterSchema(db);
     await ensureAccountDeletionSchema();
     conn = await db.getConnection();
     await conn.beginTransaction();
@@ -195,6 +198,7 @@ export const updateTeacher = async (req, res) => {
 
     await conn.query(query, params);
     await linkTeacherAccount(conn, id, req.body.teacher_id);
+    if (req.body.teacher_id === undefined) await autoLinkTeacherAccount(conn, id);
     await conn.commit();
     res.json({ message: 'User updated successfully.' });
   } catch (error) {

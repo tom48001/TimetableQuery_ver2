@@ -26,3 +26,21 @@ export async function linkTeacherAccount(conn, userId, requestedId) {
     await conn.query('UPDATE teacher SET user_id = ? WHERE teacher_id = ?', [userId, teacherId]);
   }
 }
+
+// Keep established identity; only auto-link an unambiguous imported person.
+export async function autoLinkTeacherAccount(conn, userId) {
+  const [linked] = await conn.query('SELECT teacher_id FROM teacher WHERE user_id = ? FOR UPDATE', [userId]);
+  if (linked.length) return;
+  const [[user]] = await conn.query('SELECT user_name FROM user WHERE user_id = ?', [userId]);
+  const name = String(user?.user_name || '').trim();
+  if (!name) return;
+  const [matches] = await conn.query(
+    `SELECT teacher_id, user_id FROM teacher
+     WHERE COALESCE(status, 'active') = 'active'
+       AND (LOWER(TRIM(source_login)) = LOWER(?) OR LOWER(TRIM(teacher_name)) = LOWER(?)
+         OR LOWER(TRIM(english_name)) = LOWER(?) OR TRIM(chinese_name) = ?)
+     ORDER BY teacher_id FOR UPDATE`, [name, name, name, name]
+  );
+  if (matches.length !== 1 || matches[0].user_id !== null) return;
+  await linkTeacherAccount(conn, userId, matches[0].teacher_id);
+}

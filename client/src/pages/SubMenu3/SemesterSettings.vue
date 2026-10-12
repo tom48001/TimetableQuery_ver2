@@ -19,8 +19,12 @@
           </label>
           <div class="automatic-status">
             <span>{{ tr('Automatic semester switching', '自動切換學期') }}</span>
-            <strong>{{ tr('Off', '關閉') }}</strong>
+            <label class="semester-switch"><input type="checkbox" role="switch" v-model="settings.automatic_semester_switching" /><span>{{ settings.automatic_semester_switching ? tr('On', '開啟') : tr('Off', '關閉') }}</span></label>
           </div>
+        </div>
+        <div v-if="settings.automatic_semester_switching" class="settings-grid">
+          <label><span>{{ tr('First semester starts', '上學期開始日期') }}</span><input type="date" v-model="settings.first_semester_start" /></label>
+          <label><span>{{ tr('Second semester starts', '下學期開始日期') }}</span><input type="date" v-model="settings.second_semester_start" /></label>
         </div>
         <button type="button" class="primary-btn" :disabled="savingSettings" @click="saveSettings">
           {{ savingSettings ? tr('Saving...', '儲存中...') : tr('Save settings', '儲存設定') }}
@@ -29,7 +33,7 @@
 
       <section class="settings-card">
         <div class="rules-header">
-          <div><h2>{{ tr('Junior subject allocation rules', '初中科目分組規則') }}</h2><p>{{ tr('Groups follow student numbers. Set the first semester; the second automatically swaps odd/even. All students and disabled stay unchanged.', '按學生學號分組：01、03 為單數；02、04 為雙數。只需設定上學期，下學期自動對調；全班及停用則維持不變。') }}</p></div>
+          <div><h2>{{ tr('Junior subject allocation rules', '初中科目分組規則') }}</h2></div>
           <button type="button" class="secondary-btn" @click="addRule">{{ tr('Add rule', '新增規則') }}</button>
         </div>
 
@@ -49,7 +53,7 @@
             </label>
             <label><span>{{ tr('Second Semester', '下學期') }}</span>
               <select v-model="rule.second_group">
-                <option value="auto">{{ tr('Auto: ', '自動：') + groupLabel(oppositeGroup(rule.class_group)) }}</option>
+                <option value="auto">{{ groupLabel(oppositeGroup(rule.class_group)) }}</option>
                 <option value="odd">{{ tr('Odd', '單數') }}</option>
                 <option value="even">{{ tr('Even', '雙數') }}</option>
                 <option value="all">{{ tr('All students', '全班') }}</option>
@@ -76,7 +80,7 @@ import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels'
 export default {
   data() {
     return {
-      settings: { academic_year: '', current_semester: 1 },
+      settings: { academic_year: '', current_semester: 1, automatic_semester_switching: false, first_semester_start: '', second_semester_start: '' },
       subjects: [],
       rules: [],
       grades: ['F1', 'F2', 'F3'],
@@ -154,4 +158,7 @@ input, select { border: 1px solid #b8cad3; border-radius: 6px; background: #fff;
 button:disabled { cursor: not-allowed; opacity: .55; }
 .empty-state { color: #607683; margin: 20px 0 0; }
 @media (max-width: 760px) { .settings-grid, .rule-row { grid-template-columns: 1fr; } .rules-header { align-items: stretch; flex-direction: column; } }
+
+.semester-switch { flex-direction: row; align-items: center; cursor: pointer; }
+.semester-switch input { width: 36px; height: 22px; accent-color: #0b7285; cursor: pointer; }
 </style>

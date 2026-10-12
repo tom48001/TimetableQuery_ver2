@@ -35,13 +35,6 @@
 
         <div class="form-grid">
           <label>
-            <span>{{ tr('Link imported teacher', '連結已匯入老師') }}</span>
-            <select v-model="newTeacher.teacher_id" @change="fillTeacherName">
-              <option :value="null">{{ tr('No teacher link (account only)', '不連結老師（只建立帳戶）') }}</option>
-              <option v-for="profile in availableTeacherLinks(null)" :key="profile.teacher_id" :value="profile.teacher_id">{{ teacherLinkLabel(profile) }}</option>
-            </select>
-          </label>
-          <label>
             <span>{{ tr('Name', '姓名') }}</span>
             <input v-model.trim="newTeacher.user_name" :placeholder="tr('Enter name', '輸入姓名')" />
           </label>
@@ -63,19 +56,17 @@
               <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
             </select>
           </label>
-          <label v-if="newTeacher.role === 'subject_head'">
+          <div v-if="newTeacher.role === 'subject_head'" class="head-subject-field">
             <span>{{ tr('Managed subjects (multiple)', '主管科目（可複選）') }}</span>
             <div class="head-subject-options">
-              <label v-for="subject in subjects" :key="subject.subject_id"><input type="checkbox" v-model="newTeacher.subject_head_subject_ids" :value="subject.subject_id" />{{ subjectLabel(subject) }}</label>
+              <label v-for="subject in subjects" :key="subject.subject_id" class="head-subject-choice"><input type="checkbox" v-model="newTeacher.subject_head_subject_ids" :value="subject.subject_id" /><span>{{ subjectLabel(subject) }}</span></label>
             </div>
-          </label>
+          </div>
           <label>
             <span>{{ tr('Password', '密碼') }}</span>
             <input v-model="newTeacher.password" type="password" :placeholder="tr('Optional for Google login', 'Google 登入可留空')" />
           </label>
         </div>
-        <p class="manager-permission-note">{{ tr('Choose the teacher code from the timetable to use their existing schedule. An unlinked account has no personal timetable. Use the real Google email for Google login.', '選擇時間表中的老師代號，帳戶即可沿用原有課表。未連結的帳戶沒有個人課表；Google 登入請填寫真實 Google 電郵。') }}</p>
-        <p v-if="teacherLinkError" class="manager-permission-note">{{ teacherLinkError }}</p>
         <p v-if="newTeacher.role === 'manager'" class="manager-permission-note">{{ tr('Managers always have all permissions.', 'Manager 會自動擁有所有權限。') }}</p>
 
         <div class="permission-save-row">
@@ -111,23 +102,17 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="teacher in paginatedTeachers" :key="teacher.user_id" :class="{ 'editing-row': isEditingTeacher(teacher) }">
+              <template v-for="teacher in paginatedTeachers">
+              <tr :key="teacher.user_id" :class="{ 'editing-row': isEditingTeacher(teacher) }">
                 <template v-if="isEditingTeacher(teacher)">
                   <td>
                     <input v-model.trim="teacher.user_name" />
-                    <select v-model="teacher.teacher_id" :aria-label="tr('Linked teacher', '已連結老師')">
-                      <option :value="null">{{ tr('No teacher link', '未連結老師') }}</option>
-                      <option v-for="profile in availableTeacherLinks(teacher.user_id)" :key="profile.teacher_id" :value="profile.teacher_id">{{ teacherLinkLabel(profile) }}</option>
-                    </select>
                   </td>
                   <td><input v-model.trim="teacher.email" /></td>
                   <td>
                     <select v-model="teacher.role" @change="applyDefaultPermissions(teacher)">
                       <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
                     </select>
-                    <div v-if="teacher.role === 'subject_head'" class="head-subject-options">
-                      <label v-for="subject in subjects" :key="subject.subject_id"><input type="checkbox" v-model="teacher.subject_head_subject_ids" :value="subject.subject_id" />{{ subjectLabel(subject) }}</label>
-                    </div>
                   </td>
                   <td class="permission-cell">
                     <div class="permission-list">
@@ -151,9 +136,6 @@
                 <template v-else>
                   <td>
                     <div class="user-name-text">{{ teacher.user_name || '-' }}</div>
-                    <small class="subject-head-name">{{ teacher.teacher_id ? `${teacher.teacher_code || ''} · ${teacher.teacher_name} ${teacher.chinese_name || ''}` : tr('No teacher linked', '未連結老師') }}</small>
-                    <small v-if="teacher.teacher_number" class="subject-head-name">老師編號：{{ teacher.teacher_number }}</small>
-                    <small v-if="teacher.source_login" class="subject-head-name">UserLogin: {{ teacher.source_login }}</small>
                   </td>
                   <td>
                     <div class="muted-text">{{ teacher.email || '-' }}</div>
@@ -187,6 +169,15 @@
                   </td>
                 </template>
               </tr>
+              <tr v-if="isEditingTeacher(teacher) && teacher.role === 'subject_head'" :key="'subjects-' + teacher.user_id" class="subject-editor-row">
+                <td colspan="6">
+                  <strong>{{ tr('Managed subjects (multiple)', '主管科目（可複選）') }}</strong>
+                  <div class="head-subject-options">
+                    <label v-for="subject in subjects" :key="subject.subject_id" class="head-subject-choice"><input type="checkbox" v-model="teacher.subject_head_subject_ids" :value="subject.subject_id" /><span>{{ subjectLabel(subject) }}</span></label>
+                  </div>
+                </td>
+              </tr>
+              </template>
             </tbody>
           </table>
           <p v-else class="empty-state">{{ tr('No users found.', '\u6c92\u6709\u7b26\u5408\u7684\u4f7f\u7528\u8005\u3002') }}</p>
@@ -253,8 +244,6 @@ export default {
     return {
       teachers: [],
       subjects: [],
-      teacherLinks: [],
-      teacherLinkError: '',
       savingUser: false,
       currentUserRole: 'teacher',
       searchText: '',
@@ -266,7 +255,6 @@ export default {
       searchReadonly: true,
       editingTeacherId: null,
       newTeacher: {
-        teacher_id: null,
         user_name: '',
         email: '',
         password: '',
@@ -373,25 +361,6 @@ export default {
     }
   },
   methods: {
-    availableTeacherLinks(userId) {
-      return this.teacherLinks.filter(profile => !profile.user_id || String(profile.user_id) === String(userId));
-    },
-    teacherLinkLabel(profile) {
-      return `${profile.teacher_number} · ${profile.teacher_code || '-'} · ${profile.teacher_name} ${profile.chinese_name || ''} (${profile.lesson_count} ${this.tr('lessons', '節課')})${profile.status === 'inactive' ? this.tr(' — inactive', ' — 已停用') : ''}`;
-    },
-    fillTeacherName() {
-      const profile = this.teacherLinks.find(item => String(item.teacher_id) === String(this.newTeacher.teacher_id));
-      if (profile && !this.newTeacher.user_name) this.newTeacher.user_name = profile.teacher_name;
-    },
-    async fetchTeacherLinks() {
-      try {
-        const res = await axios.get('/api/teachers/link-options', { headers: this.authHeaders() });
-        this.teacherLinks = res.data;
-        this.teacherLinkError = '';
-      } catch (error) {
-        this.teacherLinkError = this.tr('Could not load teacher choices. Refresh before linking an account.', '未能載入老師選項，請重新整理後再連結帳戶。');
-      }
-    },
     tr(en, zh) {
       return this.$lang.locale === 'en' ? en : zh;
     },
@@ -415,7 +384,7 @@ export default {
     },
     subjectLabel(subject) {
       if (!subject) return '-';
-      return subject.subject_name || '-';
+      return (this.$lang.locale === 'en' ? subject.subject_name_en : subject.subject_name_zh) || subject.subject_name || '-';
     },
     subjectName(subjectId) {
       return this.subjectLabel(this.subjects.find(subject =>
@@ -515,7 +484,6 @@ export default {
         }));
         this.currentPage = 1;
         this.editingTeacherId = null;
-        await this.fetchTeacherLinks();
       } catch (err) {
         const status = err.response ? err.response.status : 0;
         const message = status === 403
@@ -535,7 +503,6 @@ export default {
     async updateTeacher(teacher) {
       try {
         await axios.put(`/api/teachers/${teacher.user_id}`, {
-          teacher_id: teacher.teacher_id,
           user_name: teacher.user_name,
           email: teacher.email,
           role: teacher.role,
@@ -553,7 +520,6 @@ export default {
         alert(status === 403
           ? this.tr('You do not have permission to update users.', '你沒有權限修改使用者。')
           : ((err.response && err.response.data.error) || this.tr('Failed to update user.', '修改使用者失敗。')));
-        await this.fetchTeacherLinks();
         return false;
       }
     },
@@ -570,7 +536,6 @@ export default {
         });
         alert(this.tr('User added.', '使用者已新增。'));
         this.newTeacher = {
-          teacher_id: null,
           user_name: '',
           email: '',
           password: '',
@@ -584,7 +549,6 @@ export default {
         alert(status === 403
           ? this.tr('You do not have permission to add users.', '你沒有權限新增使用者。')
           : ((err.response && err.response.data.error) || this.tr('Failed to add user.', '新增使用者失敗。')));
-        await this.fetchTeacherLinks();
       } finally {
         this.savingUser = false;
       }
@@ -1389,4 +1353,16 @@ tbody tr.editing-row .actions-cell {
     padding: 10px 16px;
   }
 }
+
+.head-subject-field { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.head-subject-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; max-height: 260px; background: #f7fafb; }
+.head-subject-options label.head-subject-choice { display: flex; flex-direction: row; align-items: center; gap: 10px; margin: 0; padding: 10px 12px; background: white; border: 1px solid #d1e0e5; border-radius: 6px; cursor: pointer; min-width: 0; }
+.head-subject-options .head-subject-choice input[type="checkbox"] { flex: 0 0 16px; width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0; accent-color: #0b7285; }
+.head-subject-choice span { line-height: 1.4; overflow-wrap: anywhere; }
+.head-subject-choice:focus-within { outline: 2px solid #0b7285; outline-offset: 1px; }
+@media (max-width: 480px) { .head-subject-options { grid-template-columns: 1fr; } }
+
+.subject-editor-row td { padding: 16px 24px; text-align: left; background: #f7fafb; white-space: normal; }
+.subject-editor-row .head-subject-options { margin-top: 10px; overflow-x: hidden; }
+.subject-editor-row .head-subject-choice { text-align: left; white-space: normal; }
 </style>

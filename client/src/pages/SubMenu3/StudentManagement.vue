@@ -58,8 +58,7 @@
           <table v-if="paginatedStudents.length" class="student-table">
             <thead>
               <tr>
-                <th>REGNO</th><th>ID</th><th>{{ tr('Class', '班別') }}</th><th>{{ tr('No.', '學號') }}</th><th>ClsNo</th>
-                <th>{{ tr('Chinese Name', '中文名') }}</th><th>{{ tr('English Name', '英文名') }}</th><th>Email</th>
+                <th>REGNO</th><th>{{ tr('Chinese Name', '中文名') }}</th><th>{{ tr('English Name', '英文名') }}</th><th>{{ tr('Class', '班別') }}</th><th>{{ tr('No.', '學號') }}</th><th>ClsNo</th><th>Email</th>
                 <th>Status</th><th>NCS</th><th>X1</th><th>X2</th><th>X3</th>
                 <th>{{ tr('House', '社別') }}</th><th>{{ tr('Language', '語言') }}</th><th>SUPP</th>
                 <th>{{ tr('Maths', '數學') }}</th><th>{{ tr('Citizenship', '公社') }}</th>
@@ -75,12 +74,11 @@
               >
                 <template v-if="editingStudentId === student.student_id">
                   <td><input v-model.trim="editStudent.regno" /></td>
-                  <td>{{ student.student_id }}</td>
+                  <td><input v-model.trim="editStudent.student_ch_name" /></td>
+                  <td><input v-model.trim="editStudent.student_eng_name" /></td>
                   <td><select v-model="editStudent.class_id"><option v-for="item in classes" :key="item.class_id" :value="item.class_id">{{ item.class_name }}</option></select></td>
                   <td><input v-model.trim="editStudent.class_number" /></td>
                   <td><input v-model.trim="editStudent.class_code" /></td>
-                  <td><input v-model.trim="editStudent.student_ch_name" /></td>
-                  <td><input v-model.trim="editStudent.student_eng_name" /></td>
                   <td><input v-model.trim="editStudent.email" type="email" /></td>
                   <td><select v-model="editStudent.status"><option value="active">Active</option><option value="inactive">Inactive</option></select></td>
                   <td><select v-model="editStudent.is_ncs"><option v-for="option in ncsOptions" :key="option" :value="option">{{ option }}</option></select></td>
@@ -105,15 +103,14 @@
                 </template>
                 <template v-else>
                   <td :class="{ duplicate: student.duplicate_regno }">{{ student.regno || '-' }}<small v-if="student.duplicate_regno">{{ tr('Duplicate', '重複') }}</small></td>
-                  <td>{{ student.student_id }}</td>
-                  <td>{{ student.class_name || '-' }}</td>
-                  <td :class="{ duplicate: student.duplicate_class_number }">{{ student.class_number }}<small v-if="student.duplicate_class_number">{{ tr('Duplicate', '重複') }}</small></td>
-                  <td>{{ student.class_code || '-' }}</td>
                   <td class="name-cell">
                     {{ student.student_ch_name }}
                     <small v-if="student.elective_review_required" class="review-badge">{{ tr('Review elective', '檢查選修科') }}</small>
                   </td>
                   <td>{{ student.student_eng_name }}</td>
+                  <td>{{ student.class_name || '-' }}</td>
+                  <td :class="{ duplicate: student.duplicate_class_number }">{{ student.class_number }}<small v-if="student.duplicate_class_number">{{ tr('Duplicate', '重複') }}</small></td>
+                  <td>{{ student.class_code || '-' }}</td>
                   <td :class="{ duplicate: student.duplicate_email }">{{ student.email || '-' }}<small v-if="student.duplicate_email">{{ tr('Duplicate', '重複') }}</small></td>
                   <td><span class="status-pill" :class="student.status">{{ student.status }}</span></td>
                   <td>{{ student.is_ncs ? 'Y' : 'N' }}</td>
@@ -231,8 +228,6 @@ export default {
       const start = (this.currentPage - 1) * this.pageSize + 1;
       const end = Math.min(start + this.pageSize - 1, this.filteredStudents.length);
       return `${start}-${end} / ${this.filteredStudents.length}`;
-      // const start = (this.currentPage - 1) * this.pageSize + 1;
-      // const end = Math.min(start + this.pageSize - 1, this.filteredStudents.length);
     },
     pageItems() {
       const pages = [];
@@ -823,4 +818,28 @@ button {
     padding: 16px 10px 40px;
   }
 }
+
+.student-table { table-layout: fixed; }
+.student-table th:nth-child(1), .student-table td:nth-child(1) { width: 140px; left: 0; }
+.student-table th:nth-child(2), .student-table td:nth-child(2) { width: 140px; left: 140px; }
+.student-table th:nth-child(3), .student-table td:nth-child(3) { width: 220px; left: 280px; box-shadow: 2px 0 4px rgba(23,48,68,.12); }
+.student-table th:nth-child(-n+3), .student-table td:nth-child(-n+3) { position: sticky; box-sizing: border-box; padding: 14px 12px; overflow-wrap: anywhere; }
+.student-table td:nth-child(-n+3) { z-index: 3; background: #fff; }
+.student-table th:nth-child(-n+3) { z-index: 5; background: #eff4ff; }
+.student-table tr:hover td:nth-child(-n+3) { background: #f7fafc; }
+.student-table tr.inactive td:nth-child(-n+3) { background: #f8fafc; }
+
+/* Keep frozen identity columns visually continuous with the table. */
+.student-table { min-width: 3100px; }
+.student-table th, .student-table td { padding: 14px 16px; }
+.student-table th:nth-child(3), .student-table td:nth-child(3) { box-shadow: none; border-right: 1px solid #dbe5ef; }
+.student-table th:nth-child(4), .student-table td:nth-child(4),
+.student-table th:nth-child(5), .student-table td:nth-child(5) { width: 90px; box-sizing: border-box; }
+.student-table th:nth-child(6), .student-table td:nth-child(6) { width: 110px; box-sizing: border-box; }
+.student-table th:nth-child(7), .student-table td:nth-child(7) { width: 260px; box-sizing: border-box; overflow-wrap: anywhere; }
+.student-table td { overflow-wrap: anywhere; }
+.student-table .action-cell { width: 220px; min-width: 220px; box-sizing: border-box; border-left: 1px solid #dbe5ef; }
+.student-table th.action-cell { z-index: 6; }
+.student-table td.action-cell { z-index: 4; }
+.student-table tbody tr:hover td { background: #f3f8fa; }
 </style>

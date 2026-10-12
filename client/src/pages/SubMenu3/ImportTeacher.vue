@@ -662,9 +662,11 @@ export default {
       const start = (page - 1) * this.historyPageSize + 1;
       const end = Math.min(start + this.historyPageSize - 1, this.importBatches.length);
       return `${start}-${end} / ${this.importBatches.length}`;
+=======
       // const page = Math.min(this.historyPage, this.historyTotalPages);
       // const start = (page - 1) * this.historyPageSize + 1;
       // const end = Math.min(start + this.historyPageSize - 1, this.importBatches.length);
+>>>>>>> d6a1450c48436382ae2a528ceb66d21ef8679bfa
     }
   },
   methods: {

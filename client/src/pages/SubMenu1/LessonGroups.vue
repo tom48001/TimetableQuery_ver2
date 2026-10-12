@@ -91,7 +91,7 @@
                 <button v-if="canAddTeacher" type="button" class="secondary-btn" @click="showAddTeacher = !showAddTeacher">
                   {{ tr('Add Teacher', '新增老師') }}
                 </button>
-                <button type="button" class="primary-btn" :disabled="saving" @click="saveAssignments">
+                <button type="button" class="primary-btn" v-if="lessons.length > 1" :disabled="saving" @click="saveAssignments">
                   {{ saving ? tr('Saving...', '儲存中...') : tr('Save Assignments', '儲存分組') }}
                 </button>
               </div>
@@ -124,7 +124,7 @@
                 <strong>{{ lesson.teacher_name }}</strong>
                 <span>{{ lesson.room_name }}</span>
                 <small>{{ assignmentCount(lesson.timetable_id) }} {{ tr('students', '學生') }}</small>
-                <button type="button" class="assign-all-btn" @click="assignAllTo(lesson.timetable_id)">
+                <button type="button" class="assign-all-btn" v-if="lessons.length > 1" @click="assignAllTo(lesson.timetable_id)">
                   {{ tr('Select all students', '選擇全部學生') }}
                 </button>
                 <button
@@ -178,7 +178,7 @@
                     </th>
                     <th class="teacher-heading">
                       <span class="teacher-header-name">{{ tr('Unassigned', '未分配') }}</span>
-                      <button type="button" class="assign-all-btn compact" @click="assignAllTo(null)">
+                      <button type="button" class="assign-all-btn compact" v-if="lessons.length > 1" @click="assignAllTo(null)">
                         {{ tr('Select all', '全部選擇') }}
                       </button>
                     </th>
@@ -198,10 +198,10 @@
                         <span>{{ student.english_name }}</span>
                       </td>
                       <td v-for="lesson in visibleLessons" :key="lesson.timetable_id">
-                        <input type="radio" :name="`student-${student.student_id}`" :value="lesson.timetable_id" v-model="assignments[student.student_id]" />
+                        <input type="radio" :disabled="lessons.length === 1" :name="`student-${student.student_id}`" :value="lesson.timetable_id" v-model="assignments[student.student_id]" />
                       </td>
                       <td>
-                        <input type="radio" :name="`student-${student.student_id}`" :value="null" v-model="assignments[student.student_id]" />
+                        <input type="radio" :disabled="lessons.length === 1" :name="`student-${student.student_id}`" :value="null" v-model="assignments[student.student_id]" />
                       </td>
                     </tr>
                   </template>

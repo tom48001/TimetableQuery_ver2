@@ -1,3 +1,5 @@
+import { classTakesLesson } from '../utils/nominationEligibility.js';
+import { electiveSubjectKey } from '../utils/electiveSubjectKey.js';
 import { resolveHeadSubjectIds } from '../utils/subjectHeadSubjects.js';
 import pool from '../db.js';
 import { ensureStudentAdminSchema } from './manageStudentController.js';
@@ -48,6 +50,15 @@ async function canAddLessonGroupTeacher(user, subjectId) {
   return scope.type === 'subject' && scope.subjectIds.map(Number).includes(Number(subjectId));
 }
 
+function studentTakesSubject(student, subject, byId) {
+  if (!subject?.is_elective && !subject?.block) return true;
+  const slots = subject.block ? [subject.block.toLowerCase() + '_subject_id'] : ['x1_subject_id', 'x2_subject_id', 'x3_subject_id'];
+  return slots.some(slot => {
+    const chosen = byId.get(Number(student[slot]));
+    return chosen && electiveSubjectKey(chosen) === electiveSubjectKey(subject);
+  });
+}
+
 function normaliseClassListSql(alias) {
   return `
   REPLACE(
@@ -96,7 +107,7 @@ function splitGroupWhere(alias = 'tt') {
   `;
 }
 
-async function matchingLessonFamily(connOrPool, classId, subjectId, day, periodId) {
+async function matchingLessonFamily(connOrPool, classId, subjectId, day, periodId, minimum = 2) {
   const [rows] = await connOrPool.query(`
     SELECT tt.timetable_id, tt.teacher_id, tt.room_id, tt.day_of_week, tt.period_id,
            t.teacher_name, r.room_name, p.period_name
@@ -114,8 +125,8 @@ async function matchingLessonFamily(connOrPool, classId, subjectId, day, periodI
     slots.get(key).push(row);
   });
   const selected = slots.get(`${day}-${periodId}`) || [];
-  if (selected.length < 2) return { selected: [], family: [] };
-  const matchingSlots = Array.from(slots.values()).filter(slot => slot.length === selected.length && slot.length > 1);
+  if (selected.length < minimum) return { selected: [], family: [] };
+  const matchingSlots = Array.from(slots.values()).filter(slot => slot.length === selected.length && slot.length >= minimum);
   return {
     selected,
     familySlots: matchingSlots,
@@ -181,7 +192,7 @@ export async function getSplitLessonGroups(req, res) {
       GROUP BY
         tt.class_id, c.class_name, c.grade_level, tt.subject_id, s.subject_name, s.subject_name_zh,
         s.subject_name_en, tt.day_of_week, tt.period_id, p.period_name
-      HAVING COUNT(DISTINCT tt.timetable_id) > 1
+      HAVING COUNT(DISTINCT tt.timetable_id) >= ${scope.type === 'teacher' ? 2 : 1}
       ORDER BY
         CAST(LEFT(c.class_name, 1) AS UNSIGNED),
         c.class_name,
@@ -190,11 +201,16 @@ export async function getSplitLessonGroups(req, res) {
         s.subject_name
     `, scopeParams);
 
+    const [subjects] = await pool.query('SELECT * FROM subject');
+    const subjectsById = new Map(subjects.map(subject => [Number(subject.subject_id), subject]));
+    const [students] = await pool.query("SELECT st.student_id, st.x1_subject_id, st.x2_subject_id, st.x3_subject_id, sc.class_name FROM student st JOIN class sc ON sc.class_id = st.class_id WHERE st.status = 'active'");
     const families = new Map();
     rows.forEach(row => {
       const key = `${row.grade_level}-${row.class_id}-${row.subject_id}-${row.group_count}`;
       if (!families.has(key)) {
-        families.set(key, { ...row, family_signature: String(row.group_count), occurrences: [] });
+        const subject = subjectsById.get(Number(row.subject_id));
+        const count = students.filter(student => classTakesLesson(student, row.class_name) && studentTakesSubject(student, subject, subjectsById)).length;
+        families.set(key, { ...row, block: subject?.block, student_count: count, assigned_students: Number(row.group_count) === 1 ? count : row.assigned_students, family_signature: String(row.group_count), occurrences: [] });
       }
       const family = families.get(key);
       family.occurrences.push({ day_of_week: row.day_of_week, period_id: row.period_id, period_name: row.period_name });
@@ -227,8 +243,8 @@ export async function getSplitLessonGroupDetail(req, res) {
     if (!(await canAccessLessonGroup(req.user, classId, subjectId, day, periodId))) {
       return res.status(403).json({ code: 'GROUP_ACCESS_DENIED', error: 'You do not have permission to manage this lesson group.' });
     }
-    const lessonFamily = await matchingLessonFamily(pool, classId, subjectId, day, periodId);
-    if (lessonFamily.selected.length < 2) {
+    const lessonFamily = await matchingLessonFamily(pool, classId, subjectId, day, periodId, 1);
+    if (lessonFamily.selected.length < 1) {
       return res.status(404).json({ code: 'GROUP_NOT_FOUND', error: 'Split lesson group was not found.' });
     }
     const familyTimetableIds = lessonFamily.family.map(lesson => lesson.timetable_id);
@@ -254,13 +270,13 @@ export async function getSplitLessonGroupDetail(req, res) {
       ORDER BY t.teacher_name, r.room_name
     `, [classId, subjectId, day, periodId]);
 
-    if (lessons.length < 2) {
+    if (lessons.length < 1) {
       return res.status(404).json({ code: 'GROUP_NOT_FOUND', error: 'Split lesson group was not found.' });
     }
 
-    const [students] = await pool.query(`
+    const [candidateStudents] = await pool.query(`
       SELECT
-        st.student_id,
+        st.student_id, st.x1_subject_id, st.x2_subject_id, st.x3_subject_id,
         st.student_ch_name AS student_name,
         st.student_eng_name AS english_name,
         st.class_number,
@@ -278,6 +294,11 @@ export async function getSplitLessonGroupDetail(req, res) {
       ORDER BY sc.class_name, CAST(st.class_number AS UNSIGNED), st.class_number, st.student_ch_name
     `, [classId]);
 
+    const [subjectRows] = await pool.query('SELECT * FROM subject');
+    const selectedSubject = subjectRows.find(subject => Number(subject.subject_id) === subjectId);
+    const byId = new Map(subjectRows.map(subject => [Number(subject.subject_id), subject]));
+    const students = candidateStudents.filter(student => studentTakesSubject(student, selectedSubject, byId));
+
     const [familyAssignments] = await pool.query(`
       SELECT slg.student_id, slg.timetable_id
       FROM student_lesson_group slg
@@ -294,7 +315,7 @@ export async function getSplitLessonGroupDetail(req, res) {
       );
     });
     students.forEach(student => {
-      student.assigned_timetable_id = assignmentByStudent.get(student.student_id) || null;
+      student.assigned_timetable_id = lessons.length === 1 ? lessons[0].timetable_id : assignmentByStudent.get(student.student_id) || null;
     });
     lessons.forEach(lesson => {
       lesson.assigned_count = students.filter(student => Number(student.assigned_timetable_id) === Number(lesson.timetable_id)).length;

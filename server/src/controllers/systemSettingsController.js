@@ -1,3 +1,4 @@
+import { effectiveSemester, validSemesterDates } from '../utils/semesterSchedule.js';
 import db from '../db.js';
 
 let settingsSchemaReady = false;
@@ -34,14 +35,18 @@ export async function ensureSystemSettingsSchema(conn = db) {
 export async function loadSchoolSettings(conn = db) {
   await ensureSystemSettingsSchema(conn);
   const [rows] = await conn.query(
-    "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('academic_year', 'current_semester')"
+    "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('academic_year', 'current_semester', 'automatic_semester_switching', 'first_semester_start', 'second_semester_start')"
   );
   const values = Object.fromEntries(rows.map(row => [row.setting_key, row.setting_value]));
-  return {
+  const settings = {
     academic_year: values.academic_year || '2026-2027',
     current_semester: Number(values.current_semester) === 2 ? 2 : 1,
-    automatic_semester_switching: false
+    automatic_semester_switching: values.automatic_semester_switching === 'true',
+    first_semester_start: values.first_semester_start || '',
+    second_semester_start: values.second_semester_start || ''
   };
+  settings.current_semester = effectiveSemester(settings);
+  return settings;
 }
 
 export const getSemesterAdministration = async (req, res) => {
@@ -72,17 +77,23 @@ export const getSemesterAdministration = async (req, res) => {
 export const updateSemesterSettings = async (req, res) => {
   const academicYear = String(req.body.academic_year || '').trim();
   const semester = Number(req.body.current_semester);
+  const automatic = req.body.automatic_semester_switching === true;
+  const first = String(req.body.first_semester_start || '');
+  const second = String(req.body.second_semester_start || '');
+  if (automatic && !validSemesterDates(first, second, academicYear)) {
+    return res.status(400).json({ error: '請填寫學年內有效的上下學期開始日期；下學期必須在上學期之後。' });
+  }
   if (!/^\d{4}-\d{4}$/.test(academicYear) || ![1, 2].includes(semester)) {
     return res.status(400).json({ error: 'Invalid academic year or semester.' });
   }
   try {
     await ensureSystemSettingsSchema();
     await db.query(
-      `INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?), (?, ?)
+      `INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?)
        ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
-      ['academic_year', academicYear, 'current_semester', String(semester)]
+      ['academic_year', academicYear, 'current_semester', String(semester), 'automatic_semester_switching', String(automatic), 'first_semester_start', first, 'second_semester_start', second]
     );
-    res.json({ academic_year: academicYear, current_semester: semester, automatic_semester_switching: false });
+    res.json(await loadSchoolSettings());
   } catch (error) {
     console.error('Failed to update semester settings:', error);
     res.status(500).json({ error: 'Failed to save semester settings.' });
