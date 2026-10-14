@@ -3,6 +3,11 @@ import { apiUrl } from './api';
 
 let csrf = null;
 let pending = null;
+let onSessionExpired = () => {};
+
+export function setSessionExpiredHandler(handler) {
+  onSessionExpired = handler;
+}
 axios.defaults.withCredentials = true;
 localStorage.removeItem('token');
 
@@ -29,7 +34,7 @@ axios.interceptors.response.use(response => {
   if (error.response && error.response.data.code === 'CSRF_INVALID') csrf = null;
   if (error.response && error.response.status === 401 && !/\/auth\/login$/.test(error.config.url)) {
     localStorage.removeItem('user');
-    if (window.location.pathname !== '/login') window.location.replace('/login');
+    onSessionExpired();
   }
   return Promise.reject(error);
 });
