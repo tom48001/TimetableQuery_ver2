@@ -1,42 +1,187 @@
 <template>
-  <div>
-    <h1>上課與空堂時間表<br>(可選一人或多人)</h1>
-    <div class="teacher-grid">
-      <label v-for="teacher in teachers" :key="teacher.teacher_id"
-        :class="['teacher-option', selectedTeacherId.includes(teacher.teacher_id) ? 'selected' : '']">
-        <input type="checkbox" name="teacher" :value="teacher.teacher_id" v-model="selectedTeacherId" />
-        {{ teacher.teacher_name }}
-      </label>
-    </div>
-    <button @click="goNext">下一步</button>
-  </div>
+  <main class="teacher-page">
+    <section class="teacher-panel">
+      <header class="page-header">
+        <div>
+          <h1>{{ tr('Teacher Timetable', '\u8001\u5e2b\u4e0a\u8ab2\u6642\u9593\u8868') }}</h1>
+        </div>
+        <span class="count-badge">{{ selectedCountLabel }}</span>
+      </header>
+
+      <div class="toolbar">
+        <label class="search-box">
+          <span>{{ tr('Search teacher', '\u641c\u5c0b\u8001\u5e2b') }}</span>
+          <input
+            v-model.trim="searchText"
+            type="text"
+            :placeholder="tr('Enter teacher name...', '\u8f38\u5165\u8001\u5e2b\u540d\u7a31...')"
+          />
+        </label>
+
+        <div class="toolbar-actions">
+          <button type="button" class="secondary-btn" @click="selectVisibleTeachers">
+            {{ tr('Select all visible', '\u5168\u9078\u76ee\u524d\u986f\u793a') }}
+          </button>
+          <button type="button" class="secondary-btn" @click="clearSelection">
+            {{ tr('Clear', '\u6e05\u9664') }}
+          </button>
+        </div>
+      </div>
+
+      <p v-if="searchText && filteredTeachers.length" class="search-feedback">
+        {{ searchResultLabel }}
+      </p>
+
+      <div class="selected-strip" v-if="selectedTeachers.length">
+        <button
+          v-for="teacher in selectedTeachers"
+          :key="teacher.teacher_id"
+          type="button"
+          class="selected-chip"
+          @click="toggleTeacher(teacher.teacher_id)"
+        >
+          {{ teacher.teacher_name }} <span aria-hidden="true">x</span>
+        </button>
+      </div>
+
+      <div class="teacher-list" v-if="filteredTeachers.length">
+        <label
+          v-for="teacher in filteredTeachers"
+          :key="teacher.teacher_id"
+          class="teacher-row"
+          :class="{ selected: selectedTeacherId.includes(teacher.teacher_id), empty: !lessonCount(teacher) }"
+          :title="!lessonCount(teacher) ? tr('This teacher does not currently have timetable data', '\u6b64\u8001\u5e2b\u66ab\u672a\u6709\u8ab2\u8868\u8cc7\u6599') : ''"
+        >
+          <input
+            type="checkbox"
+            :value="teacher.teacher_id"
+            v-model="selectedTeacherId"
+            :disabled="!lessonCount(teacher)"
+          />
+          <span class="teacher-name" :title="teacher.teacher_name">{{ teacher.teacher_name }}</span>
+          <span class="lesson-badge" :class="{ empty: !lessonCount(teacher) }">
+            {{ lessonCountLabel(teacher) }}
+          </span>
+        </label>
+      </div>
+
+      <p v-else class="empty-message">{{ emptyResultLabel }}</p>
+
+      <footer class="footer-actions">
+        <button type="button" class="primary-btn" :disabled="selectedTeacherId.length === 0" @click="goNext">
+          {{ viewScheduleLabel }}
+        </button>
+      </footer>
+    </section>
+  </main>
 </template>
 
 <script>
 import axios from 'axios';
 
+function sortTeachersByName(teachers) {
+  return [...teachers].sort((a, b) =>
+    String(a.teacher_name || '').localeCompare(String(b.teacher_name || ''), 'en', { sensitivity: 'base' })
+  );
+}
+
 export default {
   data() {
     return {
       teachers: [],
-      selectedTeacherId: []
+      selectedTeacherId: [],
+      searchText: ''
     };
   },
+  computed: {
+    filteredTeachers() {
+      const keyword = this.searchText.toLowerCase();
+      if (!keyword) return this.teachers;
+
+      return this.teachers.filter(teacher =>
+        String(teacher.teacher_name || '').toLowerCase().includes(keyword)
+      );
+    },
+    selectedTeachers() {
+      return sortTeachersByName(this.teachers.filter(teacher =>
+        this.selectedTeacherId.includes(teacher.teacher_id)
+      ));
+    },
+    teachersWithLessons() {
+      return this.teachers.filter(teacher => this.lessonCount(teacher) > 0);
+    },
+    selectedCountLabel() {
+      const count = this.selectedTeacherId.length;
+      return this.tr(`Selected ${count} teacher${count === 1 ? '' : 's'}`, `\u5df2\u9078 ${count} \u4f4d\u8001\u5e2b`);
+    },
+    searchResultLabel() {
+      const count = this.filteredTeachers.length;
+      return this.tr(`Found ${count} teacher${count === 1 ? '' : 's'}`, `\u627e\u5230 ${count} \u4f4d\u8001\u5e2b`);
+    },
+    emptyResultLabel() {
+      if (!this.searchText) return this.tr('No teachers found', '\u627e\u4e0d\u5230\u8001\u5e2b');
+      return this.tr(`No teachers match "${this.searchText}"`, `\u627e\u4e0d\u5230\u7b26\u5408\u300c${this.searchText}\u300d\u7684\u8001\u5e2b`);
+    },
+    viewScheduleLabel() {
+      const count = this.selectedTeacherId.length;
+      if (!count) return this.tr('View Timetable', '\u67e5\u770b\u6642\u9593\u8868');
+      return this.tr(
+        `View ${count} teacher${count === 1 ? '' : 's'} timetable`,
+        `\u67e5\u770b ${count} \u4f4d\u8001\u5e2b\u6642\u9593\u8868`
+      );
+    }
+  },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    lessonCount(teacher) {
+      return Number(teacher.lesson_count) || 0;
+    },
+    lessonCountLabel(teacher) {
+      const count = this.lessonCount(teacher);
+      return count ? `${count} ${this.tr('lessons', '\u5802')}` : this.tr('No timetable', '\u672a\u6709\u8ab2\u8868');
+    },
     async fetchTeachers() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/teachers/list', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      this.teachers = res.data;
+      try {
+        const storedUser = localStorage.getItem('user');
+        const res = await axios.get('/api/teachers/list');
+        this.teachers = sortTeachersByName(res.data);
+      } catch (err) {
+        console.error('Failed to load teachers:', err);
+        alert(this.tr('Failed to load teachers.', '\u8f09\u5165\u8001\u5e2b\u5217\u8868\u5931\u6557\u3002'));
+      }
+    },
+    toggleTeacher(teacherId) {
+      const index = this.selectedTeacherId.indexOf(teacherId);
+      if (index >= 0) {
+        this.selectedTeacherId.splice(index, 1);
+      } else {
+        this.selectedTeacherId.push(teacherId);
+      }
+    },
+    selectVisibleTeachers() {
+      this.filteredTeachers
+        .filter(teacher => this.lessonCount(teacher) > 0)
+        .forEach(teacher => {
+          if (!this.selectedTeacherId.includes(teacher.teacher_id)) {
+            this.selectedTeacherId.push(teacher.teacher_id);
+          }
+        });
+    },
+    clearSelection() {
+      this.selectedTeacherId = [];
     },
     goNext() {
       if (this.selectedTeacherId.length === 0) {
-        alert('請選擇一位老師');
+        alert(this.tr('Please select at least one teacher.', '\u8acb\u9078\u64c7\u81f3\u5c11\u4e00\u4f4d\u8001\u5e2b\u3002'));
         return;
       }
-      // 跳轉到下一頁或 fetch class 列表
-      this.$router.push({ name: 'TeacherTimetableResult', query: { teacherId: this.selectedTeacherId } });
+
+      this.$router.push({
+        name: 'TeacherTimetableResult',
+        query: { teacherId: this.selectedTeacherId }
+      });
     }
   },
   mounted() {
@@ -44,74 +189,278 @@ export default {
   }
 };
 </script>
-
 <style scoped>
-h1 {
-  font-size: 24px;
-  color: #2c3e50;
-  margin-bottom: 1rem;
-  text-align: center;
+.teacher-page {
+  min-height: calc(100vh - 126px);
+  box-sizing: border-box;
+  padding: 44px 20px 64px;
 }
 
-.teacher-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  margin: 20px 0;
+.teacher-panel {
+  max-width: 980px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  box-sizing: border-box;
+  padding: 26px;
 }
 
-.teacher-option {
+.page-header,
+.toolbar,
+.footer-actions {
   display: flex;
   align-items: center;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 2px solid #dcdcdc;
-  background-color: #f9f9f9;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  min-width: 180px;
-  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.05);
+  justify-content: space-between;
+  gap: 18px;
 }
 
-.teacher-option:hover {
-  background-color: #eaf3ff;
-  border-color: #7ab8f5;
+.page-header p {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  text-transform: uppercase;
 }
 
-.teacher-option.selected {
-  background-color: #007bff;
-  color: white;
-  border-color: #0056b3;
+h1 {
+  color: var(--text);
+  font-size: 32px;
+  letter-spacing: 0;
+  margin: 0;
 }
 
-.teacher-option input[type="radio"] {
-  margin-right: 8px;
-  accent-color: #007bff;
+.count-badge {
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-weight: 800;
+  padding: 9px 14px;
+}
+
+.toolbar {
+  margin-top: 24px;
+}
+
+.search-box {
+  flex: 1;
+  display: grid;
+  gap: 7px;
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.search-box input {
+  height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: #fff;
+  box-sizing: border-box;
+  color: var(--text);
+  font-size: 15px;
+  padding: 0 12px;
+}
+
+.search-box input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(11, 114, 133, 0.13);
+  outline: none;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 10px;
+  align-self: end;
 }
 
 button {
-  display: block;
-  margin: 30px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
-  border-radius: 6px;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  font-weight: 800;
 }
 
-button:hover {
-  background-color: #0056b3;
+.secondary-btn {
+  height: 44px;
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  color: var(--text);
+  padding: 0 14px;
 }
 
-@media (max-width: 600px) {
-  .teacher-option {
-    flex: 1 1 100%;
-    justify-content: center;
+.secondary-btn:hover,
+.selected-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.selected-strip {
+  max-height: 88px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  margin-top: 18px;
+  padding: 10px;
+}
+
+.selected-chip {
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  color: var(--text);
+  padding: 8px 10px;
+}
+
+.selected-chip span {
+  color: #8799a4;
+  margin-left: 6px;
+}
+
+.teacher-list {
+  height: 460px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-auto-rows: min-content;
+  align-content: start;
+  gap: 8px;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  margin-top: 18px;
+  padding: 10px;
+}
+
+.search-feedback {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 12px 0 -6px;
+}
+
+.teacher-row {
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 8px;
+}
+
+.teacher-row.empty {
+  background: #f5f7f8;
+  color: #7b8a93;
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+
+.teacher-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teacher-row:not(.empty):hover,
+.teacher-row.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: #0a5260;
+}
+
+.teacher-row input {
+  flex: 0 0 auto;
+  accent-color: var(--primary);
+}
+
+.teacher-row input:disabled {
+  cursor: not-allowed;
+}
+
+.lesson-badge {
+  border-radius: 999px;
+  background: #e7f4f6;
+  color: #0a5260;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.lesson-badge.empty {
+  background: #eef2f4;
+  color: #7b8a93;
+}
+
+.empty-message {
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
+  margin: 18px 0 0;
+  padding: 28px;
+  text-align: center;
+}
+
+.footer-actions {
+  color: var(--text-muted);
+  margin-top: 18px;
+}
+
+.primary-btn {
+  height: 48px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 15px;
+  padding: 0 22px;
+}
+
+.primary-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.primary-btn:disabled {
+  background: #c7d2d8;
+  color: #607683;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .teacher-panel {
+    padding: 20px;
+  }
+
+  .page-header,
+  .toolbar,
+  .footer-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbar-actions {
+    align-self: stretch;
+  }
+
+  .secondary-btn,
+  .primary-btn {
+    width: 100%;
+  }
+
+  .teacher-list {
+    grid-template-columns: 1fr;
+    max-height: 520px;
   }
 }
 </style>

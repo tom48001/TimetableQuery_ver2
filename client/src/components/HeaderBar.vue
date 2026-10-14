@@ -2,59 +2,91 @@
   <header class="header">
     <div class="top-row">
       <h1>
-        <router-link to="/home">Timetable Query System</router-link>
+        <router-link to="/home">{{ $t('app.title') }}</router-link>
       </h1>
 
       <div class="account-info">
-        <span v-if="userRole" class="role-badge">Role: {{ displayRole }}</span>
-        <button @click="handleLogout" class="logout-btn">Logout</button>
+        <div class="language-switch" :aria-label="$t('common.languageEn')">
+          <button
+            type="button"
+            class="locale-button"
+            :aria-pressed="$lang.locale === 'zh'"
+            :class="{ active: $lang.locale === 'zh' }"
+            @click="$setLocale('zh')"
+          >
+            中文
+          </button>
+          <button
+            type="button"
+            class="locale-button"
+            :aria-pressed="$lang.locale === 'en'"
+            :class="{ active: $lang.locale === 'en' }"
+            @click="$setLocale('en')"
+          >
+            EN
+          </button>
+        </div>
+
+        <span v-if="displayUserName" class="user-badge">{{ $t('common.username') }}: {{ displayUserName }}</span>
+        <span v-if="showRoleBadge" class="role-badge">{{ $t('common.role') }}: {{ displayRole }}</span>
+        <router-link
+          v-if="hasPermission('changePassword')"
+          to="/change-password"
+          class="account-link"
+        >
+          {{ $t('nav.changePassword') }}
+        </router-link>
+        <button @click="handleLogout" class="logout-btn">{{ $t('common.logout') }}</button>
       </div>
     </div>
 
     <hr />
 
     <div class="menu">
-      <span class="main-menu" @mouseover="switchMenu('SubMenu1', $event)" @mouseout="hideMenu">
-        Timetable
+      <span v-if="hasPermission('timetable')" class="main-menu" @mouseover="switchMenu('SubMenu1', $event)" @mouseout="hideMenu">
+        {{ $t('nav.timetable') }}
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu1" class="sub-menu" style="display: none;">
-          <li><router-link to="/TeacherTimetable">Teacher Timetable</router-link></li>
-          <li><router-link to="/ClassObservation">Class Observation</router-link></li>
-          <li><router-link to="/SwapLesson">Swap Lesson</router-link></li>
-          <li><router-link to="/FreeTeacher">Free Teacher</router-link></li>
-          <li><router-link to="/ClassTimetable">Class Timetable</router-link></li>
-          <li><router-link to="/RoomTimetable">Room Timetable</router-link></li>
-          <li><router-link to="/Electives">Electives</router-link></li>
-          <li><router-link to="/StdTimetable">Student Timetable</router-link></li>
+          <li><router-link to="/TeacherTimetable">{{ $t('nav.teacherTimetable') }}</router-link></li>
+          <li><router-link to="/ClassObservation">{{ $t('nav.classObservation') }}</router-link></li>
+          <li><router-link to="/SwapLesson">{{ $t('nav.swapLesson') }}</router-link></li>
+          <li><router-link to="/FreeTeacher">{{ $t('nav.freeTeacher') }}</router-link></li>
+          <li><router-link to="/ClassTimetable">{{ $t('nav.classTimetable') }}</router-link></li>
+          <li><router-link to="/RoomTimetable">{{ $t('nav.roomTimetable') }}</router-link></li>
+          <li><router-link to="/Electives">{{ $t('nav.electives') }}</router-link></li>
+          <li><router-link to="/StdTimetable">{{ $t('nav.studentTimetable') }}</router-link></li>
+          <li><router-link to="/LessonGroups">{{ $t('nav.lessonGroups') }}</router-link></li>
         </ul>
       </span>
 
-      <span class="main-menu" @mouseover="switchMenu('SubMenu2', $event)" @mouseout="hideMenu">
-        Students
+      <span v-if="hasPermission('nominations')" class="main-menu" @mouseover="switchMenu('SubMenu2', $event)" @mouseout="hideMenu">
+        {{ $t('nav.nominations') }}
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu2" class="sub-menu" style="display: none;">
-          <li><router-link to="/BLA">BLA Vote</router-link></li>
-          <li><router-link to="/BLAResult">BLA Result</router-link></li>
-          <li><router-link to="/ConductAward">Conduct Award Vote</router-link></li>
-          <li><router-link to="/ConductAwardResult">Conduct Award Result</router-link></li>
-          <li><router-link to="/LearningGoalEntry">學習目標輸入</router-link></li>
-          <li><router-link to="/LearningGoalResult">學習目標獎勵結果</router-link></li>
-          <li><router-link to="/PrefectNomination">風紀提名</router-link></li>
-          <li><router-link to="/PrefectNominationResult">風紀提名結果</router-link></li>
+          <li><router-link to="/BLA">{{ $t('nav.bla') }}</router-link></li>
+          <li><router-link to="/BLAResult">{{ $t('nav.blaResult') }}</router-link></li>
+          <li><router-link to="/ConductAward">{{ $t('nav.conductAward') }}</router-link></li>
+          <li><router-link to="/ConductAwardResult">{{ $t('nav.conductAwardResult') }}</router-link></li>
+          <li><router-link to="/LearningGoalEntry">{{ $t('nav.learningGoalEntry') }}</router-link></li>
+          <li><router-link to="/LearningGoalResult">{{ $t('nav.learningGoalResult') }}</router-link></li>
+          <li><router-link to="/PrefectNomination">{{ $t('nav.prefectNomination') }}</router-link></li>
+          <li><router-link to="/PrefectNominationResult">{{ $t('nav.prefectNominationResult') }}</router-link></li>
         </ul>
       </span>
 
       <span
-        v-if="userRole === 'manager'"
+        v-if="canShowManagementMenu"
         class="main-menu"
         @mouseover="switchMenu('SubMenu3', $event)"
         @mouseout="hideMenu"
       >
-        Management
+        {{ $t('nav.userManagement') }}
         <span class="arrow">&#9660;</span>
         <ul id="SubMenu3" class="sub-menu" style="display: none;">
-          <li><router-link to="/editTeacher">Manage Users</router-link></li>
-          <li><router-link to="/ImportTeacher">Import Timetable</router-link></li>
+          <li><router-link to="/editTeacher">{{ $t('nav.editTeacher') }}</router-link></li>
+          <li v-if="canManageStudents"><router-link to="/StudentManagement">{{ $t('nav.studentManagement') }}</router-link></li>
+          <li v-if="canImportTimetable || canManageStudents || canManageUsers"><router-link to="/ImportTeacher">{{ $t('nav.importTeacher') }}</router-link></li>
+          <li v-if="userRole === 'manager'"><router-link to="/SemesterSettings">{{ $lang.locale === 'en' ? 'Semester Settings' : '學期及初中科目設定' }}</router-link></li>
         </ul>
       </span>
     </div>
@@ -62,17 +94,41 @@
 </template>
 
 <script>
+import axios from 'axios';
 export default {
   data() {
     return {
       userRole: null,
+      userName: '',
+      userEmail: '',
+      permissions: {},
       visibleMenu: ''
     };
   },
   computed: {
+    displayUserName() {
+      if (this.userName) return this.userName;
+      if (this.userEmail) return this.userEmail.split('@')[0];
+      return '';
+    },
+    showRoleBadge() {
+      return Boolean(this.userRole);
+    },
     displayRole() {
       if (!this.userRole) return '';
-      return this.userRole.charAt(0).toUpperCase() + this.userRole.slice(1);
+      return this.$t(`roles.${this.userRole}`);
+    },
+    canShowManagementMenu() {
+      return this.canManageUsers || this.canManageStudents || this.canImportTimetable;
+    },
+    canManageUsers() {
+      return this.hasPermission('manageUsers');
+    },
+    canManageStudents() {
+      return this.hasPermission('manageStudents');
+    },
+    canImportTimetable() {
+      return this.hasPermission('importTimetable');
     }
   },
   mounted() {
@@ -81,12 +137,19 @@ export default {
       try {
         const parsedUser = JSON.parse(user);
         this.userRole = parsedUser.role ? parsedUser.role.trim().toLowerCase() : 'teacher';
+        this.userName = parsedUser.user_name || parsedUser.userName || '';
+        this.userEmail = parsedUser.email || '';
+        this.permissions = parsedUser.permissions || {};
       } catch (error) {
         console.error('Error parsing user data:', error);
       }
     }
   },
   methods: {
+    hasPermission(permission) {
+      if (this.userRole === 'manager') return true;
+      return Boolean(this.permissions && this.permissions[permission]);
+    },
     switchMenu(subMenuId, event) {
       this.hideMenu();
 
@@ -108,17 +171,15 @@ export default {
     },
     async handleLogout() {
       try {
-        await fetch('http://localhost:3000/api/auth/logout', {
-          method: 'POST',
-          credentials: 'include'
-        });
+        await axios.post('/api/auth/logout');
       } catch (error) {
         console.error('Logout failed:', error);
-      } finally {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        this.$router.push('/login');
+        alert('登出失敗，請重試。Logout failed. Please try again.');
+        return;
       }
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      this.$router.push('/login');
     }
   }
 };
@@ -126,56 +187,143 @@ export default {
 
 <style scoped>
 .header {
-  background-color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 22px rgba(23, 48, 64, 0.08);
+  backdrop-filter: blur(10px);
+  padding: 10px 18px 0;
 }
 
 .top-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 h1 {
-  color: #000;
-  font-size: 24px;
+  color: var(--text);
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 21px;
+  line-height: 1.2;
   margin: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+h1 a {
+  color: var(--text);
 }
 
 .account-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.language-switch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.language-switch button {
+  min-width: 42px;
+  height: 32px;
+  border: none;
+  border-radius: 0 !important;
+  background: #fff !important;
+  color: var(--text) !important;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 10px;
+}
+
+.language-switch button.active {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+
+.role-badge,
+.user-badge {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  min-height: 32px;
+  padding: 9px 10px;
+  white-space: nowrap;
 }
 
 .role-badge {
-  border: 1px solid #d6e4f0;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+}
+
+.user-badge {
+  background: #fff;
+  color: var(--text);
+}
+
+.account-link {
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
-  color: #24415c;
-  background: #f5f9fc;
-  padding: 6px 10px;
-  font-weight: 600;
+  color: var(--text);
+  background: #fff;
+  box-sizing: border-box;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  min-height: 32px;
+  padding: 9px 12px;
+  white-space: nowrap;
+}
+
+.account-link:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .menu {
   display: flex;
-  justify-content: space-evenly;
-  background-color: #fff;
+  justify-content: center;
+  gap: 12px;
+  max-width: 1440px;
+  margin: 0 auto;
+  background: transparent;
+  padding: 8px 0 10px;
 }
 
 .main-menu {
-  color: #666;
-  background-color: #fff;
-  padding: 5px;
+  color: var(--muted);
+  background: transparent;
+  border-radius: 6px;
+  padding: 8px 12px;
   margin: 0;
   cursor: pointer;
   display: inline-block;
+  font-weight: 700;
 }
 
 .main-menu:hover {
-  color: #0069c2;
-  background-color: #cfe8fd;
-  border-radius: 8px;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
 }
 
 .arrow {
@@ -183,52 +331,60 @@ h1 {
 }
 
 .sub-menu {
-  color: #666;
-  background-color: #fff;
-  margin: 5px -5px;
-  padding: 0;
+  color: var(--text);
+  background: #fff;
+  margin: 8px -12px;
+  padding: 6px;
   list-style-type: none;
   position: absolute;
   display: none;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow);
 }
 
 .sub-menu li {
-  padding: 3px 5px;
+  padding: 0;
   text-align: left;
 }
 
 .sub-menu li:hover {
-  color: #fff;
-  background-color: #f9f9f9;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  border-radius: 6px;
 }
 
 .sub-menu a {
   text-align: left;
   display: block;
   text-decoration: none;
-  color: #666;
+  color: inherit;
+  padding: 8px 10px;
+  white-space: nowrap;
 }
 
 .sub-menu a:hover {
-  color: #696969;
-  background-color: #f9f9fb;
+  color: var(--primary-dark);
+  background: transparent;
   text-decoration: none;
 }
 
 .logout-btn {
-  background-color: #f44336;
+  background: var(--danger);
   color: white;
-  padding: 8px 16px;
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 8px 14px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .logout-btn:hover {
-  background-color: #d32f2f;
+  background: #9f302b;
 }
 
 .router-link-active {
@@ -239,5 +395,26 @@ h1 {
 a {
   text-decoration: none;
   color: black;
+}
+
+@media (max-width: 900px) {
+  .top-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .account-info {
+    max-width: 100%;
+  }
+
+  .account-info,
+  .menu {
+    justify-content: flex-start;
+  }
+
+  .account-info,
+  .menu {
+    flex-wrap: wrap;
+  }
 }
 </style>

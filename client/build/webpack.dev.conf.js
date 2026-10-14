@@ -11,7 +11,7 @@ const FriendlyErrorsPlugin = require('friendly-errors-webpack-plugin')
 const portfinder = require('portfinder')
 
 const HOST = process.env.HOST
-const PORT = process.env.PORT && Number(process.env.PORT)
+const port = process.env.PORT || 3000;;
 
 const devWebpackConfig = merge(baseWebpackConfig, {
   module: {
@@ -32,7 +32,7 @@ const devWebpackConfig = merge(baseWebpackConfig, {
     contentBase: false, // since we use CopyWebpackPlugin.
     compress: true,
     host: HOST || config.dev.host,
-    port: PORT || config.dev.port,
+    port: process.env.PORT || config.dev.port,
     open: config.dev.autoOpenBrowser,
     overlay: config.dev.errorOverlay
       ? { warnings: false, errors: true }

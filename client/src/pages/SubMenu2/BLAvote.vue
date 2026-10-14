@@ -1,287 +1,410 @@
 <template>
-  <div class="nomination-page">
-    <h2>提名學生 - 科目：{{ selectedSubject.subject_name }}</h2>
+  <main class="student-page">
+    <section class="student-panel">
+      <header class="page-header">
+        <div>
+          <h1>{{ tr('Select Students', '\u9078\u64c7\u5b78\u751f') }}</h1>
+        </div>
+      </header>
 
-    <div v-for="classItem in selectedClass" :key="classItem" class="class-section">
-      <h3>{{ classTable[classItem - 1] }} 班</h3>
-
-      <div v-if="studentsByClass[classItem]" class="student-grid">
-        <label
-          v-for="student in studentsByClass[classItem]"
-          :key="student.student_id"
-          :value="student.student_id"
-          class="student-option"
-        >
-          <input
-            type="checkbox"
-            :value="student.student_id"
-            v-model="selectedStudents[classItem]"
-          />
-          {{ student.student_name }}
-        </label>
+      <div v-if="selectedSubject.subject_name" class="context-row">
+        <span>{{ tr('Selected subject', '\u5df2\u9078\u79d1\u76ee') }}</span>
+        <strong>{{ subjectLabel(selectedSubject) }}</strong>
       </div>
-      <div v-else>載入中...</div>
-    </div>
 
-    <button @click="submitNomination">送出提名</button>
-  </div>
+      <div v-if="allStudents.length" class="class-sections">
+        <section
+          v-for="classId in selectedClass"
+          :key="classId"
+          class="class-section"
+        >
+          <h2>{{ className(classId) }}</h2>
+          <div class="student-grid">
+            <label
+              v-for="student in studentsByClass[classId]"
+              :key="student.student_id"
+              class="student-card"
+              :class="{ selected: isSelected(classId, student.student_id) }"
+            >
+              <input
+                type="checkbox"
+                :value="student.student_id"
+                v-model="selectedStudents[classId]"
+              />
+              <span class="student-number">{{ studentNumber(student) }}</span>
+              <span class="student-name">{{ studentDisplayName(student) }}</span>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <p v-else-if="loading" class="state-text">{{ tr('Loading students...', '\u8f09\u5165\u5b78\u751f\u4e2d...') }}</p>
+      <p v-else-if="loadError" class="state-text error-text">{{ loadError }}</p>
+      <p v-else class="state-text">{{ tr('No students found.', '\u6c92\u6709\u7b26\u5408\u7684\u5b78\u751f\u3002') }}</p>
+
+      <button type="button" class="primary-btn" @click="submitNomination">
+        {{ tr('Submit', '\u63d0\u4ea4') }}
+      </button>
+    </section>
+  </main>
 </template>
 
 <script>
-import axios from 'axios'
-import { jwtDecode } from 'jwt-decode';
+import axios from 'axios';
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
+
+function parseJson(value, fallback) {
+  try {
+    return JSON.parse(value || '');
+  } catch (err) {
+    return fallback;
+  }
+}
 
 export default {
   data() {
     return {
-      classTable: ['1M', '1A', '1R', '1Y', '2M', '2A', '2R', '2Y', '3M', '3A', '3R', '3Y', '4M', '4A', '4R', '4Y', '5M', '5A', '5R', '5Y', '6M', '6A', '6R', '6Y'],
-      selectedSubject: this.$route.query.selectedSubject || '',
-      selectedClass: JSON.parse(this.$route.query.selectedClass || '[]'),
+      selectedSubject: parseJson(this.$route.query.selectedSubject, {}),
+      selectedClass: parseJson(this.$route.query.selectedClass, []),
       studentsByClass: {},
       selectedStudents: {},
-      previousSelectedStudents: {}
-    }
+      previousSelectedStudents: {},
+      teacher_id: null,
+      loading: false,
+      loadError: ''
+    };
   },
-  created() {
-    if (!this.selectedSubject || !this.selectedClass.length) {
-      this.$router.push({ name: 'BLA' })
-      return
-    }
-    console.log('已選擇科目:', this.selectedSubject)
-    console.log('已選擇班級:', this.selectedClass)
-  },
-  watch: {
-    selectedClass: {
-      immediate: true,
-      handler(newClassList) {
-        if (!Array.isArray(newClassList)) return
-
-        const token = localStorage.getItem('token')
-        if (!token) {
-          console.error('未找到 token，請重新登入')
-          return
-        }
-
-        for (const classid of newClassList) {
-          console.log(`載入班級 ${classid} 的學生`)
-          this.$set(this.selectedStudents, classid, [])
-          axios.get(`http://localhost:3000/api/students/by-class/${classid}/subject/${this.selectedSubject.subject_id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-            .then(res => {
-              this.$set(this.studentsByClass, classid, res.data)
-            })
-            .catch(err => {
-              console.error(`載入 ${classid} 的學生失敗:`, err)
-              this.$set(this.studentsByClass, classid, [])
-            })
-        }
-      }
+  computed: {
+    allStudents() {
+      return this.selectedClass.flatMap(classId => this.studentsByClass[classId] || []);
+    },
+    selectedCount() {
+      return Object.values(this.selectedStudents).flat().length;
     }
   },
   methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    subjectLabel(subject) {
+      return formatSubjectLabel(subject, this.$lang.locale);
+    },
+    studentNumber(student) {
+      return String(student.class_number || '').padStart(2, '0');
+    },
+    studentDisplayName(student) {
+      if (this.$lang.locale === 'en') {
+        return student.english_name || student.student_eng_name || student.student_name;
+      }
+      return student.student_name || student.student_ch_name || student.english_name;
+    },
+    className(classId) {
+      const students = this.studentsByClass[classId] || [];
+      return students[0] && students[0].class_name ? students[0].class_name : `${this.tr('Class', '\u73ed\u5225')} ${classId}`;
+    },
+    isSelected(classId, studentId) {
+      return (this.selectedStudents[classId] || []).includes(studentId);
+    },
     async getTeacherId() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       try {
-        const decoded = jwtDecode(token);
-        const userId = decoded.id;
-
-        // 呼叫後端，用 user_id 換 teacher_id
-        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
+        const decoded = JSON.parse(storedUser);
+        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`);
         this.teacher_id = res.data.teacher_id;
-        console.log('老師 ID:', this.teacher_id);
       } catch (error) {
-        console.error('取得 teacher_id 失敗:', error);
+        console.error('Failed to load teacher id:', error);
+        alert(this.tr('Please login again.', '\u8acb\u91cd\u65b0\u767b\u5165\u3002'));
+      }
+    },
+    async fetchStudentsForClass(classId, storedUser) {
+      const headers = {  };
+      const subjectUrl = `/api/students/by-class/${classId}/subject/${this.selectedSubject.subject_id}`;
+      const res = await axios.get(subjectUrl, { headers });
+      return Array.isArray(res.data) ? res.data : [];
+    },
+    async loadStudents() {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
+
+      this.loading = true;
+      this.loadError = '';
+
+      try {
+        await Promise.all(this.selectedClass.map(async classId => {
+          this.$set(this.selectedStudents, classId, []);
+          const students = await this.fetchStudentsForClass(classId, storedUser);
+          this.$set(this.studentsByClass, classId, students);
+        }));
+      } catch (err) {
+        console.error('Failed to load students:', err);
+        this.loadError = this.tr('Failed to load students.', '\u8f09\u5165\u5b78\u751f\u5931\u6557\u3002');
+        this.selectedClass.forEach(classId => {
+          if (!this.studentsByClass[classId]) this.$set(this.studentsByClass, classId, []);
+        });
+      } finally {
+        this.loading = false;
       }
     },
     async loadSelectedStudents() {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser || !this.teacher_id) return;
+
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.error('未登入，缺少 token');
-          return;
-        }
-
-        // 確保必要參數已經存在
-        if (!this.selectedSubject || !this.selectedSubject.subject_id) {
-          console.warn('selectedSubject 尚未載入，跳過請求');
-          return;
-        }
-        try {
-          const decoded = jwtDecode(token);
-          const userId = decoded.id;
-
-          // 呼叫後端，用 user_id 換 teacher_id
-          const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${userId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-
-          this.teacher_id = res.data.teacher_id;
-          console.log('老師 ID:', this.teacher_id);
-        } catch (error) {
-          console.error('取得 teacher_id 失敗:', error);
-        }
-        if (!this.teacher_id) {
-          console.warn('teacher_id 尚未載入，跳過請求');
-          return;
-        }
-
-        const subjectId = this.selectedSubject.subject_id;
-        const teacherId = this.teacher_id;
-
-        // 發送請求
-        const res = await axios.get(
-          `http://localhost:3000/api/bla/students`,
-          {
-            params: {
-              subject_id: subjectId,
-              teacher_id: teacherId
-            },
-            headers: { Authorization: `Bearer ${token}` }
+        const res = await axios.get('/api/bla/students', {
+          params: {
+            subject_id: this.selectedSubject.subject_id,
+            teacher_id: this.teacher_id
           }
-        );
+        });
 
-        // 後端返回的已選擇學生 id
-        const selectedIds = res.data.map(stu => stu.student_id);
-        console.log('後端已選擇學生 ID:', selectedIds);
+        const selectedIds = res.data.map(student => student.student_id);
+        const updatedSelected = {};
 
-        // 用 Vue.set / this.$set 或深拷貝方式更新，避免響應式問題
-        const updatedSelected = { ...this.selectedStudents };
-        for (const classId in this.studentsByClass) {
-          const stuList = this.studentsByClass[classId] || [];
-          updatedSelected[classId] = stuList
-            .filter(stu => selectedIds.includes(stu.student_id))
-            .map(stu => stu.student_id);
-        }
+        this.selectedClass.forEach(classId => {
+          const classStudents = this.studentsByClass[classId] || [];
+          updatedSelected[classId] = classStudents
+            .filter(student => selectedIds.includes(student.student_id))
+            .map(student => student.student_id);
+        });
+
         this.selectedStudents = updatedSelected;
         this.previousSelectedStudents = JSON.parse(JSON.stringify(updatedSelected));
-        console.log('更新後的 selectedStudents:', this.selectedStudents);
       } catch (err) {
-        console.error('取得已選擇學生失敗:', err);
+        console.error('Failed to load selected students:', err);
       }
     },
-    submitNomination() {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.error('未登入');
+    async submitNomination() {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser || !this.teacher_id) {
+        alert(this.tr('Failed to load students.', '\u8f09\u5165\u5b78\u751f\u5931\u6557\u3002'));
         return;
       }
-      const teacherId = this.teacher_id
-      const subjectId = this.selectedSubject.subject_id
-      const selectedStudentIds = Object.values(this.selectedStudents).flat()
-      console.log('送出的 student_ids:', selectedStudentIds)
 
-      axios.post('http://localhost:3000/api/bla/insert', {
-        teacher_id: teacherId,
-        subject_id: subjectId,
-        student_ids: selectedStudentIds
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
-        console.log('投票成功', res.data);
+      const teacherId = this.teacher_id;
+      const subjectId = this.selectedSubject.subject_id;
+      const selectedStudentIds = Object.values(this.selectedStudents).flat();
 
-        // 投票成功後再刪除
-        for (const classId in this.previousSelectedStudents) {
-          const currentSelected = this.selectedStudents[classId] || []
+      try {
+        await axios.post('/api/bla/insert', {
+          teacher_id: teacherId,
+          subject_id: subjectId,
+          student_ids: selectedStudentIds
+        });
+
+        await Promise.all(Object.keys(this.previousSelectedStudents).map(async classId => {
+          const currentSelected = this.selectedStudents[classId] || [];
           const removed = (this.previousSelectedStudents[classId] || []).filter(
-            id => !currentSelected.includes(id)
-          )
-          if (removed.length > 0) {
-            axios.delete(`http://localhost:3000/api/bla/delete`, {
-              data: {
-                subjectId: subjectId,
-                teacherId: teacherId,
-                removed: Array.isArray(removed) ? removed : [removed]
-              },
-              headers: { Authorization: `Bearer ${token}` }
-            }).then(() => {
-              console.log('刪除成功:', removed);
-            }).catch(err => {
-              console.error('刪除失敗:', err);
-            });
-          }
-        }
+            studentId => !currentSelected.includes(studentId)
+          );
+
+          if (removed.length === 0) return;
+
+          await axios.delete('/api/bla/delete', {
+            data: {
+              subjectId,
+              teacherId,
+              removed
+            }
+          });
+        }));
+
         this.$router.push({ name: 'BLA' });
-      }).catch(err => {
-        console.error('投票失敗', err);
-        this.$router.push({ name: 'BLA' });
-      });
+      } catch (err) {
+        console.error('Failed to submit BLA nomination:', err);
+        alert(this.tr('Failed to submit nomination.', '\u63d0\u4ea4\u63d0\u540d\u5931\u6557\u3002'));
+      }
     }
   },
   async mounted() {
+    if (!this.selectedSubject.subject_id || !this.selectedClass.length) {
+      this.$router.push({ name: 'BLA' });
+      return;
+    }
+
     await this.getTeacherId();
+    await this.loadStudents();
     await this.loadSelectedStudents();
   }
-}
+};
 </script>
 
 <style scoped>
-.class-section {
-  margin-bottom: 20px;
+.student-page {
+  box-sizing: border-box;
+  min-height: calc(100vh - 126px);
+  padding: 42px 20px 56px;
 }
 
-.student-checkbox {
-  display: block;
-  margin-left: 10px;
+.student-panel {
+  max-width: 1080px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  padding: 26px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.page-header p {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+h1 {
+  color: var(--text);
+  font-size: 32px;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.count-badge,
+.context-row {
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.count-badge {
+  padding: 9px 14px;
+  white-space: nowrap;
+}
+
+.context-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 8px 14px;
+}
+
+.context-row span {
+  color: #6b8391;
+}
+
+.context-row strong {
+  color: var(--text);
+}
+
+.class-sections {
+  display: grid;
+  gap: 18px;
+}
+
+.class-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 16px;
+}
+
+h2 {
+  color: var(--text);
+  font-size: 18px;
+  margin: 0 0 12px;
 }
 
 .student-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  margin: 20px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
 }
 
-.student-option {
-  display: flex;
+.student-card {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
   align-items: center;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 2px solid #dcdcdc;
-  background-color: #f9f9f9;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  min-width: 180px;
-  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.05);
-}
-
-.student-option:hover {
-  background-color: #eaf3ff;
-  border-color: #7ab8f5;
-}
-
-.student-option::selection {
-  background-color: #007bff;
-  color: white;
-  border-color: #0056b3;
-}
-
-.student-option input[type="checkbox"] {
-  margin-right: 8px;
-  accent-color: #007bff;
-}
-
-button {
-  display: block;
-  margin: 30px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
+  gap: 8px;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  border: none;
+  background: #fff;
+  color: var(--text);
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  font-weight: 700;
+  padding: 8px 10px;
 }
 
-button:hover {
-  background-color: #0056b3;
+.student-card:hover,
+.student-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.student-card input {
+  accent-color: var(--primary);
+}
+
+.student-number {
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.student-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.state-text {
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
+  margin: 0;
+  padding: 28px;
+  text-align: center;
+}
+
+.error-text {
+  color: var(--danger);
+}
+
+.primary-btn {
+  display: block;
+  min-width: 96px;
+  height: 46px;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 800;
+  margin: 22px auto 0;
+  padding: 0 22px;
+}
+
+.primary-btn:hover {
+  background: var(--primary-dark);
+}
+
+@media (max-width: 720px) {
+  .student-panel {
+    padding: 20px;
+  }
+
+  .page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .student-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

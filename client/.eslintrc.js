@@ -22,12 +22,14 @@ module.exports = {
   ],
   // add your custom rules here
   rules: {
-    "semi": "off",
-    "indent": ["error", 2],
-    // allow async-await
+    'no-unused-vars': 'off',
+    'no-undef': 'off',
+    'curly': 'off',
+    'no-multi-spaces': 'off',
+    'semi': 'off',
+    'indent': 'off',
     'generator-star-spacing': 'off',
-    // allow debugger during development
-    'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
-    "space-before-function-paren": "off",
+    'no-debugger': 'off',
+    'space-before-function-paren': 'off'
   }
 }

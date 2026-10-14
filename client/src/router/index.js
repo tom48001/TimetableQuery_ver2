@@ -1,9 +1,12 @@
 import Vue from 'vue'
 import Router from 'vue-router'
+import { initializeRootNavigation } from './rootNavigation'
 
 import Login from '@/pages/Login.vue'
 import Home from '@/pages/Home.vue'
 import GoogleRedirect from '@/pages/GoogleRedirect.vue'
+import ChangePassword from '@/pages/ChangePassword.vue'
+import Forbidden from '@/pages/Forbidden.vue'
 
 import TeacherTimetable from '@/pages/SubMenu1/TeacherTimetable.vue'
 import TeacherTimetableResult from '../pages/SubMenu1/TeacherTimetableResult.vue'
@@ -14,6 +17,7 @@ import ClassTimetableResult from '@/pages/SubMenu1/ClassTimetableResult.vue'
 import Electives from '@/pages/SubMenu1/Electives.vue'
 import ElectivesResult from '@/pages/SubMenu1/ElectivesResult.vue'
 import FreeTeacher from '@/pages/SubMenu1/FreeTeacher.vue'
+import FreeTeacherResult from '@/pages/SubMenu1/FreeTeacherResult.vue'
 import RoomTimetable from '@/pages/SubMenu1/RoomTimetable.vue'
 import RoomTimetableResult from '@/pages/SubMenu1/RoomTimetableResult.vue'
 import StdTimetable from '@/pages/SubMenu1/StdTimetable.vue'
@@ -22,6 +26,7 @@ import SwapLesson from '@/pages/SubMenu1/SwapLesson.vue'
 import SwapLessonPick from '@/pages/SubMenu1/SwapLessonPick.vue'
 import SwapLessonResult from '@/pages/SubMenu1/SwapLessonResult.vue'
 import StudentSelector from '@/pages/SubMenu1/StudentSelector.vue'
+import LessonGroups from '@/pages/SubMenu1/LessonGroups.vue'
 
 import BLA from '@/pages/SubMenu2/BLA.vue'
 import BLAvote from '@/pages/SubMenu2/BLAvote.vue'
@@ -35,18 +40,21 @@ import PrefectNominationResult from '@/pages/SubMenu2/PrefectNominationResult.vu
 import LearningGoalEntry from '@/pages/SubMenu2/LearningGoalEntry.vue'
 import LearningGoalResult from '@/pages/SubMenu2/LearningGoalResult.vue'
 
-import editTeacher from '@/pages/SubMenu3/editTeacher.vue';
-import ImportTeacher from '@/pages/SubMenu3/ImportTeacher.vue';
+import editTeacher from '@/pages/SubMenu3/editTeacher.vue'
+import ImportTeacher from '@/pages/SubMenu3/ImportTeacher.vue'
+import StudentManagement from '@/pages/SubMenu3/StudentManagement.vue'
+import AddStudent from '@/pages/SubMenu3/AddStudent.vue'
+import SemesterSettings from '@/pages/SubMenu3/SemesterSettings.vue'
 
-Vue.use(Router);
+Vue.use(Router)
 
 const router = new Router({
-  mode: 'history', // Use clean URLs
+  mode: 'abstract',
   routes: [
     { path: '/google-redirect', name: 'GoogleRedirect', component: GoogleRedirect },
     {
       path: '/',
-      redirect: '/login' // Redirect to login page by default
+      redirect: '/login'
     },
     {
       path: '/login',
@@ -58,6 +66,18 @@ const router = new Router({
       path: '/home',
       name: 'home',
       component: Home,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/change-password',
+      name: 'ChangePassword',
+      component: ChangePassword,
+      meta: { show: true, requiredPermission: 'changePassword' }
+    },
+    {
+      path: '/forbidden',
+      name: 'Forbidden',
+      component: Forbidden,
       meta: { show: true, requiresAuth: true }
     },
     {
@@ -115,6 +135,12 @@ const router = new Router({
       meta: { show: true, requiresAuth: true }
     },
     {
+      path: '/FreeTeacherResult',
+      name: 'FreeTeacherResult',
+      component: FreeTeacherResult,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
       path: '/RoomTimetable',
       name: 'RoomTimetable',
       component: RoomTimetable,
@@ -160,6 +186,12 @@ const router = new Router({
       path: '/student-selector',
       name: 'StudentSelector',
       component: StudentSelector,
+      meta: { show: true, requiresAuth: true }
+    },
+    {
+      path: '/LessonGroups',
+      name: 'LessonGroups',
+      component: LessonGroups,
       meta: { show: true, requiresAuth: true }
     },
     {
@@ -232,35 +264,103 @@ const router = new Router({
       path: '/editTeacher',
       name: 'editTeacher',
       component: editTeacher,
-      meta: { show: true, requiredRole: 'manager' }
+      meta: { show: true, requiredPermission: 'manageUsers' }
     },
     {
       path: '/ImportTeacher',
       name: 'ImportTeacher',
       component: ImportTeacher,
+      meta: { show: true, requiredAnyPermissions: ['importTimetable', 'manageStudents', 'manageUsers'] }
+    },
+    {
+      path: '/StudentManagement',
+      name: 'StudentManagement',
+      component: StudentManagement,
+      meta: { show: true, requiredPermission: 'manageStudents' }
+    },
+    {
+      path: '/StudentManagement/Add',
+      name: 'AddStudent',
+      component: AddStudent,
+      meta: { show: true, requiredPermission: 'manageStudents' }
+    },
+    {
+      path: '/SemesterSettings',
+      name: 'SemesterSettings',
+      component: SemesterSettings,
       meta: { show: true, requiredRole: 'manager' }
     },
     {
       path: '/*',
-      redirect: '/login' // Always redirect unknown routes to login
+      redirect: '/login'
     }
   ]
-});
+})
+
+const timetableRouteNames = new Set([
+  'TeacherTimetable', 'TeacherTimetableResult', 'ClassObservation', 'ClassObservationResult',
+  'ClassTimetable', 'ClassTimetableResult', 'Electives', 'ElectivesResult', 'FreeTeacher',
+  'FreeTeacherResult', 'RoomTimetable', 'RoomTimetableResult', 'StdTimetable', 'StdTimetableResult',
+  'SwapLesson', 'SwapLessonPick', 'SwapLessonResult', 'StudentSelector', 'LessonGroups'
+])
+
+const nominationRouteNames = new Set([
+  'BLA', 'BLAvote', 'BLAResult', 'ConductAward', 'ConductAwardVote', 'ConductAwardResult',
+  'PrefectNomination', 'PrefectNominationVote', 'PrefectNominationResult',
+  'LearningGoalEntry', 'LearningGoalResult'
+])
 
 router.beforeEach((to, from, next) => {
-  const user = JSON.parse(localStorage.getItem('user'));
+  const rawUser = localStorage.getItem('user')
+  let user = null
+  if (rawUser) {
+    try {
+      user = JSON.parse(rawUser)
+    } catch (error) {
+      localStorage.removeItem('user')
+      localStorage.removeItem('token')
+    }
+  }
 
-  // 只有 admin 可進入 editTeacher 頁
+  const denyAccess = () => next(user ? '/forbidden' : '/login')
+
+  const routePermission = to.meta.requiredPermission ||
+    (timetableRouteNames.has(to.name) ? 'timetable' : null) ||
+    (nominationRouteNames.has(to.name) ? 'nominations' : null)
+  const routeAnyPermissions = to.meta.requiredAnyPermissions || []
+
   if (to.meta.requiredRole && (!user || user.role !== to.meta.requiredRole)) {
-    return next('/login');
+    return denyAccess()
   }
 
-  // 若需要登入卻沒登入，導去 login
+  if (routePermission) {
+    const permissions = user && user.permissions ? user.permissions : {}
+    const isManager = user && user.role === 'manager'
+    if (!user || (!isManager && !permissions[routePermission])) {
+      return denyAccess()
+    }
+  }
+
+  if (routeAnyPermissions.length) {
+    const permissions = user && user.permissions ? user.permissions : {}
+    const isManager = user && user.role === 'manager'
+    const hasAnyPermission = routeAnyPermissions.some(permission => permissions[permission])
+    if (!user || (!isManager && !hasAnyPermission)) {
+      return denyAccess()
+    }
+  }
+
+  if (to.meta.allowedRoles && (!user || !to.meta.allowedRoles.includes(user.role))) {
+    return denyAccess()
+  }
+
   if (to.meta.requiresAuth && !user) {
-    return next('/login');
+    return next('/login')
   }
 
-  next();
-});
+  next()
+})
 
-export default router;
+initializeRootNavigation(router, window)
+
+export default router

@@ -1,152 +1,227 @@
-<template lang="">
-  <div>
-    <h1>最佳學習態度提名<br>選擇科目</h1>
+<template>
+  <main class="matrix-page">
+    <section class="page-panel">
+      <header class="page-header">
+        <div>
+          <h1>{{ tr('Best Learning Attitude Nomination', '\u6700\u4f73\u5b78\u7fd2\u614b\u5ea6\u63d0\u540d') }}</h1>
+        </div>
+      </header>
 
-    <div class="subject-grid">
-      <select v-model="selectedSubject">
-        <option v-for="subject in subjects" :key="subject.subject_id" :value="subject">
-          {{ subject.subject_name }}
-        </option>
-      </select>
-    </div>
-    <h1>選擇班別</h1>
-    <div class="class-grid">
-      <label
-        v-for="cls in classList"
-        :key="cls.class_id"
-        class="class-option"
-        :class="{ selected: selectedClass.includes(cls) }"
-      >
-        <input type="checkbox" :value="cls.class_id" v-model="selectedClass" />
-        {{ cls.class_name }}
-      </label>
-    </div>
-    <div class="button-container">
-      <button @click="goNext">下一步</button>
-    </div>
-  </div>
+      <p>{{ tr('Only subjects taught in each class are available. Electives include enrolled students only.', '只可提名各班課表中實際修讀的科目；選修科只列出修讀該科的學生。') }}</p>
+      <div class="table-wrap">
+        <table class="choice-table">
+          <thead>
+            <tr>
+              <th class="subject-col">{{ tr('Subject', '\u79d1\u76ee') }}</th>
+              <th v-for="cls in visibleClassList" :key="cls.class_id">{{ cls.class_name }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="subject in visibleSubjects" :key="subject.subject_id">
+              <th class="subject-col">{{ subjectLabel(subject) }}</th>
+              <td v-for="cls in visibleClassList" :key="`${subject.subject_id}-${cls.class_id}`" :class="{ unavailable: !isAvailable(subject.subject_id, cls.class_id) }">
+                <label v-if="isAvailable(subject.subject_id, cls.class_id)" class="choice-cell" :class="{ selected: selectedChoice === choiceValue(subject, cls) }">
+                  <input type="radio" name="subjectClass" :value="choiceValue(subject, cls)" v-model="selectedChoice" />
+                  <span>{{ countFor(subject.subject_id, cls.class_id) }}</span>
+                </label>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="actions">
+        <button type="button" :disabled="!selectedChoice" @click="goNext">{{ tr('Next', '\u4e0b\u4e00\u6b65') }}</button>
+      </footer>
+    </section>
+  </main>
 </template>
+
 <script>
 import axios from 'axios';
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 
 export default {
-  data() {
-    return {
-      subjects: [],
-      selectedSubject: '',
-      classList: [],
-      selectedClass: []
-    };
+  data() { return { subjects: [], classList: [], counts: {}, selectedChoice: '' }; },
+  computed: {
+    visibleSubjects() {
+      const subjectIds = new Set(Object.keys(this.counts).map(key => Number(key.split('-')[0])));
+      return this.subjects.filter(subject => subjectIds.has(Number(subject.subject_id)));
+    },
+    visibleClassList() {
+      const classIds = new Set(Object.keys(this.counts).map(key => Number(key.split('-')[1])));
+      return this.classList.filter(cls => classIds.has(Number(cls.class_id)));
+    },
+    selectedSubject() { if (!this.selectedChoice) return null; const subjectId = Number(this.selectedChoice.split('-')[0]); return this.subjects.find(subject => Number(subject.subject_id) === subjectId); },
+    selectedClassId() { if (!this.selectedChoice) return null; return Number(this.selectedChoice.split('-')[1]); }
   },
   methods: {
-    async fetchSubjects() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/subjects/findElective', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      this.subjects = res.data;
-    },
-    async fetchClasses() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/classes', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      this.classList = res.data;
+    tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    subjectLabel(subject) { return formatSubjectLabel(subject, this.$lang.locale); },
+    choiceValue(subject, cls) { return `${subject.subject_id}-${cls.class_id}`; },
+    countKey(subjectId, classId) { return `${subjectId}-${classId}`; },
+    isAvailable(subjectId, classId) { return this.counts[this.countKey(subjectId, classId)] !== undefined; },
+    countFor(subjectId, classId) { const value = this.counts[this.countKey(subjectId, classId)]; return value === undefined ? '' : value; },
+    async fetchSubjects() { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/subjects/nomination-options'); this.subjects = res.data; },
+    async fetchClasses() { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/classes'); this.classList = res.data; },
+    async fetchCounts() {
+      const storedUser = localStorage.getItem('user');
+      const res = await axios.get('/api/subjects/class-counts');
+      const nextCounts = {};
+      res.data.forEach(row => { nextCounts[this.countKey(row.subject_id, row.class_id)] = Number(row.student_count) || 0; });
+      this.counts = nextCounts;
     },
     goNext() {
-      if (!this.selectedSubject) {
-        alert('請選擇科目');
-        return;
-      }
-      if (this.selectedClass.length === 0) {
-        alert('請選擇年級');
-        return;
-      }
-      this.selectedClass.sort((a, b) => a - b);
-      // 跳轉到下一頁或 fetch class 列表
-      this.$router.push({
-        name: 'BLAvote',
-        query: {
-          selectedSubject: this.selectedSubject,
-          selectedClass: JSON.stringify(this.selectedClass)
-        }
-      });
+      if (!this.selectedSubject || !this.selectedClassId) { alert(this.tr('Please select a class and subject.', '\u8acb\u9078\u64c7\u73ed\u5225\u8207\u79d1\u76ee\u3002')); return; }
+      this.$router.push({ name: 'BLAvote', query: { selectedSubject: JSON.stringify(this.selectedSubject), selectedClass: JSON.stringify([this.selectedClassId]) } });
     }
   },
-  mounted() {
-    this.fetchSubjects();
-    this.fetchClasses();
-  }
+  mounted() { this.fetchSubjects(); this.fetchClasses(); this.fetchCounts(); }
 };
 </script>
 <style scoped>
+.matrix-page {
+  min-height: calc(100vh - 126px);
+  padding: 34px 20px 56px;
+}
+
+.page-panel {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 26px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.page-header p {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
 h1 {
-  font-size: 24px;
-  color: #2c3e50;
-  margin-bottom: 1rem;
+  margin: 0;
+  text-align: left;
+}
+
+.summary-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-weight: 800;
+  padding: 8px 13px;
+  white-space: nowrap;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.choice-table {
+  width: 100%;
+  min-width: 1100px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.choice-table th,
+.choice-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 6px;
   text-align: center;
+  vertical-align: middle;
 }
 
-.class-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  max-width: 800px;
-  margin: 40px auto;
-  padding: 0 16px;
+.choice-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 13px;
 }
 
-.class-option {
-  display: flex;
+.choice-table tbody tr:hover {
+  background: #fbfdfe;
+}
+
+.subject-col {
+  width: 154px;
+  min-width: 154px;
+  color: var(--text);
+  font-weight: 800;
+  text-align: left !important;
+}
+
+.choice-cell {
+  min-width: 44px;
+  display: inline-flex;
   align-items: center;
-  padding: 12px 16px;
-  border: 2px solid #dcdcdc;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  box-shadow: 1px 1px 6px rgba(0, 0, 0, 0.05);
-}
-
-.class-option:hover {
-  background-color: #eaf3ff;
-  border-color: #7ab8f5;
-}
-
-.class-option.selected {
-  background-color: #007bff;
-  color: white;
-  border-color: #0056b3;
-}
-
-.class-option input[type="radio"] {
-  margin-right: 8px;
-  accent-color: #007bff;
-}
-
-.subject-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
   justify-content: center;
-  margin: 20px 0;
-}
-
-button {
-  display: block;
-  margin: 30px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
-  border-radius: 6px;
-  border: none;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  padding: 5px 9px;
 }
 
-button:hover {
-  background-color: #0056b3;
+.choice-cell input {
+  margin: 0;
+}
+
+.choice-cell span {
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
+.choice-cell.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.unavailable {
+  background: repeating-linear-gradient(
+    -45deg,
+    #f8fafb,
+    #f8fafb 6px,
+    #eef3f5 6px,
+    #eef3f5 12px
+  );
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.actions button {
+  min-width: 120px;
+  height: 44px;
+}
+
+@media (max-width: 720px) {
+  .page-panel {
+    padding: 20px;
+  }
+
+  .page-header {
+    display: block;
+  }
+
+  .summary-pill {
+    display: inline-block;
+    margin-top: 14px;
+  }
 }
 </style>

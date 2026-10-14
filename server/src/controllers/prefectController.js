@@ -2,10 +2,11 @@ import pool from '../db.js';
 
 export const insertPrefect = async (req, res) => {
   try {
-    const { teacher_id, student_ids } = req.body;
+    const { student_ids } = req.body;
+    const teacher_id = req.user.teacher_id;
 
-    if (!teacher_id || !Array.isArray(student_ids)) {
-      return res.status(400).json({ error: 'Missing teacher_id or student_ids.' });
+    if (!Array.isArray(student_ids)) {
+      return res.status(400).json({ error: 'Missing or invalid student_ids.' });
     }
 
     if (student_ids.length === 0) {
@@ -26,10 +27,11 @@ export const insertPrefect = async (req, res) => {
 };
 
 export const deletePrefect = async (req, res) => {
-  const { teacherId, removed } = req.body;
+  const { removed } = req.body;
+  const teacherId = req.user.teacher_id;
 
-  if (!teacherId || !Array.isArray(removed)) {
-    return res.status(400).json({ message: 'Missing teacherId or removed students.' });
+  if (!Array.isArray(removed)) {
+    return res.status(400).json({ message: 'Missing or invalid removed students.' });
   }
 
   if (removed.length === 0) {
@@ -55,13 +57,16 @@ export const getPrefectResults = async (req, res) => {
       `
       SELECT
         pn.student_id,
+        c.class_name,
         s.student_ch_name,
+        s.student_eng_name,
         GROUP_CONCAT(t.teacher_name ORDER BY t.teacher_name SEPARATOR ', ') AS teacher_names
       FROM prefect_nomination pn
       JOIN student s ON pn.student_id = s.student_id
+      JOIN class c ON s.class_id = c.class_id
       JOIN teacher t ON pn.teacher_id = t.teacher_id
-      GROUP BY pn.student_id, s.student_ch_name
-      ORDER BY s.student_id
+      GROUP BY pn.student_id, c.class_name, s.student_ch_name, s.student_eng_name
+      ORDER BY c.class_name, CAST(s.class_number AS UNSIGNED), s.student_id
       `
     );
 
@@ -74,11 +79,7 @@ export const getPrefectResults = async (req, res) => {
 
 export const getSelectPrefect = async (req, res) => {
   try {
-    const { teacher_id } = req.query;
-
-    if (!teacher_id) {
-      return res.status(400).json({ error: 'Missing teacher_id.' });
-    }
+    const teacher_id = req.user.teacher_id;
 
     const [rows] = await pool.query(
       `

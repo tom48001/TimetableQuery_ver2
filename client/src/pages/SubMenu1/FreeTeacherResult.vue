@@ -1,0 +1,259 @@
+<template>
+  <main class="result-page">
+    <section class="result-panel">
+      <header class="result-header">
+        <h1>{{ date }} ({{ displayWeekday }})</h1>
+        <h2>{{ periodLabel }} {{ tr('Free Teachers', '\u7a7a\u5802\u8001\u5e2b') }}</h2>
+      </header>
+
+      <div class="table-wrap">
+        <table v-if="freeTeachers.length" class="free-table">
+          <thead>
+            <tr>
+              <th class="teacher-col">{{ tr('Teacher', '\u8001\u5e2b') }}</th>
+              <th v-for="periodNumber in periodNumbers" :key="periodNumber">
+                {{ periodText(periodNumber) }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="teacher in freeTeachers" :key="teacher.teacher_id">
+              <th class="teacher-col">{{ teacher.teacher_name }}</th>
+              <td v-for="periodNumber in periodNumbers" :key="periodNumber">
+                <span v-if="classAt(teacher, periodNumber)" class="class-pill">
+                  {{ classAt(teacher, periodNumber) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p v-else-if="loaded" class="empty-message">{{ tr('No free teachers found.', '\u6c92\u6709\u7a7a\u5802\u8001\u5e2b\u3002') }}</p>
+        <p v-else class="empty-message">{{ tr('Loading...', '\u8f09\u5165\u4e2d...') }}</p>
+      </div>
+    </section>
+  </main>
+</template>
+
+<script>
+import axios from 'axios';
+
+const WEEKDAY_KEYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_LABELS = {
+  zh: ['\u661f\u671f\u65e5', '\u661f\u671f\u4e00', '\u661f\u671f\u4e8c', '\u661f\u671f\u4e09', '\u661f\u671f\u56db', '\u661f\u671f\u4e94', '\u661f\u671f\u516d'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+};
+
+function sortTeachersByName(teachers) {
+  return [...teachers].sort((a, b) =>
+    String(a.teacher_name || '').localeCompare(String(b.teacher_name || ''), 'en', { sensitivity: 'base' })
+  );
+}
+
+export default {
+  data() {
+    return {
+      teachers: [],
+      periodNumbers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      loaded: false
+    };
+  },
+  computed: {
+    date() {
+      return this.$route.query.date || '';
+    },
+    weekday() {
+      return this.$route.query.weekday || '';
+    },
+    weekdayLabel() {
+      return this.$route.query.weekdayLabel || '';
+    },
+    displayWeekday() {
+      const locale = this.$lang.locale === 'en' ? 'en' : 'zh';
+      const fromDate = this.weekdayFromDate();
+      const keyIndex = WEEKDAY_KEYS.indexOf(this.weekday);
+      if (fromDate !== '') return fromDate;
+      if (keyIndex >= 0) return WEEKDAY_LABELS[locale][keyIndex];
+      return this.weekdayLabel || this.weekday || '';
+    },
+    periods() {
+      return String(this.$route.query.period || '')
+        .split(',')
+        .map(value => Number(value) === 11 ? 9 : (Number(value) === 12 ? 10 : Number(value)))
+        .filter(Boolean);
+    },
+    periodLabel() {
+      return this.periods.map(period => this.periodText(period)).join(this.$lang.locale === 'en' ? ', ' : '\u3001');
+    },
+    freeTeachers() {
+      return sortTeachersByName(this.teachers.filter(teacher => (
+        this.periods.length > 0 &&
+        this.periods.every(periodNumber => !this.classAt(teacher, periodNumber))
+      )));
+    }
+  },
+  methods: {
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    weekdayFromDate() {
+      if (!this.date) return '';
+      const parsed = new Date(this.date + 'T00:00:00');
+      if (Number.isNaN(parsed.getTime())) return '';
+      const locale = this.$lang.locale === 'en' ? 'en' : 'zh';
+      return WEEKDAY_LABELS[locale][parsed.getDay()];
+    },
+    periodText(periodNumber) {
+      return this.$lang.locale === 'en' ? 'Period ' + periodNumber : '\u7b2c' + periodNumber + '\u7bc0';
+    },
+    classAt(teacher, periodNumber) {
+      const periods = Number(periodNumber) === 9 ? [9, 11] : (Number(periodNumber) === 10 ? [10, 12] : [Number(periodNumber)]);
+      return [...new Set((teacher.lessons || []).filter(item => periods.includes(Number(item.period_id))).map(item => item.class_name || this.tr('Busy', '有課')))].join(' / ');
+    },
+    async fetchDaySchedule() {
+      const storedUser = localStorage.getItem('user');
+
+      try {
+        const res = await axios.post('/api/teachers/free-teachers-day', {
+          weekday: this.weekday
+        });
+
+        this.teachers = sortTeachersByName(res.data);
+      } catch (err) {
+        console.error('Failed to load free teacher day schedule:', err);
+        alert(this.tr('Failed to load free teachers.', '\u8f09\u5165\u7a7a\u5802\u8001\u5e2b\u5931\u6557\u3002'));
+      } finally {
+        this.loaded = true;
+      }
+    }
+  },
+  mounted() {
+    if (!this.date || !this.weekday || this.periods.length === 0) {
+      this.$router.push({ name: 'FreeTeacher' });
+      return;
+    }
+
+    this.fetchDaySchedule();
+  }
+};
+</script>
+
+<style scoped>
+.result-page {
+  min-height: calc(100vh - 126px);
+  box-sizing: border-box;
+  padding: 34px 20px 56px;
+}
+
+.result-panel {
+  max-width: 1180px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.result-header {
+  margin-bottom: 22px;
+  text-align: center;
+}
+
+.result-header p {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+h1,
+h2 {
+  color: var(--text);
+  margin: 0;
+  text-align: center;
+}
+
+h1 {
+  font-size: 32px;
+}
+
+h2 {
+  color: var(--text-muted);
+  font-size: 24px;
+  margin-top: 8px;
+}
+
+.table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.free-table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.free-table th,
+.free-table td {
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  height: 42px;
+  padding: 7px 8px;
+  text-align: center;
+}
+
+.free-table th:first-child,
+.free-table td:first-child {
+  border-left: none;
+}
+
+.free-table tr:last-child th,
+.free-table tr:last-child td {
+  border-bottom: none;
+}
+
+.free-table thead th {
+  background: var(--surface-soft);
+  color: var(--text);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.free-table tbody tr:hover th,
+.free-table tbody tr:hover td {
+  background: #fbfdfd;
+}
+
+.teacher-col {
+  width: 190px;
+  color: var(--text);
+  text-align: left !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.class-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  border-radius: 999px;
+  background: #e7f4f6;
+  color: #0a5260;
+  font-weight: 800;
+  padding: 4px 9px;
+}
+
+.empty-message {
+  color: var(--text-muted);
+  margin: 0;
+  padding: 32px;
+  text-align: center;
+}
+</style>

@@ -1,62 +1,71 @@
 <template>
-  <div class="learning-goal-page">
-    <h1>&#x5B78;&#x7FD2;&#x76EE;&#x6A19;&#x734E;&#x52F5;&#x8A08;&#x5283;</h1>
+  <main class="entry-page">
+    <section class="entry-panel">
+      <header class="page-header">
+        <div>
+          <h1>{{ tr(`Enter Learning Goal Total (${termLabel})`, `輸入學生完成目標總數（${termLabel}）`) }}</h1>
+        </div>
+      </header>
 
-    <section class="class-section">
-      <h2>&#x9078;&#x64C7;&#x73ED;&#x5225;</h2>
-      <div class="class-grid">
-        <label
-          v-for="cls in classList"
-          :key="cls.class_id"
-          class="class-option"
-          :class="{ selected: selectedClassIds.includes(cls.class_id) }"
-        >
-          <input type="checkbox" :value="cls.class_id" v-model="selectedClassIds" />
-          {{ cls.class_name }}
-        </label>
-      </div>
-    </section>
+      <section class="class-picker">
+        <label for="semesterSelect">{{ tr('Term', '學期') }}</label>
+        <select id="semesterSelect" v-model="selectedSemester" @change="changeSemester">
+          <option value="first">{{ tr('First Term', '上學期') }}</option>
+          <option value="second">{{ tr('Second Term', '下學期') }}</option>
+        </select>
+        <label for="classSelect">{{ tr('Class', '班別') }}</label>
+        <select id="classSelect" v-model="selectedClassId" @change="fetchSelectedClassStudents">
+          <option value="">{{ tr('Select class', '選擇班別') }}</option>
+          <option v-for="cls in regularClasses" :key="cls.class_id" :value="cls.class_id">
+            {{ cls.class_name }}
+          </option>
+        </select>
+      </section>
 
-    <section class="student-section">
-      <div v-for="classId in selectedClassIds" :key="classId" class="class-students">
-        <h3>{{ className(classId) }}</h3>
-        <div v-if="studentsByClass[classId]" class="student-list">
+      <form v-if="selectedClassId" class="entry-form" @submit.prevent="saveGoals">
+        <div v-if="students.length" class="student-list">
           <label
-            v-for="student in studentsByClass[classId]"
+            v-for="student in students"
             :key="student.student_id"
             class="student-row"
           >
-            <span>{{ student.student_name || student.student_ch_name }}</span>
+            <span class="student-code">{{ studentCode(student) }}</span>
+            <span class="student-name">
+              {{ student.student_name || student.student_ch_name }}
+              <small v-if="student.english_name">{{ student.english_name }}</small>
+            </span>
             <input
               type="number"
               min="0"
+              max="8"
               step="1"
               v-model.number="goalCounts[student.student_id]"
-              placeholder="0"
+              @focus="$event.target.select()"
             />
           </label>
         </div>
-        <p v-else class="loading">&#x8F09;&#x5165;&#x4E2D;...</p>
-      </div>
 
-      <button
-        type="button"
-        :disabled="!selectedClassIds.length"
-        @click="saveGoals"
-      >
-        &#x63D0;&#x4EA4;
-      </button>
+        <p v-else-if="loading" class="state-text">{{ tr('Loading students...', '載入學生中...') }}</p>
+        <p v-else class="state-text">{{ tr('Please select a class.', '請選擇班別。') }}</p>
+
+        <button type="submit" class="primary-btn" :disabled="saving || loading || !students.length">
+          {{ saving ? tr('Saving...', '儲存中...') : tr('Submit', '提交') }}
+        </button>
+      </form>
     </section>
-  </div>
+  </main>
 </template>
 
 <script>
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
+
+function trText(vm, en, zh) {
+  return vm.$lang.locale === 'en' ? en : zh;
+}
 
 const TEXT = {
   loginFirst: '\u8acb\u5148\u767b\u5165\u3002',
-  chooseStudents: '\u8acb\u5148\u9078\u64c7\u73ed\u5225\u53ca\u5b78\u751f\u3002',
+  chooseStudents: '\u8acb\u5148\u9078\u64c7\u73ed\u5225\u3002',
   saved: '\u5df2\u5132\u5b58\u5b78\u7fd2\u76ee\u6a19\u8cc7\u6599\u3002',
   saveFailed: '\u5132\u5b58\u5931\u6557\u3002'
 };
@@ -65,59 +74,75 @@ export default {
   data() {
     return {
       classList: [],
-      selectedClassIds: [],
-      studentsByClass: {},
+      selectedSemester: 'first',
+      selectedClassId: '',
+      students: [],
       goalCounts: {},
-      teacher_id: null
+      teacher_id: null,
+      loading: false,
+      saving: false
     };
   },
-  watch: {
-    selectedClassIds() {
-      this.selectedClassIds.sort((a, b) => a - b);
-      this.fetchStudentsForSelectedClasses();
+  computed: {
+    termLabel() {
+      if (this.selectedSemester === 'second') return this.tr('Second Term', '下學期');
+      return this.tr('First Term', '上學期');
+    },
+    regularClasses() {
+      return this.classList.filter(cls => this.isRegularClass(cls.class_name));
     }
   },
   methods: {
-    className(classId) {
-      const foundClass = this.classList.find(cls => cls.class_id === classId);
-      return foundClass ? foundClass.class_name : `Class ${classId}`;
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    isRegularClass(className) {
+      return /^[1-6][AMRY]$/.test(String(className || '').trim().toUpperCase());
+    },
+    studentCode(student) {
+      const className = student.class_name || '';
+      const classNumber = String(student.class_number || '').padStart(2, '0');
+      return `${className}${classNumber}`;
+    },
+    async changeSemester() {
+      this.goalCounts = {};
+      await this.fetchExistingGoals();
+      if (this.selectedClassId) await this.fetchSelectedClassStudents();
     },
     async fetchClasses() {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert(TEXT.loginFirst);
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        alert(trText(this, 'Please login first.', TEXT.loginFirst));
         return;
       }
 
-      const res = await axios.get('http://localhost:3000/api/classes', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get('/api/classes');
       this.classList = res.data;
     },
     async getTeacherId() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       try {
-        const decoded = jwtDecode(token);
-        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${decoded.id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const decoded = JSON.parse(storedUser);
+        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`);
         this.teacher_id = res.data.teacher_id;
       } catch (err) {
-        console.warn('Could not load teacher id. The server will try to resolve it from the login token.', err);
+        console.warn('Could not load teacher id. The server will try to resolve it from the login session.', err);
       }
     },
     async fetchExistingGoals() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
-      const params = this.teacher_id ? { teacher_id: this.teacher_id } : {};
+      const params = {
+        semester: this.selectedSemester,
+        ...(this.teacher_id ? { teacher_id: this.teacher_id } : {})
+      };
 
       try {
-        const res = await axios.get('http://localhost:3000/api/learning-goals/records', {
-          params,
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await axios.get('/api/learning-goals/records', {
+          params
         });
 
         res.data.forEach(record => {
@@ -127,66 +152,66 @@ export default {
         console.warn('Could not load existing learning goals:', err);
       }
     },
-    async fetchStudentsForSelectedClasses() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      await Promise.all(this.selectedClassIds.map(async classId => {
-        if (this.studentsByClass[classId]) return;
-
-        try {
-          const res = await axios.get(`http://localhost:3000/api/students/by-class/${classId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-
-          this.$set(this.studentsByClass, classId, res.data);
-          res.data.forEach(student => {
-            if (this.goalCounts[student.student_id] === undefined) {
-              this.$set(this.goalCounts, student.student_id, 0);
-            }
-          });
-        } catch (err) {
-          console.error(`Failed to load students for class ${classId}:`, err);
-          this.$set(this.studentsByClass, classId, []);
-        }
-      }));
-    },
-    async saveGoals() {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert(TEXT.loginFirst);
+    async fetchSelectedClassStudents() {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser || !this.selectedClassId) {
+        this.students = [];
         return;
       }
 
-      const selectedStudentIds = this.selectedClassIds.flatMap(classId =>
-        (this.studentsByClass[classId] || []).map(student => student.student_id)
-      );
-
-      if (selectedStudentIds.length === 0) {
-        alert(TEXT.chooseStudents);
-        return;
-      }
-
-      const records = selectedStudentIds.map(studentId => ({
-        student_id: studentId,
-        completed_goals: Math.max(0, Number(this.goalCounts[studentId]) || 0)
-      }));
+      this.loading = true;
+      this.students = [];
 
       try {
-        await axios.post('http://localhost:3000/api/learning-goals/records', {
+        const res = await axios.get(`/api/students/by-class/${this.selectedClassId}`);
+
+        this.students = res.data;
+        this.students.forEach(student => {
+          if (this.goalCounts[student.student_id] === undefined) {
+            this.$set(this.goalCounts, student.student_id, 0);
+          }
+        });
+      } catch (err) {
+        console.error(`Failed to load students for class ${this.selectedClassId}:`, err);
+        this.students = [];
+      } finally {
+        this.loading = false;
+      }
+    },
+    async saveGoals() {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        alert(trText(this, 'Please login first.', TEXT.loginFirst));
+        return;
+      }
+
+      if (!this.selectedClassId || this.students.length === 0) {
+        alert(trText(this, 'Please select a class first.', TEXT.chooseStudents));
+        return;
+      }
+
+      const records = this.students.map(student => ({
+        student_id: student.student_id,
+        completed_goals: Math.min(8, Math.max(0, Number(this.goalCounts[student.student_id]) || 0))
+      }));
+
+      this.saving = true;
+      try {
+        await axios.post('/api/learning-goals/records', {
           teacher_id: this.teacher_id,
+          semester: this.selectedSemester,
           records
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
         });
 
-        alert(TEXT.saved);
+        alert(trText(this, 'Learning goal data saved.', TEXT.saved));
       } catch (err) {
         console.error('Failed to save learning goals:', err);
         const responseData = err.response && err.response.data ? err.response.data : {};
-        const error = responseData.error || TEXT.saveFailed;
+        const error = responseData.error || trText(this, 'Save failed.', TEXT.saveFailed);
         const detail = responseData.detail;
         alert(detail ? `${error}\n${detail}` : error);
+      } finally {
+        this.saving = false;
       }
     }
   },
@@ -203,96 +228,179 @@ export default {
 </script>
 
 <style scoped>
-.learning-goal-page {
-  padding: 20px;
+.entry-page {
+  box-sizing: border-box;
+  min-height: calc(100vh - 126px);
+  padding: 42px 20px 56px;
 }
 
-h1,
-h2,
-h3 {
-  text-align: center;
-}
-
-.class-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  max-width: 800px;
-  margin: 30px auto;
-}
-
-.class-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border: 2px solid #dcdcdc;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-  cursor: pointer;
-}
-
-.class-option:hover,
-.class-option.selected {
-  border-color: #007bff;
-  background-color: #eaf3ff;
-}
-
-.student-section {
-  max-width: 900px;
+.entry-panel {
+  max-width: 940px;
   margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  padding: 26px;
 }
 
-.class-students {
-  margin-bottom: 28px;
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-header p {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+h1 {
+  color: var(--text);
+  font-size: 32px;
+  line-height: 1.25;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.class-picker {
+  display: grid;
+  grid-template-columns: 110px minmax(180px, 260px);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.class-picker label {
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.class-picker select {
+  height: 42px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-size: 15px;
+  padding: 0 10px;
+}
+
+.entry-form {
+  margin: 0;
 }
 
 .student-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(240px, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .student-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 84px 1fr 96px;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 8px;
   background: #fff;
+  padding: 10px 12px;
+}
+
+.student-code {
+  border-radius: 999px;
+  background: #e7f4f6;
+  color: #0a5260;
+  font-weight: 800;
+  justify-self: start;
+  padding: 5px 9px;
+}
+
+.student-name {
+  min-width: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.student-name small {
+  color: var(--text-muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 2px;
 }
 
 .student-row input {
-  width: 80px;
-  padding: 6px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+  padding: 0 10px;
 }
 
-.loading {
+.student-row input:focus,
+.class-picker select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(11, 114, 133, 0.13);
+  outline: none;
+}
+
+.state-text {
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
+  margin: 0;
+  padding: 28px;
   text-align: center;
 }
 
-button {
+.primary-btn {
   display: block;
-  margin: 30px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
-  border-radius: 6px;
+  min-width: 96px;
+  height: 46px;
   border: none;
+  border-radius: 6px;
+  background: var(--primary);
+  color: #fff;
   cursor: pointer;
+  font-size: 15px;
+  font-weight: 800;
+  margin: 22px auto 0;
+  padding: 0 22px;
 }
 
-button:hover {
-  background-color: #0056b3;
+.primary-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
 }
 
-button:disabled {
-  background-color: #b8c2cc;
+.primary-btn:disabled {
+  background: #c7d2d8;
+  color: #607683;
   cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .entry-panel {
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+
+  .class-picker,
+  .student-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

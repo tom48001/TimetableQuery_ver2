@@ -1,28 +1,28 @@
 <template>
   <div class="schedule-container">
-    <h1>老師課表</h1>
+    <h1>{{ $t('home.title') }}</h1>
     <table class="timetable">
       <thead>
         <tr>
-          <th>節次 / 星期</th>
-          <th v-for="day in days" :key="day">{{ day }}</th>
+          <th>{{ $t('common.dayPeriod') }}</th>
+          <th v-for="day in days" :key="day">{{ dayLabel(day) }}</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(label, index) in periodLabels" :key="index">
+        <tr v-for="(label, index) in periodLabels" :key="index" :class="periodRowClass(index + 1)">
           <th v-html="label"></th>
-            <td v-for="day in days" :key="day">
-              <div
-                v-for="item in getCell(day, index + 1)"
-                :key="item.teacher_id + '-' + item.period_name"
-                class="cell-entry"
-                :class="{ 'red-entry': item.period_name === 'Period 11' || item.period_name === 'Period 12' }"
-              >
-                <strong>教師: {{ item.teacher_name }}</strong><br />
-                {{ item.class_name }}｜{{ item.subject_name }}<br />
-                {{ item.room_name }}
-              </div>
-            </td>
+          <td v-for="day in days" :key="day">
+            <div
+              v-for="item in getCell(day, index + 1)"
+              :key="item.teacher_id + '-' + item.period_name"
+              class="cell-entry"
+              :class="{ 'red-entry': item.period_name === 'Period 11' || item.period_name === 'Period 12' }"
+            >
+              <span class="teacher-line">{{ $t('common.lessonTeacher') }}: {{ item.teacher_name }}</span>
+              <strong class="lesson-line">{{ item.class_name }} | {{ displaySubject(item) }}</strong>
+              <span class="room-line">{{ displayRoom(item.room_name) }}</span>
+            </div>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -30,71 +30,83 @@
 </template>
 
 <script>
-import HeaderBar from '@/components/HeaderBar.vue'
-import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
+import { roomLabel, subjectLabel } from '../utils/timetableLabels';
+import { timetablePeriodLabel } from '../utils/timetablePeriodLabel';
 
 export default {
-  name: 'App',
-  components: {
-    HeaderBar
-  },
+  name: 'Home',
   data() {
     return {
+      teacherId: null,
       teachers: [],
       schedule: [],
-      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-      periodLabels: [
-        '第1節<br><small>(08:30-09:05)</small>',
-        '第2節<br><small>(09:05-09:40)</small>',
-        '第3節<br><small>(09:55-10:30)</small>',
-        '第4節<br><small>(10:30-11:05)</small>',
-        '第5節<br><small>(11:20-11:55)</small>',
-        '第6節<br><small>(11:55-12:30)</small>',
-        '第7節<br><small>(13:30-14:05)</small>',
-        '第8節<br><small>(14:05-14:40)</small>',
-        '第9節<br><small>(14:40-15:15)<br>紅(14:50-15:25)</small>',
-        '第10節<br><small>(15:25-16:00)<br>紅(15:25-16:00)</small>'
-      ]
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
     };
   },
+  computed: {
+    periodLabels() {
+      return [
+        this.periodLabel(1, '08:30-09:05'),
+        this.periodLabel(2, '09:05-09:40'),
+        this.periodLabel(3, '09:55-10:30'),
+        this.periodLabel(4, '10:30-11:05'),
+        this.periodLabel(5, '11:20-11:55'),
+        this.periodLabel(6, '11:55-12:30'),
+        this.periodLabel(7, '13:30-14:05'),
+        this.periodLabel(8, '14:05-14:40'),
+        this.periodLabel(9, '14:40-15:15', '14:50-15:25'),
+        this.periodLabel(10, '15:15-16:00', '15:25-16:00')
+      ];
+    }
+  },
   methods: {
+    dayLabel(day) {
+      return this.$t(`day.${day}`);
+    },
+    displaySubject(item) {
+      return subjectLabel(item, this.$lang.locale);
+    },
+    displayRoom(roomName) {
+      return roomLabel(roomName, this.$lang.locale);
+    },
+    periodLabel(period, time, alternateTime) {
+      return timetablePeriodLabel(this.$lang.locale, period, time, alternateTime);
+    },
+    periodRowClass(periodNumber) {
+      return [3, 4, 7, 8, 11, 12].includes(periodNumber) ? 'period-row-blue' : 'period-row-purple';
+    },
     async getTeacherId() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       try {
-        const decoded = jwtDecode(token);
+        const decoded = JSON.parse(storedUser);
         const userId = decoded.id;
 
-        // 呼叫後端，用 user_id 換 teacher_id
-        const res = await axios.get(`http://localhost:3000/api/teachers/from-user/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get(`/api/teachers/from-user/${userId}`);
 
         this.teacherId = res.data.teacher_id;
-        console.log('老師 ID:', this.teacherId);
       } catch (error) {
-        console.error('取得 teacher_id 失敗:', error);
+        console.error('Failed to load teacher id:', error);
       }
     },
     async fetchSchedule() {
       try {
-        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
         if (!this.teacherId) {
-          console.warn('teacherId 尚未設定');
+          console.warn('teacherId is missing');
           return;
         }
 
         const res = await axios.post(
-          'http://localhost:3000/api/teachers/schedule',
-          { teacherIds: [this.teacherId] },
-          { headers: { Authorization: `Bearer ${token}` } }
+          '/api/teachers/schedule',
+          { teacherIds: [this.teacherId] }
         );
 
         this.schedule = res.data;
       } catch (err) {
-        alert('載入課表失敗(client)');
+        alert(this.$t('common.loadTeacherScheduleFailed'));
         console.error(err);
       }
     },
@@ -151,14 +163,55 @@ export default {
   background-color: #f0f0f0;
 }
 
+.timetable tbody tr.period-row-purple th,
+.timetable tbody tr.period-row-purple td {
+  background-color: #eef4ff;
+  color: var(--text);
+}
+
+.timetable tbody tr.period-row-purple .teacher-line,
+.timetable tbody tr.period-row-purple .room-line {
+  color: #64748b;
+}
+
+.timetable tbody tr.period-row-purple .cell-entry + .cell-entry {
+  border-top-color: #64748b;
+}
+
+.timetable tbody tr.period-row-purple .red-entry {
+  background-color: #eef4ff;
+}
+
+.timetable tbody tr.period-row-blue th,
+.timetable tbody tr.period-row-blue td {
+  background-color: #ffffff;
+}
+
 .cell-entry {
-  background-color: #eef6ff;
-  margin-bottom: 6px;
-  padding: 4px;
-  border-radius: 4px;
+  background-color: transparent;
+  padding: 8px 4px;
+}
+
+.cell-entry + .cell-entry {
+  border-top: 1px dashed #64748b;
+}
+
+.teacher-line,
+.lesson-line,
+.room-line {
+  display: block;
+}
+
+.teacher-line,
+.room-line {
+  color: #64748b;
 }
 
 .red-entry {
   background-color: #ffeaea;
+}
+
+.red-time {
+  color: #b2352f;
 }
 </style>

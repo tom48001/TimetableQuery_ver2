@@ -1,65 +1,36 @@
 <template>
   <div>
-    <h1>風紀提名</h1>
-    <h2>選擇班別</h2>
-
+    <h1>{{ tr('Prefect Nomination', '紀律領袖生提名') }}</h1>
+    <h2>{{ tr('Select Class', '選擇班別') }}</h2>
     <div class="class-grid">
-      <label
-        v-for="cls in classList"
-        :key="cls.class_id"
-        class="class-option"
-        :class="{ selected: selectedClass.includes(cls.class_id) }"
-      >
+      <label v-for="cls in regularClasses" :key="cls.class_id" class="class-option" :class="{ selected: selectedClass.includes(cls.class_id) }">
         <input type="checkbox" :value="cls.class_id" v-model="selectedClass" />
         {{ cls.class_name }}
       </label>
     </div>
-
-    <div class="button-container">
-      <button @click="goNext">下一步</button>
-    </div>
+    <div class="button-container"><button @click="goNext">{{ tr('Next', '下一頁') }}</button></div>
   </div>
 </template>
-
 <script>
 import axios from 'axios';
-
 export default {
-  data() {
-    return {
-      classList: [],
-      selectedClass: []
-    };
-  },
-  methods: {
-    async fetchClasses() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/classes', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      this.classList = res.data;
-    },
-    goNext() {
-      if (this.selectedClass.length === 0) {
-        alert('請選擇班別');
-        return;
-      }
-
-      this.selectedClass.sort((a, b) => a - b);
-      this.$router.push({
-        name: 'PrefectNominationVote',
-        query: {
-          selectedClass: JSON.stringify(this.selectedClass)
-        }
-      });
+  data() { return { classList: [], selectedClass: [] }; },
+  computed: {
+    regularClasses() {
+      return this.classList.filter(cls => this.isRegularClass(cls.class_name));
     }
   },
-  mounted() {
-    this.fetchClasses();
-  }
+  methods: {
+    tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
+    isRegularClass(className) {
+      return /^[1-6][AMRY]$/.test(String(className || '').trim().toUpperCase());
+    },
+    async fetchClasses() { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/classes'); this.classList = res.data; },
+    goNext() { if (this.selectedClass.length === 0) { alert(this.tr('Please select at least one class.', '請選擇最少一個班別。')); return; } this.selectedClass.sort((a, b) => a - b); this.$router.push({ name: 'PrefectNominationVote', query: { selectedClass: JSON.stringify(this.selectedClass) } }); }
+  },
+  mounted() { this.fetchClasses(); }
 };
 </script>
-
 <style scoped>
 h1,
 h2 {
