@@ -1,6 +1,6 @@
 # Database files
 
-This directory is the canonical home for database SQL.
+This directory is the canonical home for database SQL. For the current Windows Server 2019 + Node.js + MySQL deployment, follow the root [README](../README.md). Docker is not required.
 
 - `school_install.sql`: the only SQL file required for a brand-new school installation.
 - `schema.sql`: base schema reference without the school-specific class, subject and room presets. Use `school_install.sql` for a new installation.
@@ -26,7 +26,7 @@ The installer includes the school's class and room presets and four core subject
 
 Re-running the current installer preserves existing reference records, period times and reward rules. It does not upgrade the structure of existing tables; use migrations for older installations. Check Workbench's Action Output for errors and the final counts, including `manager_count` (zero means no manager has been created yet).
 
-## Docker deployment (recommended)
+## Legacy Docker deployment (optional)
 
 The repository root contains `compose.yml`, which runs MySQL 8, the Express backend and the production Vue/Nginx frontend together.
 

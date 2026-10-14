@@ -36,119 +36,116 @@
 └── .env.docker.example     # Docker 環境變數範本
 ```
 
-## 本機快速啟動（Docker）
+## Windows Server 2019 部署（Node.js + MySQL）
 
-先安裝 Docker Engine／Docker Desktop 及 Docker Compose，並準備 Google OAuth 用戶端設定。以下指令在專案根目錄執行，不需要先安裝本機 npm 依賴。
+預設啟動不需要 Docker。Express 同時提供已建置的前端及 `/api`，在專案根目錄執行 `npm start` 即可啟動網站。
 
-### 1. 建立環境設定
+### 1. 準備執行環境
 
-PowerShell：
+- Windows Server 2019 x64，安裝 Node.js 22 LTS 及 npm。平台資訊見 [Node.js 官方支援平台](https://github.com/nodejs/node/blob/main/BUILDING.md)。
+- 安裝 MySQL 8，並啟動 MySQL Windows 服務。
+- 準備 Google OAuth 用戶端及學校資料庫帳戶。
+- 前端仍使用舊 Webpack 3：目前已驗證 Node.js 16 可以建置。建議在獨立建置環境產生 `client/dist/`，再複製到伺服器；正式後端使用 Node.js 22。Node.js 16 只作舊工具鏈建置用途。
+
+### 2. 安裝後端及設定環境
+
+在專案根目錄執行 PowerShell：
 
 ```powershell
-Copy-Item .env.docker.example .env.docker
+npm --prefix server ci --omit=dev
+Copy-Item server/.env.example server/.env
 ```
 
-macOS／Linux：
+如果已有 `server/.env`，保留原檔並逐項核對，勿覆蓋現有設定。
 
-```sh
-cp .env.docker.example .env.docker
+編輯 `server/.env`：
+
+```dotenv
+NODE_ENV=development
+HOST=127.0.0.1
+PORT=3000
+CLIENT_ORIGIN=http://localhost:3000
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=school_management
+DB_USER=school_app
+DB_PASS=replace-with-database-password
+GOOGLE_CLIENT_ID=replace-with-google-client-id
+GOOGLE_CLIENT_SECRET=replace-with-google-client-secret
+GOOGLE_CALLBACK_URL=http://localhost:3000/api/auth/google/callback
+GOOGLE_ALLOWED_DOMAIN=your-school-domain
+MANAGER_EMAILS=admin@your-school-domain
+SESSION_SECRET=replace-with-a-long-random-secret
 ```
 
-編輯 `.env.docker`，替換所有 `CHANGE_ME` 值，並核對以下設定：
+以上 HTTP 設定只供伺服器本機驗證。Google Console 的 authorized redirect URI 必須與 `GOOGLE_CALLBACK_URL` 完全一致。可用以下指令產生 session secret：
 
-| 變數 | 用途／本機設定 |
-| --- | --- |
-| `MYSQL_DATABASE`、`DB_NAME` | 使用 `school_management`，與安裝 SQL 一致 |
-| `MYSQL_USER`、`DB_USER` | 使用相同應用程式資料庫帳戶 |
-| `MYSQL_PASSWORD`、`DB_PASS` | 必須使用相同資料庫密碼 |
-| `MYSQL_ROOT_PASSWORD` | MySQL root 密碼 |
-| `DB_HOST`、`DB_PORT` | Docker 內使用 `db`、`3306` |
-| `SESSION_SECRET` | 使用隨機長字串；正式環境至少 32 字元 |
-| `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET` | Google OAuth 用戶端憑證 |
-| `GOOGLE_ALLOWED_DOMAIN` | 允許登入的 Google 帳戶網域，例如學校網域 |
-| `MANAGER_EMAILS` | 管理員 Google 電郵，以逗號分隔；不會自動建立帳戶 |
-| `CLIENT_ORIGIN` | `http://localhost:8080` |
-| `GOOGLE_CALLBACK_URL` | `http://localhost:8080/api/auth/google/callback` |
-
-在 Google OAuth 設定中加入相同的 authorized redirect URI：
-
-```text
-http://localhost:8080/api/auth/google/callback
+```powershell
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
 
-目前 `.env.docker.example` 仍包含舊 callback 及 `JWT_SECRET`。請按上表更新 callback；現行登入使用伺服器 session，不再使用 JWT。不要將實際 `.env` 或 `.env.docker` 提交至 Git。
+### 3. 初始化 MySQL
 
-### 2. 啟動服務
+全新安裝可在 MySQL Workbench 執行 [database/school_install.sql](database/school_install.sql)。建立 `school_app` 帳戶並授予 `school_management` 所需權限：日常資料讀寫，以及初始化／升級使用的 CREATE、ALTER、INDEX、REFERENCES。
 
-```sh
-docker compose -f compose.yml -f compose.local.yml up -d --build
-docker compose -f compose.yml -f compose.local.yml ps
+按該 SQL 的 `FIRST MANAGER ACCOUNT` 範例，填入真實 Google 電郵並執行 INSERT，然後設定對應的 `MANAGER_EMAILS`。環境變數本身不會建立帳戶。
+
+已有資料庫先備份，再按 [資料庫升級說明](database/README.md) 執行適用 migration。不要用全新安裝流程覆蓋現有資料。
+
+### 4. 建置前端
+
+在 Node.js 16 建置環境，於專案根目錄執行：
+
+```powershell
+npm --prefix client ci --ignore-scripts
+npm run build
 ```
 
-### 3. 建立首個管理員
+將產生的完整 `client/dist/` 複製至 Windows Server 相同位置。此目錄不會提交至 Git，因此只 clone 專案並不足以提供網頁。伺服器不需要啟動 webpack-dev-server，也不需要安裝前端依賴。
 
-首次建立空白 MySQL volume 時，Docker 會自動執行 `database/school_install.sql`。安裝檔包含班別、課室及核心科目預設資料，但不會建立可登入的管理員。
+### 5. 啟動網站
 
-1. 使用 MySQL Workbench 或 MySQL 用戶端連接資料庫。
-2. 找到 [school_install.sql](database/school_install.sql) 的 `FIRST MANAGER ACCOUNT` 範例。
-3. 將範例改成真實 Google 電郵，取消該段 INSERT 的註解，並在 `school_management` 執行。
-4. 核對 `.env.docker` 的 `MANAGER_EMAILS` 及 `GOOGLE_ALLOWED_DOMAIN`，如有修改則重新執行啟動指令。
-5. 使用 Google 登入，再匯入課表及建立其餘帳戶。
+在伺服器使用 Node.js 22，於專案根目錄執行：
 
-這個範例建立 Google-only 管理員，不會設定本地密碼。
-
-### 4. 查看日誌及停止
-
-```sh
-docker compose -f compose.yml -f compose.local.yml logs -f
-docker compose -f compose.yml -f compose.local.yml down
-```
-
-一般 `down` 會保留資料庫 volume。`down -v` 會刪除資料庫資料，只應在確定要清除資料且已有備份時使用。已有 volume 不會因重啟而再次執行安裝 SQL。
-
-## 本機原始碼開發
-
-前端仍使用舊版 Webpack 3／webpack-dev-server 2。Docker 前端建置使用 Node.js 16，後端使用 Node.js 20；這是目前映像的版本配置，不代表前端支援所有新版 Node.js。本機開發需分別準備相容執行環境。
-
-1. 準備 MySQL 8。全新資料庫執行 `database/school_install.sql`；現有資料庫按 [資料庫說明](database/README.md) 處理 migration。
-2. 複製 `server/.env.example` 為 `server/.env`，設定資料庫、Google OAuth 及 session。保留 `NODE_ENV=development`，callback 使用上述前端代理位址。
-3. 在兩個終端分別安裝依賴並啟動。
-
-後端（Node.js 20）：
-
-```sh
-cd server
-npm ci
-npm run dev
-```
-
-前端（與舊版工具鏈相容的 Node.js 環境）：
-
-```sh
-cd client
-npm ci --ignore-scripts
+```powershell
 npm start
 ```
 
-前端預設為 `http://localhost:8080`，並將 `/api` 代理至 `http://localhost:3000`。依賴清單仍包含舊測試用 PhantomJS，`--ignore-scripts` 可避免執行其下載腳本。舊模板單元測試及 E2E 已移除，目前使用 Node.js 執行 `test/navigation/` 的回歸測試。
+本機測試入口為 `http://localhost:3000`；健康檢查為 `http://localhost:3000/api/health`。`npm start` 會讀取 `server/.env`，不會自動啟動 MySQL 或建置前端。
 
-若本機後端連接 Docker MySQL，`server/.env` 使用 `DB_HOST=127.0.0.1`、`DB_PORT=3307`。完整 Docker 堆疊與本機前後端不能同時佔用 8080／3000。
+`Ctrl+C` 停止服務。此指令是前台程序；持續運行及開機自啟需另外由 Windows 服務管理工具或工作排程器管理，工作目錄設為專案根目錄。
 
-## 常用指令與驗證
+### 6. 正式 HTTPS 部署
+
+使用 IIS／Apache 等 HTTPS 反向代理，將同一網域的全部請求轉發至 `http://127.0.0.1:3000`。正式設定範例：
+
+```dotenv
+NODE_ENV=production
+HOST=127.0.0.1
+PORT=3000
+CLIENT_ORIGIN=https://timetable.example.edu.hk
+GOOGLE_CALLBACK_URL=https://timetable.example.edu.hk/api/auth/google/callback
+TRUST_PROXY=loopback
+```
+
+`TRUST_PROXY=loopback` 只適用於同機代理。代理須正確設定 `X-Forwarded-Proto: https` 並清除客戶端偽造的轉送標頭。更新 Google Console callback，讓外部使用者透過 HTTPS 網域登入。現行 production 登入要求 HTTPS，不能只把 `HOST` 改成 `0.0.0.0` 就當作正式部署。
+
+詳細設定及驗收見 [Session 登入部署及驗收](docs/deployment/SESSION_AUTH.md)。
+
+## 開發及測試
 
 | 指令（專案根目錄執行） | 用途 |
 | --- | --- |
-| `npm start` | 使用基礎 Compose 建置及前台啟動；不會載入本機 HTTP override |
-| `npm run docker:up` | 使用基礎 Compose 背景啟動 |
-| `npm run docker:down` | 停止基礎 Compose 堆疊，保留 volume |
-| `npm run docker:logs` | 追蹤容器日誌 |
-| `npm run start:local` | 同時啟動本機前後端；需先安裝根目錄及兩邊依賴，並確保 Node.js 相容 |
-| `npm --prefix server test` | 後端 Node.js 測試 |
-| `npm --prefix client test` | 全部現有前端回歸測試 |
-| `npm --prefix client run test:navigation` | 根路徑導航回歸測試 |
-| `npm --prefix client run build` | 建置前端至 `client/dist/` |
+| `npm start` | 啟動 Express，提供前端成品及 API |
+| `npm run build` | 建置前端至 `client/dist/` |
+| `npm run start:local` | 舊前後端開發模式，需根目錄及兩邊依賴、相容 Node.js |
+| `npm --prefix server test` | 後端測試 |
+| `npm --prefix client test` | 前端回歸測試；使用支援 Node test runner 的新版 Node.js |
+| `npm --prefix client run lint` | 前端程式檢查 |
 
-後端部分資料庫整合測試預設跳過，需按 `server/test/` 內的環境變數及測試資料庫要求啟用。測試命令成功不代表已驗證真實 Google 登入或正式環境的 HTTPS 代理。
+開發模式的前端仍使用 8080，因此需將 `CLIENT_ORIGIN` 及 Google callback 改成 `http://localhost:8080` 及 `http://localhost:8080/api/auth/google/callback`。一般部署的 `npm start` 使用 3000。
+
+部分資料庫整合測試預設跳過，需按 `server/test/` 內的環境變數及測試資料庫要求啟用。Docker 檔案及 `docker:*` 指令暫作舊部署參考，Windows 原生部署不使用它們。
 
 ## 資料匯入與帳戶連結
 
@@ -164,13 +161,4 @@ npm start
 
 登入狀態由 MySQL 保存的 session 管理，瀏覽器使用 HttpOnly cookie；前端共用 Axios 會處理 CSRF token。舊 JWT 不再接受，切換版本時前後端應一起更新，使用者需重新登入。
 
-Vue Router 使用記憶體導航，正常操作時網址維持 `/`。目前頁面會按登入使用者保存在分頁的 session storage，供重新整理時還原；儲存不可用時會返回首頁或登入頁。舊路徑入口仍需保留 Nginx SPA fallback。
-
-正式部署需設定：
-
-- `NODE_ENV=production`、HTTPS 的 `CLIENT_ORIGIN` 及隨機 `SESSION_SECRET`。
-- 前端與 `/api` 使用相同 HTTPS 網域，Google callback 指向 `/api/auth/google/callback`。
-- 根據實際代理設定 `TRUST_PROXY` 及 `X-Forwarded-Proto`。現有 Nginx 使用自身 `$scheme`，前方另有 TLS 代理時須配合調整。
-- 資料庫帳戶具備初始化 session／匯入資料表所需權限，並先備份既有資料。
-
-正式環境不要套用 `compose.local.yml`。詳細設定、密碼規則、session 行為及上線驗收步驟見 [Session 登入部署及驗收](docs/deployment/SESSION_AUTH.md)。
+Vue Router 使用記憶體導航，正常操作時網址維持 `/`。目前頁面會按登入使用者保存在分頁的 session storage，供重新整理時還原；儲存不可用時會返回首頁或登入頁。Express 已提供舊路徑入口的 SPA fallback。
