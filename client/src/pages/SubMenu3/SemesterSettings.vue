@@ -91,7 +91,15 @@ export default {
   },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
-    subjectLabel(subject) { return formatSubjectLabel(subject, this.$lang.locale); },
+    subjectLabel(subject) {
+      const label = formatSubjectLabel(subject, this.$lang.locale);
+      const matches = this.subjects.filter(item => formatSubjectLabel(item, this.$lang.locale) === label);
+      if (matches.length < 2) return label;
+      const code = subject.import_name || subject.subject_name || '';
+      const sameCode = matches.filter(item => (item.import_name || item.subject_name || '') === code);
+      const detail = sameCode.length > 1 || !code ? `${code} · ID ${subject.subject_id}` : code;
+      return `${label} (${detail})`;
+    },
     headers() { return {  }; },
     oppositeGroup,
     groupLabel(group) { return { odd: this.tr('Odd', '單數'), even: this.tr('Even', '雙數'), all: this.tr('All students', '全班'), disabled: this.tr('Disabled', '停用') }[group]; },

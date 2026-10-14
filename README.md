@@ -85,15 +85,6 @@ docker compose -f compose.yml -f compose.local.yml up -d --build
 docker compose -f compose.yml -f compose.local.yml ps
 ```
 
-本機 HTTP 必須載入 `compose.local.yml`，它會設定開發模式及同源 Google callback。基礎後端映像預設為 production，HTTP 的 `CLIENT_ORIGIN` 會被拒絕。
-
-| 服務 | 位址 |
-| --- | --- |
-| 系統入口 | http://localhost:8080 |
-| API 健康檢查（經前端代理） | http://localhost:8080/api/health |
-| 後端 | http://127.0.0.1:3000 |
-| MySQL／Workbench | `127.0.0.1:3307` |
-
 ### 3. 建立首個管理員
 
 首次建立空白 MySQL volume 時，Docker 會自動執行 `database/school_install.sql`。安裝檔包含班別、課室及核心科目預設資料，但不會建立可登入的管理員。

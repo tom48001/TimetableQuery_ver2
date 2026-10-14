@@ -60,7 +60,7 @@ export const getSemesterAdministration = async (req, res) => {
       ORDER BY FIELD(rule.grade, 'F1', 'F2', 'F3'), rule.semester, subject.subject_name
     `);
     const [subjects] = await db.query(`
-      SELECT DISTINCT subject.subject_id, subject.subject_name, subject.subject_name_zh, subject.subject_name_en
+      SELECT DISTINCT subject.subject_id, subject.import_name, subject.subject_name, subject.subject_name_zh, subject.subject_name_en
       FROM subject
       JOIN timetable ON timetable.subject_id = subject.subject_id
       JOIN class ON class.class_id = timetable.class_id
