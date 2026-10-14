@@ -32,7 +32,7 @@ export default {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     lessonCount(teacher) { return Number(teacher.lesson_count) || 0; },
     lessonCountLabel(teacher) { const count = this.lessonCount(teacher); return count ? `${count} ${this.tr('lessons', '堂')}` : this.tr('No timetable', '未有課表'); },
-    async fetchTeachers() { try { const token = localStorage.getItem('token'); const res = await axios.get('/api/teachers/list', { headers: { Authorization: `Bearer ${token}` } }); this.teachers = sortTeachersByName(res.data); } catch (err) { console.error('Failed to load teachers:', err); alert(this.tr('Failed to load teachers.', '載入老師列表失敗。')); } },
+    async fetchTeachers() { try { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/teachers/list'); this.teachers = sortTeachersByName(res.data); } catch (err) { console.error('Failed to load teachers:', err); alert(this.tr('Failed to load teachers.', '載入老師列表失敗。')); } },
     goNext() { if (!this.selectedTeacherId) { alert(this.tr('Please select a teacher.', '請選擇老師。')); return; } this.$router.push({ name: 'SwapLessonPick', query: { teacherId: this.selectedTeacherId, teacherName: this.selectedTeacherName } }); }
   },
   mounted() { this.fetchTeachers(); }

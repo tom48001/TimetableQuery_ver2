@@ -177,7 +177,7 @@ export default {
       return this.$lang.locale === 'en' ? en : zh;
     },
     authHeaders() {
-      return { Authorization: `Bearer ${localStorage.getItem('token')}` };
+      return {  };
     },
     subjectLabel(subject) {
       return formatSubjectLabel(subject, this.$lang.locale);

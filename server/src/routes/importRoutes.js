@@ -5,7 +5,7 @@ import multer from 'multer';
 import xlsx from 'xlsx';
 import fs from 'fs';
 import pool from '../db.js';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
 import { requirePermission } from '../auth/permissions.js';
 import { ensureStudentAdminSchema } from '../controllers/manageStudentController.js';
 import { ensureLessonGroupSchema } from '../controllers/lessonGroupController.js';
@@ -18,7 +18,7 @@ import { withImportJob, getImportProgress, setImportTotal, setImportProcessed } 
 
 const router = express.Router();
 router.use('/teachers', teacherImportRoutes);
-router.get('/progress/:jobId', ensureJWT, getImportProgress);
+router.get('/progress/:jobId', ensureSession, getImportProgress);
 const upload = multer({ dest: 'uploads/' });
 const DATABASE_BATCH_SIZE = 500;
 let importHistorySchemaReady = false;
@@ -488,7 +488,7 @@ async function respondImportError(req, res, status, payload) {
   return res.status(status).json(payload);
 }
 
-router.get('/batches', ensureJWT, requirePermission('importTimetable'), async (req, res) => {
+router.get('/batches', ensureSession, requirePermission('importTimetable'), async (req, res) => {
   try {
     await ensureImportHistoryTables(pool);
     const [rows] = await pool.query(`
@@ -508,7 +508,7 @@ router.get('/batches', ensureJWT, requirePermission('importTimetable'), async (r
   }
 });
 
-router.get('/batches/:batchId/json', ensureJWT, requirePermission('importTimetable'), async (req, res) => {
+router.get('/batches/:batchId/json', ensureSession, requirePermission('importTimetable'), async (req, res) => {
   try {
     const batchId = Number(req.params.batchId);
     if (!batchId) {
@@ -553,7 +553,7 @@ router.get('/batches/:batchId/json', ensureJWT, requirePermission('importTimetab
   }
 });
 
-router.delete('/batches/:batchId', ensureJWT, requirePermission('importTimetable'), async (req, res) => {
+router.delete('/batches/:batchId', ensureSession, requirePermission('importTimetable'), async (req, res) => {
   try {
     const batchId = Number(req.params.batchId);
     if (!batchId) {
@@ -574,7 +574,7 @@ router.delete('/batches/:batchId', ensureJWT, requirePermission('importTimetable
   }
 });
 
-router.post('/rollback/:batchId', ensureJWT, requirePermission('importTimetable'), async (req, res) => {
+router.post('/rollback/:batchId', ensureSession, requirePermission('importTimetable'), async (req, res) => {
   const conn = await pool.getConnection();
 
   try {
@@ -633,7 +633,7 @@ router.post('/rollback/:batchId', ensureJWT, requirePermission('importTimetable'
 
 router.post(
   '/csv',
-  ensureJWT,
+  ensureSession,
   requirePermission('importTimetable'),
   upload.single('file'),
   normalizeUploadedFilename,
@@ -977,7 +977,7 @@ router.post(
 
 router.post(
   ['/students/file', '/students/roster'],
-  ensureJWT,
+  ensureSession,
   requirePermission('manageStudents'),
   upload.single('file'),
   normalizeUploadedFilename,
@@ -1390,7 +1390,7 @@ router.post(
   })
 );
 
-router.get('/students/batches', ensureJWT, requirePermission('manageStudents'), async (req, res) => {
+router.get('/students/batches', ensureSession, requirePermission('manageStudents'), async (req, res) => {
   try {
     await ensureStudentImportHistoryTables(pool);
     const [rows] = await pool.query(`
@@ -1408,7 +1408,7 @@ router.get('/students/batches', ensureJWT, requirePermission('manageStudents'), 
   }
 });
 
-router.get('/students/batches/:batchId/json', ensureJWT, requirePermission('manageStudents'), async (req, res) => {
+router.get('/students/batches/:batchId/json', ensureSession, requirePermission('manageStudents'), async (req, res) => {
   try {
     const batchId = Number(req.params.batchId);
     if (!batchId) return res.status(400).json({ code: 'INVALID_BATCH', message: 'Invalid import batch.' });
@@ -1438,7 +1438,7 @@ router.get('/students/batches/:batchId/json', ensureJWT, requirePermission('mana
   }
 });
 
-router.delete('/students/batches/:batchId', ensureJWT, requirePermission('manageStudents'), async (req, res) => {
+router.delete('/students/batches/:batchId', ensureSession, requirePermission('manageStudents'), async (req, res) => {
   try {
     const batchId = Number(req.params.batchId);
     if (!batchId) return res.status(400).json({ code: 'INVALID_BATCH', message: 'Invalid import batch.' });
@@ -1453,7 +1453,7 @@ router.delete('/students/batches/:batchId', ensureJWT, requirePermission('manage
   }
 });
 
-router.post('/students/rollback/:batchId', ensureJWT, requirePermission('manageStudents'), async (req, res) => {
+router.post('/students/rollback/:batchId', ensureSession, requirePermission('manageStudents'), async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const batchId = Number(req.params.batchId);
@@ -1533,7 +1533,7 @@ router.post('/students/rollback/:batchId', ensureJWT, requirePermission('manageS
   }
 });
 
-router.post('/groups/preview', ensureJWT, requirePermission('manageStudents'), upload.single('file'),
+router.post('/groups/preview', ensureSession, requirePermission('manageStudents'), upload.single('file'),
   normalizeUploadedFilename, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ code: 'MISSING_FILE', message: 'Please upload an Excel or CSV file.' });
@@ -1558,7 +1558,7 @@ router.post('/groups/preview', ensureJWT, requirePermission('manageStudents'), u
   }
 });
 
-router.post('/groups/save', ensureJWT, requirePermission('manageStudents'), withImportJob(async (req, res) => {
+router.post('/groups/save', ensureSession, requirePermission('manageStudents'), withImportJob(async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const records = Array.isArray(req.body.records) ? req.body.records : [];

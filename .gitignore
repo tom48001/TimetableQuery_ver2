@@ -1,11 +1,10 @@
-client/node_modules/
-server/node_modules/
+node_modules/
+client/dist/
 outputs/
 
 server/.env
 **/server/.env
 **/server/src/.env
-**/server/src/db.js
 
 .DS_Store
 *.log

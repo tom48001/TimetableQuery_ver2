@@ -103,7 +103,7 @@ export default {
     }
   },
   async mounted() {
-    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
     const teacherId = this.$route.query.teacherId;
     if (!teacherId) {
       this.$router.replace({ name: 'SwapLesson' });
@@ -111,9 +111,7 @@ export default {
     }
 
     try {
-      const res = await axios.get(`/api/swap/teacher-lessons/${teacherId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(`/api/swap/teacher-lessons/${teacherId}`);
       this.lessons = res.data;
     } catch (err) {
       console.error('Failed to load lessons:', err);

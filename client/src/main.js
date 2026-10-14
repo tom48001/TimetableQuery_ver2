@@ -1,3 +1,4 @@
+import { refreshSession } from './config/session'
 import Vue from 'vue'
 import App from './App'
 import router from './router'
@@ -11,9 +12,9 @@ Vue.prototype.$t = t
 Vue.prototype.$i18n = i18n
 
 /* eslint-disable no-new */
-new Vue({
+refreshSession().then(() => new Vue({
   el: '#app',
   router,
   components: { App },
   template: '<App/>'
-})
+}))

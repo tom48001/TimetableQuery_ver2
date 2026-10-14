@@ -1,3 +1,4 @@
+import { installSessionFixture } from './sessionFixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -7,7 +8,6 @@ test('import jobs: real batches, rollback, ownership, student/group completion a
 }, async () => {
   assert.match(process.env.DB_NAME || '', /^codex_import_progress_test_/);
   const { default: express } = await import('express');
-  const { default: jwt } = await import('jsonwebtoken');
   const { default: xlsx } = await import('xlsx');
   const { default: pool } = await import('../src/db.js');
   const { default: router } = await import('../src/routes/importRoutes.js');
@@ -17,13 +17,14 @@ test('import jobs: real batches, rollback, ownership, student/group completion a
     VALUES (1, 'Import Test', 'import-test@example.test', 'manager')
     ON DUPLICATE KEY UPDATE user_id=user.user_id`);
   const app = express();
+  const sessionCookie = await installSessionFixture(app, pool);
   app.use(express.json());
   app.use('/api/import', router);
   const server = app.listen(0, '127.0.0.1');
   await new Promise(resolve => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}/api/import`;
-  const headers = { Authorization: `Bearer ${jwt.sign({ id: 1, role: 'manager' }, process.env.JWT_SECRET)}` };
-  const otherHeaders = { Authorization: `Bearer ${jwt.sign({ id: 2, role: 'manager' }, process.env.JWT_SECRET)}` };
+  const headers = { Cookie: sessionCookie(1) };
+  const otherHeaders = { Cookie: sessionCookie(2) };
   const observed = [];
   // Record DB updates, not simulated percentages, to prove intermediate batches
   // are committed independently of the main import transaction.

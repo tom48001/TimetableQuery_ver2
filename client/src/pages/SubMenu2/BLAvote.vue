@@ -51,7 +51,6 @@
 
 <script>
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
 import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 
 function parseJson(value, fallback) {
@@ -107,29 +106,27 @@ export default {
       return (this.selectedStudents[classId] || []).includes(studentId);
     },
     async getTeacherId() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       try {
-        const decoded = jwtDecode(token);
-        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const decoded = JSON.parse(storedUser);
+        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`);
         this.teacher_id = res.data.teacher_id;
       } catch (error) {
         console.error('Failed to load teacher id:', error);
         alert(this.tr('Please login again.', '\u8acb\u91cd\u65b0\u767b\u5165\u3002'));
       }
     },
-    async fetchStudentsForClass(classId, token) {
-      const headers = { Authorization: `Bearer ${token}` };
+    async fetchStudentsForClass(classId, storedUser) {
+      const headers = {  };
       const subjectUrl = `/api/students/by-class/${classId}/subject/${this.selectedSubject.subject_id}`;
       const res = await axios.get(subjectUrl, { headers });
       return Array.isArray(res.data) ? res.data : [];
     },
     async loadStudents() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       this.loading = true;
       this.loadError = '';
@@ -137,7 +134,7 @@ export default {
       try {
         await Promise.all(this.selectedClass.map(async classId => {
           this.$set(this.selectedStudents, classId, []);
-          const students = await this.fetchStudentsForClass(classId, token);
+          const students = await this.fetchStudentsForClass(classId, storedUser);
           this.$set(this.studentsByClass, classId, students);
         }));
       } catch (err) {
@@ -151,16 +148,15 @@ export default {
       }
     },
     async loadSelectedStudents() {
-      const token = localStorage.getItem('token');
-      if (!token || !this.teacher_id) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser || !this.teacher_id) return;
 
       try {
         const res = await axios.get('/api/bla/students', {
           params: {
             subject_id: this.selectedSubject.subject_id,
             teacher_id: this.teacher_id
-          },
-          headers: { Authorization: `Bearer ${token}` }
+          }
         });
 
         const selectedIds = res.data.map(student => student.student_id);
@@ -180,8 +176,8 @@ export default {
       }
     },
     async submitNomination() {
-      const token = localStorage.getItem('token');
-      if (!token || !this.teacher_id) {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser || !this.teacher_id) {
         alert(this.tr('Failed to load students.', '\u8f09\u5165\u5b78\u751f\u5931\u6557\u3002'));
         return;
       }
@@ -195,8 +191,6 @@ export default {
           teacher_id: teacherId,
           subject_id: subjectId,
           student_ids: selectedStudentIds
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
         });
 
         await Promise.all(Object.keys(this.previousSelectedStudents).map(async classId => {
@@ -212,8 +206,7 @@ export default {
               subjectId,
               teacherId,
               removed
-            },
-            headers: { Authorization: `Bearer ${token}` }
+            }
           });
         }));
 

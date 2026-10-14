@@ -260,7 +260,7 @@ export default {
   },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
-    authHeaders() { return { Authorization: `Bearer ${localStorage.getItem('token')}` }; },
+    authHeaders() { return {  }; },
     usesDse(student) {
       return String((student && student.citizenship) || '').trim() === '修讀 (DSE)';
     },

@@ -57,8 +57,8 @@ export default {
       return /^[1-6][AMRY]$/.test(String(className || '').trim().toUpperCase());
     },
     async loadClassList() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('/api/classes', { headers: { Authorization: `Bearer ${token}` } });
+      const storedUser = localStorage.getItem('user');
+      const res = await axios.get('/api/classes');
       this.classList = res.data;
     },
     goToResult() { this.$router.push({ name: 'ClassTimetableResult', query: { classId: this.selectedClass } }); }

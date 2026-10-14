@@ -92,7 +92,7 @@ export default {
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     subjectLabel(subject) { return formatSubjectLabel(subject, this.$lang.locale); },
-    headers() { return { Authorization: `Bearer ${localStorage.getItem('token')}` }; },
+    headers() { return {  }; },
     oppositeGroup,
     groupLabel(group) { return { odd: this.tr('Odd', '單數'), even: this.tr('Even', '雙數'), all: this.tr('All students', '全班'), disabled: this.tr('Disabled', '停用') }[group]; },
     addRule() {

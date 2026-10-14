@@ -1,10 +1,10 @@
 import express from 'express';
-import { ensureJWT, ensureTeacherIdentity } from '../auth/auth.js';
+import { ensureSession, ensureTeacherIdentity } from '../auth/auth.js';
 import { requirePermission } from '../auth/permissions.js';
 import { insertBLA, getVotedStudents, deleteBLA, getBLAResults, getSelectBLA } from '../controllers/blaController.js';
 
 const router = express.Router();
-router.use(ensureJWT);
+router.use(ensureSession);
 router.use(requirePermission('nominations'));
 
 router.post('/insert', ensureTeacherIdentity, insertBLA);

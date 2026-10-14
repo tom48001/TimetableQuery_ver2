@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../db.js';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
 import { requireAnyPermission } from '../auth/permissions.js';
 
 const router = express.Router();
@@ -27,7 +27,7 @@ function normaliseClassListSql(alias) {
 `;
 }
 
-router.use(ensureJWT);
+router.use(ensureSession);
 router.use(requireAnyPermission(['timetable', 'nominations', 'manageStudents']));
 
 router.post('/:classId', async (req, res) => {

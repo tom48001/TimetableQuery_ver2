@@ -93,7 +93,7 @@ export default {
       if (this.selectedFilter === 'special') return !firstDigit;
       return firstDigit === this.selectedFilter;
     },
-    async loadRooms() { const token = localStorage.getItem('token'); const res = await axios.get('/api/rooms', { headers: { Authorization: `Bearer ${token}` } }); this.roomList = res.data; },
+    async loadRooms() { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/rooms'); this.roomList = res.data; },
     searchSchedule() { this.$router.push({ name: 'RoomTimetableResult', query: { roomId: this.selectedRoom, roomName: this.selectedRoomName } }); }
   }
 };

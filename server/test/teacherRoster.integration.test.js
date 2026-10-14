@@ -1,3 +1,4 @@
+import { installSessionFixture } from './sessionFixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -6,16 +7,16 @@ test('teacher roster import preserves IDs and permissions, links accounts, reimp
 }, async () => {
   assert.match(process.env.DB_NAME || '', /^codex_teacher_roster_test_/);
   const { default: express } = await import('express');
-  const { default: jwt } = await import('jsonwebtoken');
   const { default: pool } = await import('../src/db.js');
   const { default: imports } = await import('../src/routes/importRoutes.js');
   const { initializeImportJobs } = await import('../src/utils/importJobs.js');
   await initializeImportJobs();
-  const app = express(); app.use(express.json()); app.use('/api/import', imports);
+  const app = express();
+  const sessionCookie = await installSessionFixture(app, pool); app.use(express.json()); app.use('/api/import', imports);
   const server = app.listen(0, '127.0.0.1');
   await new Promise(resolve => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}/api/import`;
-  const headers = { Authorization: `Bearer ${jwt.sign({ id: 1, role: 'manager' }, process.env.JWT_SECRET)}`, 'Content-Type': 'application/json' };
+  const headers = { Cookie: sessionCookie(1), 'Content-Type': 'application/json' };
   async function request(path, body) {
     const response = await fetch(`${base}${path}`, { method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined });
     return { status: response.status, data: await response.json() };

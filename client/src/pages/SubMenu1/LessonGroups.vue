@@ -319,8 +319,7 @@ export default {
       return this.$lang.locale === 'en' ? en : zh;
     },
     authHeaders() {
-      const token = localStorage.getItem('token');
-      return { Authorization: `Bearer ${token}` };
+      return {};
     },
     subjectLabel(group) {
       return formatSubjectLabel({

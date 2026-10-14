@@ -662,11 +662,6 @@ export default {
       const start = (page - 1) * this.historyPageSize + 1;
       const end = Math.min(start + this.historyPageSize - 1, this.importBatches.length);
       return `${start}-${end} / ${this.importBatches.length}`;
-=======
-      // const page = Math.min(this.historyPage, this.historyTotalPages);
-      // const start = (page - 1) * this.historyPageSize + 1;
-      // const end = Math.min(start + this.historyPageSize - 1, this.importBatches.length);
->>>>>>> d6a1450c48436382ae2a528ceb66d21ef8679bfa
     }
   },
   methods: {
@@ -859,12 +854,11 @@ export default {
       this.messageType = type;
     },
     authHeaders() {
-      const token = localStorage.getItem('token');
-      return { Authorization: `Bearer ${token}` };
+      return {};
     },
-    importRequestConfig(token, nextStage = 'processing') {
+    importRequestConfig(nextStage = 'processing') {
       return {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+        headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: event => {
           if (!event.total) return;
           this.uploadProgress = Math.min(100, Math.round((event.loaded * 100) / event.total));
@@ -890,8 +884,8 @@ export default {
       return batch.status === 'success';
     },
     async fetchImportBatches() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       this.historyLoading = true;
       try {
@@ -905,8 +899,8 @@ export default {
       }
     },
     async fetchStudentImportBatches() {
-      const token = localStorage.getItem('token');
-      if (!token || !this.canManageStudents) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser || !this.canManageStudents) return;
       this.studentHistoryLoading = true;
       try {
         const res = await axios.get('/api/import/students/batches', { headers: this.authHeaders() });
@@ -1104,8 +1098,8 @@ export default {
         return;
       }
 
-      const token = localStorage.getItem('token');
-      if (!token) {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
         this.showMessage(this.tr('Please login before uploading.', TEXT.loginFirst), 'error');
         return;
       }
@@ -1123,7 +1117,7 @@ export default {
       try {
         if (this.activeTab === 'studentRoster' && confirmRoster !== true) {
           this.studentRosterPreview = null;
-          const preview = await axios.post('/api/import/students/roster?preview=1', formData, this.importRequestConfig(token, 'previewing'));
+          const preview = await axios.post('/api/import/students/roster?preview=1', formData, this.importRequestConfig('previewing'));
           this.studentRosterPreview = preview.data;
           this.importProgress = null;
           this.showMessage('請核對來源工作表、學生及選修資料，再確認導入。', 'success');
@@ -1131,7 +1125,7 @@ export default {
         }
         const isExcelTimetable = this.activeTab === 'timetable' && /\.(xlsx|xls)$/i.test(this.file.name);
         if (this.activeTab === 'teachers') {
-          const preview = await axios.post('/api/import/teachers/preview', formData, this.importRequestConfig(token, 'previewing'));
+          const preview = await axios.post('/api/import/teachers/preview', formData, this.importRequestConfig('previewing'));
           this.rosterPreview = preview.data;
           this.rosterDirty = false;
           this.importProgress = null;
@@ -1142,7 +1136,7 @@ export default {
           const previewRes = await axios.post(
             '/api/import/groups/preview',
             formData,
-            this.importRequestConfig(token, 'previewing')
+            this.importRequestConfig('previewing')
           );
           if (previewRes.data.hasGroups) {
             this.importProgress = null;
@@ -1161,7 +1155,7 @@ export default {
         const res = await this.runImport(
           endpoint,
           formData,
-          this.importRequestConfig(token)
+          this.importRequestConfig()
         );
 
         const resultLines = this.activeTab === 'timetable'

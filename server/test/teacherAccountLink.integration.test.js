@@ -1,3 +1,4 @@
+import { installSessionFixture } from './sessionFixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -6,21 +7,21 @@ test('account linking preserves imported identities and schedules with atomic co
 }, async () => {
   assert.match(process.env.DB_NAME || '', /^codex_teacher_link_test_/);
   const { default: express } = await import('express');
-  const { default: jwt } = await import('jsonwebtoken');
   const { default: pool } = await import('../src/db.js');
   const { default: teacherRoutes } = await import('../src/routes/teacherRoutes.js');
   const { default: authRoutes } = await import('../src/routes/authRoutes.js');
   const app = express();
+  const sessionCookie = await installSessionFixture(app, pool);
   app.use(express.json());
   app.use('/api/teachers', teacherRoutes);
   app.use('/api/auth', authRoutes);
   const server = app.listen(0, '127.0.0.1');
   await new Promise(resolve => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
-  const token = (id, role = 'manager') => jwt.sign({ id, role }, process.env.JWT_SECRET);
+  const token = id => sessionCookie(id);
   async function request(path, method = 'GET', body, auth = token(1)) {
     const response = await fetch(`${base}${path}`, {
-      method, headers: { Authorization: `Bearer ${auth}`, 'Content-Type': 'application/json' },
+      method, headers: { Cookie: auth, 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined
     });
     return { status: response.status, data: await response.json() };

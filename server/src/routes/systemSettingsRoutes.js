@@ -1,5 +1,5 @@
 import express from 'express';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
 import { requireRole } from '../auth/permissions.js';
 import {
   getSemesterAdministration,
@@ -10,8 +10,8 @@ import {
 const router = express.Router();
 const managerOnly = requireRole('manager');
 
-router.get('/semester', ensureJWT, managerOnly, getSemesterAdministration);
-router.put('/semester', ensureJWT, managerOnly, updateSemesterSettings);
-router.put('/junior-subject-rules', ensureJWT, managerOnly, replaceJuniorRules);
+router.get('/semester', ensureSession, managerOnly, getSemesterAdministration);
+router.put('/semester', ensureSession, managerOnly, updateSemesterSettings);
+router.put('/junior-subject-rules', ensureSession, managerOnly, replaceJuniorRules);
 
 export default router;

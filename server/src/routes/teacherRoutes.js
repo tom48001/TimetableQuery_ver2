@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../db.js';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
 import { hasPermission, requireAnyPermission, requirePermission } from '../auth/permissions.js';
 import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, getTeacherLinkOptions } from '../controllers/manageTeacherRoutes.js';
 import { getTeachersSchedule } from '../controllers/teacherScheduleController.js';
@@ -8,7 +8,7 @@ import pool from '../db.js';
 
 const router = express.Router();
 
-router.use(ensureJWT);
+router.use(ensureSession);
 
 router.get('/getAllTeachers', requirePermission('manageUsers'), getAllTeachers);
 router.get('/link-options', requirePermission('manageUsers'), getTeacherLinkOptions);

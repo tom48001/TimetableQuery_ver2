@@ -107,7 +107,7 @@ export default {
   },
   async mounted() {
     const teacherId = this.$route.query.teacherId;
-    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
     const hasValidLessons = this.selectedLessons.length > 0 && this.selectedLessons.every(lesson =>
       lesson.day && lesson.period && lesson.classId && lesson.subjectId
     );
@@ -124,8 +124,6 @@ export default {
           classId: lesson.classId,
           subjectId: lesson.subjectId,
           teacherId
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
         })
       ));
 

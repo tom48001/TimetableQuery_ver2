@@ -111,13 +111,11 @@ export default {
       return [...new Set((teacher.lessons || []).filter(item => periods.includes(Number(item.period_id))).map(item => item.class_name || this.tr('Busy', '有課')))].join(' / ');
     },
     async fetchDaySchedule() {
-      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
 
       try {
         const res = await axios.post('/api/teachers/free-teachers-day', {
           weekday: this.weekday
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
         });
 
         this.teachers = sortTeachersByName(res.data);

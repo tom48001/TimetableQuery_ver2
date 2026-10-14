@@ -160,7 +160,7 @@ export default {
       return AWARD_LABELS[award] || award;
     },
     authHeaders() {
-      return { Authorization: `Bearer ${localStorage.getItem('token')}` };
+      return {  };
     },
     async fetchRewardRules() {
       try {
@@ -203,12 +203,11 @@ export default {
       }
     },
     async fetchResults() {
-      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
 
       try {
         const res = await axios.get('/api/learning-goals/results', {
-          params: { semester: this.selectedSemester },
-          headers: { Authorization: `Bearer ${token}` }
+          params: { semester: this.selectedSemester }
         });
         this.results = res.data;
         this.searched = true;

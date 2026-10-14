@@ -1,5 +1,5 @@
 import express from 'express';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
 import { requireAnyPermission, requirePermission } from '../auth/permissions.js';
 import db from '../db.js';
 import {
@@ -21,23 +21,23 @@ import {
 const router = express.Router();
 const canReadStudentData = requireAnyPermission(['timetable', 'nominations', 'manageStudents']);
 
-router.get('/admin/list', ensureJWT, requirePermission('manageStudents'), getManagedStudents);
-router.get('/admin/elective-subjects', ensureJWT, requirePermission('manageStudents'), getElectiveSubjects);
-router.post('/admin', ensureJWT, requirePermission('manageStudents'), createManagedStudent);
-router.put('/admin/:studentId', ensureJWT, requirePermission('manageStudents'), updateManagedStudent);
-router.delete('/admin/:studentId', ensureJWT, requirePermission('manageStudents'), deleteManagedStudent);
-router.patch('/admin/:studentId/status', ensureJWT, requirePermission('manageStudents'), setManagedStudentStatus);
+router.get('/admin/list', ensureSession, requirePermission('manageStudents'), getManagedStudents);
+router.get('/admin/elective-subjects', ensureSession, requirePermission('manageStudents'), getElectiveSubjects);
+router.post('/admin', ensureSession, requirePermission('manageStudents'), createManagedStudent);
+router.put('/admin/:studentId', ensureSession, requirePermission('manageStudents'), updateManagedStudent);
+router.delete('/admin/:studentId', ensureSession, requirePermission('manageStudents'), deleteManagedStudent);
+router.patch('/admin/:studentId/status', ensureSession, requirePermission('manageStudents'), setManagedStudentStatus);
 
-router.get('/by-class/:classId/subject/:subjectId', ensureJWT, canReadStudentData, getStudentsByClassNSubject);
-router.get('/by-class/:classId', ensureJWT, canReadStudentData, getStudentsByClassId);
-router.post('/by-subject', ensureJWT, canReadStudentData, getStudentsBySubject);
+router.get('/by-class/:classId/subject/:subjectId', ensureSession, canReadStudentData, getStudentsByClassNSubject);
+router.get('/by-class/:classId', ensureSession, canReadStudentData, getStudentsByClassId);
+router.post('/by-subject', ensureSession, canReadStudentData, getStudentsBySubject);
 
-router.get('/elective-subjects', ensureJWT, canReadStudentData, async (req, res) => {
+router.get('/elective-subjects', ensureSession, canReadStudentData, async (req, res) => {
   const [rows] = await db.query('SELECT DISTINCT subject_name FROM elective_subjects');
   res.json(rows.map(row => row.subject_name));
 });
 
-router.post('/elective-students', ensureJWT, canReadStudentData, async (req, res) => {
+router.post('/elective-students', ensureSession, canReadStudentData, async (req, res) => {
   const { formLevel, subjectName } = req.body;
 
   const [rows] = await db.query(
@@ -53,7 +53,7 @@ router.post('/elective-students', ensureJWT, canReadStudentData, async (req, res
   res.json(rows);
 });
 
-router.get('/:studentId/timetable', ensureJWT, requirePermission('timetable'), getStudentTimetable);
-router.get('/', ensureJWT, canReadStudentData, getStudents);
+router.get('/:studentId/timetable', ensureSession, requirePermission('timetable'), getStudentTimetable);
+router.get('/', ensureSession, canReadStudentData, getStudents);
 
 export default router;

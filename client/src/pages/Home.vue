@@ -30,7 +30,6 @@
 </template>
 
 <script>
-import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 import { roomLabel, subjectLabel } from '../utils/timetableLabels';
 import { timetablePeriodLabel } from '../utils/timetablePeriodLabel';
@@ -78,16 +77,14 @@ export default {
       return [3, 4, 7, 8, 11, 12].includes(periodNumber) ? 'period-row-blue' : 'period-row-purple';
     },
     async getTeacherId() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       try {
-        const decoded = jwtDecode(token);
+        const decoded = JSON.parse(storedUser);
         const userId = decoded.id;
 
-        const res = await axios.get(`/api/teachers/from-user/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get(`/api/teachers/from-user/${userId}`);
 
         this.teacherId = res.data.teacher_id;
       } catch (error) {
@@ -96,7 +93,7 @@ export default {
     },
     async fetchSchedule() {
       try {
-        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
         if (!this.teacherId) {
           console.warn('teacherId is missing');
           return;
@@ -104,8 +101,7 @@ export default {
 
         const res = await axios.post(
           '/api/teachers/schedule',
-          { teacherIds: [this.teacherId] },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { teacherIds: [this.teacherId] }
         );
 
         this.schedule = res.data;

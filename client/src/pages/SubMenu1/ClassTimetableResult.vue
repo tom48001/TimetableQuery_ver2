@@ -134,9 +134,9 @@ export default {
     },
     async fetchSchedule() {
       try {
-        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
         const classId = this.$route.query.classId;
-        const res = await axios.get(`/api/classes/schedule/${classId}`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.get(`/api/classes/schedule/${classId}`);
         this.schedule = res.data;
       } catch (err) {
         alert(this.tr('Failed to load timetable.', '\u8f09\u5165\u8ab2\u8868\u5931\u6557\u3002'));

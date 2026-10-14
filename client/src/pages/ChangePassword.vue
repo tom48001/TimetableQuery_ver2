@@ -78,8 +78,8 @@ export default {
       this.messageType = type;
     },
     async changePassword() {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
         this.showMessage(this.tr('Please login first.', TEXT.loginFirst), 'error');
         return;
       }
@@ -98,10 +98,10 @@ export default {
           currentPassword: this.currentPassword,
           newPassword: this.newPassword,
           confirmPassword: this.confirmPassword
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
         });
 
+        localStorage.removeItem('user');
+        this.$router.replace('/login');
         this.currentPassword = '';
         this.newPassword = '';
         this.confirmPassword = '';

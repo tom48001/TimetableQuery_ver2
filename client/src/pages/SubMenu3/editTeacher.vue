@@ -457,8 +457,7 @@ export default {
       }, 250);
     },
     authHeaders() {
-      const token = localStorage.getItem('token');
-      return { Authorization: `Bearer ${token}` };
+      return {};
     },
     loadCurrentUserRole() {
       const rawUser = localStorage.getItem('user');

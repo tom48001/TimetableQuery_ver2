@@ -45,7 +45,6 @@
 
 <script>
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
 
 export default {
   data() {
@@ -93,14 +92,12 @@ export default {
       return (this.selectedStudents[classId] || []).includes(studentId);
     },
     async getTeacherId() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       try {
-        const decoded = jwtDecode(token);
-        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const decoded = JSON.parse(storedUser);
+        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`);
 
         this.teacher_id = res.data.teacher_id;
       } catch (err) {
@@ -109,8 +106,8 @@ export default {
       }
     },
     async fetchStudentsForClasses() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       this.loading = true;
       this.loadError = '';
@@ -120,9 +117,7 @@ export default {
           this.$set(this.selectedStudents, classId, []);
 
           try {
-            const res = await axios.get(`/api/students/by-class/${classId}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`/api/students/by-class/${classId}`);
             this.$set(this.studentsByClass, classId, res.data);
           } catch (err) {
             console.error(`Failed to load students for class ${classId}:`, err);
@@ -136,13 +131,12 @@ export default {
       }
     },
     async loadSelectedStudents() {
-      const token = localStorage.getItem('token');
-      if (!token || !this.teacher_id) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser || !this.teacher_id) return;
 
       try {
         const res = await axios.get('/api/prefect/students', {
-          params: { teacher_id: this.teacher_id },
-          headers: { Authorization: `Bearer ${token}` }
+          params: { teacher_id: this.teacher_id }
         });
 
         const selectedIds = res.data.map(stu => stu.student_id);
@@ -162,8 +156,8 @@ export default {
       }
     },
     submitNomination() {
-      const token = localStorage.getItem('token');
-      if (!token || !this.teacher_id) {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser || !this.teacher_id) {
         alert(this.tr('Please login again.', '\u8acb\u91cd\u65b0\u767b\u5165\u3002'));
         return;
       }
@@ -174,8 +168,6 @@ export default {
       axios.post('/api/prefect/insert', {
         teacher_id: teacherId,
         student_ids: selectedStudentIds
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       }).then(() => {
         for (const classId in this.previousSelectedStudents) {
           const removed = this.previousSelectedStudents[classId].filter(
@@ -187,8 +179,7 @@ export default {
               data: {
                 teacherId,
                 removed
-              },
-              headers: { Authorization: `Bearer ${token}` }
+              }
             }).catch(err => {
               console.error('Failed to delete prefect nominations:', err);
             });

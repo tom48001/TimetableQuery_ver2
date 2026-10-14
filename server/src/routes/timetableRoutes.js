@@ -1,5 +1,5 @@
 import express from 'express';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
 import { requirePermission } from '../auth/permissions.js';
 import {
   getTeachersSchedule,
@@ -11,7 +11,7 @@ import { getStudentTimetable } from '../controllers/studentController.js';
 
 const router = express.Router();
 
-router.use(ensureJWT);
+router.use(ensureSession);
 router.use(requirePermission('timetable'));
 
 router.post('/teachers-schedule', getTeachersSchedule);

@@ -1,5 +1,5 @@
 import express from 'express';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
 import { requirePermission } from '../auth/permissions.js';
 import {
   getTeacherLessons,
@@ -8,7 +8,7 @@ import {
 
 const router = express.Router();
 
-router.use(ensureJWT);
+router.use(ensureSession);
 router.use(requirePermission('timetable'));
 
 // 取得老師的所有課堂（調課用）

@@ -25,7 +25,7 @@ export default {
     isRegularClass(className) {
       return /^[1-6][AMRY]$/.test(String(className || '').trim().toUpperCase());
     },
-    async fetchClasses() { const token = localStorage.getItem('token'); const res = await axios.get('/api/classes', { headers: { Authorization: `Bearer ${token}` } }); this.classList = res.data; },
+    async fetchClasses() { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/classes'); this.classList = res.data; },
     goNext() { if (this.selectedClass.length === 0) { alert(this.tr('Please select at least one class.', '請選擇最少一個班別。')); return; } this.selectedClass.sort((a, b) => a - b); this.$router.push({ name: 'ConductAwardVote', query: { selectedClass: JSON.stringify(this.selectedClass) } }); }
   },
   mounted() { this.fetchClasses(); }

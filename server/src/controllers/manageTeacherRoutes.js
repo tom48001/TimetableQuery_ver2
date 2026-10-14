@@ -1,3 +1,4 @@
+import { passwordError } from '../auth/passwordPolicy.js';
 import { subjectHeadIds, validateHeadSubjects } from '../utils/subjectHeadSubjects.js';
 import db from '../db.js';
 import bcrypt from 'bcrypt';
@@ -133,6 +134,10 @@ export const createTeacher = async (req, res) => {
     }
 
     if (normalizedRole === 'subject_head' && !await validateHeadSubjects(db, headSubjectIds)) return res.status(400).json({ error: 'Select valid managed subjects.' });
+    if (password !== undefined && password !== null && password !== '') {
+      const error = passwordError(password);
+      if (error) return res.status(400).json({ error });
+    }
     const hashed = password ? await bcrypt.hash(password, 10) : null;
     const permissionText = sanitizePermissions(permissions, normalizedRole, req);
     conn = await db.getConnection();
@@ -167,6 +172,10 @@ export const updateTeacher = async (req, res) => {
     return res.status(400).json({ error: 'Invalid user data or role.' });
   }
 
+  if (newPassword !== undefined && newPassword !== null && newPassword !== '') {
+    const error = passwordError(newPassword);
+    if (error) return res.status(400).json({ error });
+  }
   let conn;
   try {
     await ensurePermissionsColumn();

@@ -82,12 +82,10 @@ export default {
       return subjects.map(subject => this.subjectLabel(subject)).join(this.$lang.locale === 'en' ? ', ' : '\u3001');
     },
     async fetchBLA() {
-      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
 
       try {
-        const res = await axios.get('/api/bla/results', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get('/api/bla/results');
         this.BLAResults = res.data;
         this.searched = true;
       } catch (err) {

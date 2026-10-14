@@ -69,12 +69,10 @@ export default {
       return this.uniqueTeachers(names).length;
     },
     async fetchConductResults() {
-      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
 
       try {
-        const res = await axios.get('/api/conduct/results', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get('/api/conduct/results');
         this.nominationResults = res.data;
         this.searched = true;
       } catch (err) {

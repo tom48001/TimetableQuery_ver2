@@ -94,6 +94,7 @@
 </template>
 
 <script>
+import axios from 'axios';
 export default {
   data() {
     return {
@@ -170,19 +171,15 @@ export default {
     },
     async handleLogout() {
       try {
-        const token = localStorage.getItem('token');
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          credentials: 'include',
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
+        await axios.post('/api/auth/logout');
       } catch (error) {
         console.error('Logout failed:', error);
-      } finally {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        this.$router.push('/login');
+        alert('登出失敗，請重試。Logout failed. Please try again.');
+        return;
       }
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      this.$router.push('/login');
     }
   }
 };

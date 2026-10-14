@@ -1,6 +1,6 @@
 import { groupNominationSubjects } from '../utils/nominationSubjects.js';
 import express from 'express';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
 import { requireAnyPermission } from '../auth/permissions.js';
 import db from '../db.js';
 import { getStudentElectives, getElectives, getElectiveSubjectOptions, getSubjectHeadOptions } from '../controllers/subjectController.js';
@@ -33,7 +33,7 @@ async function ensureSubjectNominationColumn() {
   nominationColumnReady = true;
 }
 
-router.get('/', ensureJWT, canReadSchoolData, async (req, res) => {
+router.get('/', ensureSession, canReadSchoolData, async (req, res) => {
   try {
     await fillChineseSubjectNames(db);
     const [rows] = await db.query('SELECT * FROM subject ORDER BY subject_id');
@@ -44,7 +44,7 @@ router.get('/', ensureJWT, canReadSchoolData, async (req, res) => {
   }
 });
 
-router.get('/nomination-options', ensureJWT, canReadSchoolData, async (req, res) => {
+router.get('/nomination-options', ensureSession, canReadSchoolData, async (req, res) => {
   try {
     await fillChineseSubjectNames(db);
     const [subjects] = await db.query('SELECT * FROM subject');
@@ -52,7 +52,7 @@ router.get('/nomination-options', ensureJWT, canReadSchoolData, async (req, res)
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-router.get('/class-counts', ensureJWT, canReadSchoolData, async (req, res) => {
+router.get('/class-counts', ensureSession, canReadSchoolData, async (req, res) => {
   try {
     await ensureSubjectNominationColumn();
     await ensureStudentAdminSchema();
@@ -71,11 +71,11 @@ router.get('/class-counts', ensureJWT, canReadSchoolData, async (req, res) => {
   }
 });
 
-router.get('/findElective', ensureJWT, canReadSchoolData, getElectiveSubjectOptions);
-router.get('/head-options', ensureJWT, canReadSchoolData, getSubjectHeadOptions);
+router.get('/findElective', ensureSession, canReadSchoolData, getElectiveSubjectOptions);
+router.get('/head-options', ensureSession, canReadSchoolData, getSubjectHeadOptions);
 
-router.post('/list', ensureJWT, canReadSchoolData, getStudentElectives);
+router.post('/list', ensureSession, canReadSchoolData, getStudentElectives);
 
-router.post('/electiveName', ensureJWT, canReadSchoolData, getElectives);
+router.post('/electiveName', ensureSession, canReadSchoolData, getElectives);
 
 export default router;

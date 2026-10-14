@@ -1,11 +1,12 @@
 import { subjectHeadIds } from '../utils/subjectHeadSubjects.js';
 import express from 'express';
 import passport from 'passport';
-import jwt from 'jsonwebtoken';
+import { SESSION_NAME, SESSION_MS, csrfToken, loginLimiter } from '../auth/sessionSecurity.js';
+import { passwordError } from '../auth/passwordPolicy.js';
 import db from '../db.js';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
 import { ensurePermissionsColumn, permissionsForUser, requirePermission } from '../auth/permissions.js';
 
 dotenv.config();
@@ -29,98 +30,73 @@ const MESSAGES = {
   passwordChangeFailed: '\u66f4\u65b0\u5bc6\u78bc\u5931\u6557\u3002'
 };
 
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+const limitLogin = loginLimiter(db);
+const dummyHash = await bcrypt.hash('dummy comparison password only', 10);
+function publicUser(user) {
+  return { id: user.user_id, user_id: user.user_id, role: String(user.role || 'teacher').trim().toLowerCase(),
+    user_name: user.user_name, email: user.email, permissions: permissionsForUser(user),
+    subject_head_subject_id: user.subject_head_subject_id || null, subject_head_subject_ids: subjectHeadIds(user) };
+}
+function finishLogin(req, res, next, user, google = false) {
+  // Passport regenerates the session ID, preventing session fixation.
+  req.logIn(user, error => {
+    if (error) return next(error);
+    req.session.authExpires = Date.now() + SESSION_MS;
+    csrfToken(req);
+    req.session.save(error => {
+      if (error) return next(error);
+      if (google) return res.redirect(`${CLIENT_ORIGIN}/google-redirect`);
+      return res.json({ message: MESSAGES.loginOk, user: publicUser(user) });
+    });
+  });
+}
 
+router.get('/csrf', (req, res) => res.json({ csrfToken: csrfToken(req) }));
+router.post('/login', limitLogin, async (req, res, next) => {
+  const { email, password } = req.body;
   try {
-    if (!email || !password) {
+    if (typeof email !== 'string' || email.length > 254 || typeof password !== 'string' || !password || Buffer.byteLength(password) > 72) {
       return res.status(400).json({ error: MESSAGES.needCredentials });
     }
-
     await ensurePermissionsColumn();
-    const [users] = await db.query('SELECT * FROM user WHERE email = ?', [email]);
-    if (!users.length) {
-      return res.status(401).json({ error: MESSAGES.invalidCredentials });
-    }
-
-    if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ error: MESSAGES.jwtMissing });
-    }
-
+    const [users] = await db.query('SELECT * FROM user WHERE email = ?', [email.trim().toLowerCase()]);
     const user = users[0];
-    const passwordMatch = user.password ? await bcrypt.compare(password, user.password) : false;
-    if (!passwordMatch) {
-      return res.status(401).json({ error: MESSAGES.invalidCredentials });
-    }
-
-    const role = user.role ? user.role.trim().toLowerCase() : 'teacher';
-    const permissions = permissionsForUser(user);
-    const token = jwt.sign(
-      {
-        id: user.user_id,
-        role,
-        user_name: user.user_name,
-        email: user.email,
-        permissions,
-        subject_head_subject_id: user.subject_head_subject_id || null,
-        subject_head_subject_ids: subjectHeadIds(user)
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '2h' }
-    );
-    const safeUser = { ...user };
-    delete safeUser.password;
-    safeUser.permissions = permissions;
-
-    return res.json({ message: MESSAGES.loginOk, user: safeUser, token });
-  } catch (error) {
-    console.error('Login failed:', error);
-    return res.status(500).json({ error: MESSAGES.serverError });
-  }
+    const matches = await bcrypt.compare(password, user?.password || dummyHash);
+    if (!user?.password || !matches) return res.status(401).json({ error: MESSAGES.invalidCredentials });
+    return finishLogin(req, res, next, user);
+  } catch (error) { next(error); }
 });
 
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: `${CLIENT_ORIGIN}/login?error=google` }),
-  async (req, res) => {
-    if (!req.user) {
-      return res.redirect(`${CLIENT_ORIGIN}/login?error=unauthorized`);
-    }
-
-    await ensurePermissionsColumn();
-    const role = req.user.role ? req.user.role.trim().toLowerCase() : 'teacher';
-    const permissions = permissionsForUser(req.user);
-    const token = jwt.sign(
-      {
-        id: req.user.user_id,
-        role,
-        user_name: req.user.user_name,
-        email: req.user.email,
-        permissions,
-        subject_head_subject_id: req.user.subject_head_subject_id || null,
-        subject_head_subject_ids: subjectHeadIds(req.user)
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '2h' }
-    );
-
-    return res.redirect(`${CLIENT_ORIGIN}/google-redirect?token=${token}`);
+router.get('/google', (req, res, next) => {
+  req.session.oauthStarted = Date.now();
+  next();
+}, passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google/callback', (req, res, next) => {
+  const started = req.session.oauthStarted;
+  delete req.session.oauthStarted;
+  if (!started || Date.now() - started > 10 * 60 * 1000) {
+    return res.redirect(`${CLIENT_ORIGIN}/login?error=google`);
   }
-);
-
-router.get('/me', ensureJWT, (req, res) => {
-  if (!req.user) return res.status(401).json({ error: MESSAGES.unauthorized });
-  return res.json(req.user);
+  passport.authenticate('google', { session: false }, async (error, user) => {
+    if (error) return next(error);
+    if (!user) return res.redirect(`${CLIENT_ORIGIN}/login?error=google`);
+    try {
+      await ensurePermissionsColumn();
+      return finishLogin(req, res, next, user, true);
+    } catch (error) { next(error); }
+  })(req, res, next);
 });
+router.get('/me', ensureSession, (req, res) => res.json(publicUser(req.user)));
 
-router.put('/change-password', ensureJWT, requirePermission('changePassword'), async (req, res) => {
+router.put('/change-password', ensureSession, requirePermission('changePassword'), limitLogin, async (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
 
-  if (!currentPassword || !newPassword || !confirmPassword) {
+  if (typeof currentPassword !== 'string' || !currentPassword || Buffer.byteLength(currentPassword) > 72 || typeof confirmPassword !== 'string') {
     return res.status(400).json({ error: MESSAGES.passwordFields });
   }
 
+  const policyError = passwordError(newPassword);
+  if (policyError) return res.status(400).json({ error: policyError });
   if (newPassword !== confirmPassword) {
     return res.status(400).json({ error: MESSAGES.passwordMismatch });
   }
@@ -135,7 +111,7 @@ router.put('/change-password', ensureJWT, requirePermission('changePassword'), a
       return res.status(404).json({ error: MESSAGES.userMissing });
     }
 
-    const passwordMatch = await bcrypt.compare(currentPassword, users[0].password);
+    const passwordMatch = await bcrypt.compare(currentPassword, users[0].password || dummyHash);
     if (!passwordMatch) {
       return res.status(401).json({ error: MESSAGES.currentPasswordWrong });
     }
@@ -146,16 +122,21 @@ router.put('/change-password', ensureJWT, requirePermission('changePassword'), a
       [hashedPassword, req.user.id]
     );
 
-    return res.json({ message: MESSAGES.passwordChanged });
+    return req.session.destroy(error => {
+      if (error) return res.status(500).json({ error: MESSAGES.passwordChangeFailed });
+      res.clearCookie(SESSION_NAME, { path: '/' });
+      return res.json({ message: MESSAGES.passwordChanged, signInRequired: true });
+    });
   } catch (error) {
     console.error('Password change failed:', error);
     return res.status(500).json({ error: MESSAGES.passwordChangeFailed });
   }
 });
 
-router.post('/logout', ensureJWT, (req, res) => {
-  req.logout(err => {
-    if (err) return res.status(500).json({ error: MESSAGES.logoutFailed });
+router.post('/logout', (req, res, next) => {
+  req.session.destroy(error => {
+    if (error) return next(error);
+    res.clearCookie(SESSION_NAME, { path: '/' });
     return res.json({ message: MESSAGES.logoutOk });
   });
 });

@@ -105,8 +105,8 @@ export default {
       }
 
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.post('/api/observation/observe/schedule', { observerIds, targetId: target }, { headers: { Authorization: `Bearer ${token}` } });
+        const storedUser = localStorage.getItem('user');
+        const res = await axios.post('/api/observation/observe/schedule', { observerIds, targetId: target });
         this.schedule = res.data;
       } catch (err) {
         alert(this.tr('Failed to load timetable.', '載入課表失敗。'));

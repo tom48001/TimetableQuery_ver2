@@ -3,42 +3,11 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
-
+import { refreshSession } from '../config/session';
 export default {
   async mounted() {
-    const token = this.$route.query.token;
-
-    if (!token) {
-      console.error('Missing Google login token');
-      this.$router.push('/login');
-      return;
-    }
-
-    localStorage.setItem('token', token);
-    axios.defaults.headers.common.Authorization = `Bearer ${token}`;
-
-    try {
-      const decoded = jwtDecode(token);
-      const cleanedUser = {
-        id: decoded.id,
-        role: decoded.role ? decoded.role.trim().toLowerCase() : 'teacher',
-        user_name: decoded.user_name || '',
-        email: decoded.email || '',
-        permissions: decoded.permissions || {}
-      };
-      localStorage.setItem('user', JSON.stringify(cleanedUser));
-
-      this.$router.push('/home');
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
-    } catch (err) {
-      console.error('Failed to decode Google login token:', err);
-      this.$router.push('/login');
-    }
+    const user = await refreshSession();
+    this.$router.replace(user ? '/home' : '/login');
   }
 };
 </script>

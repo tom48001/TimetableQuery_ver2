@@ -107,11 +107,9 @@ export default {
     },
     async fetchSchedule() {
       try {
-        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
         const roomId = this.$route.query.roomId;
-        const res = await axios.get(`/api/rooms/schedule/${roomId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get(`/api/rooms/schedule/${roomId}`);
         this.schedule = res.data;
       } catch (err) {
         alert(this.tr('Failed to load room timetable.', '\u8f09\u5165\u623f\u9593\u6642\u9593\u8868\u5931\u6557\u3002'));

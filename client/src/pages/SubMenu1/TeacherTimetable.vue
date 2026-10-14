@@ -144,10 +144,8 @@ export default {
     },
     async fetchTeachers() {
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get('/api/teachers/list', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const storedUser = localStorage.getItem('user');
+        const res = await axios.get('/api/teachers/list');
         this.teachers = sortTeachersByName(res.data);
       } catch (err) {
         console.error('Failed to load teachers:', err);

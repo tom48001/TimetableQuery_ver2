@@ -3,14 +3,14 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'node:fs/promises';
 import db from '../db.js';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
 import { requirePermission, ensurePermissionsColumn } from '../auth/permissions.js';
 import { parseTeacherRoster, ensureTeacherRosterSchema, validateTeacherRoster } from '../utils/teacherRoster.js';
 import { withImportJob, setImportTotal, setImportProcessed } from '../utils/importJobs.js';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/', limits: { fileSize: 10 * 1024 * 1024 } });
-router.use(ensureJWT, requirePermission('manageUsers'));
+router.use(ensureSession, requirePermission('manageUsers'));
 
 router.post('/preview', upload.single('file'), async (req, res) => {
   try {

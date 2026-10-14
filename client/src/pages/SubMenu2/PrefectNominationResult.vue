@@ -64,12 +64,10 @@ export default {
       return String(names).split(',').map(name => name.trim()).filter(Boolean).length;
     },
     async fetchPrefectResults() {
-      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
 
       try {
-        const res = await axios.get('/api/prefect/results', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get('/api/prefect/results');
         this.nominationResults = res.data;
         this.searched = true;
       } catch (err) {

@@ -142,7 +142,7 @@ export default {
   },
   methods: {
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
-    authHeaders() { return { Authorization: `Bearer ${localStorage.getItem('token')}` }; },
+    authHeaders() { return {  }; },
     usesDse(student) {
       const selected = this.classes.find(item => Number(item.class_id) === Number(student && student.class_id));
       if (!selected) return false;

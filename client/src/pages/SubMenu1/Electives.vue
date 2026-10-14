@@ -93,7 +93,7 @@ export default {
       const match = String(subject.subject_name || '').match(/(?:^|[-_\s])(?:X|B)([123])$/i);
       return match ? [`X${match[1]}`] : [];
     },
-    async fetchSubjects() { const token = localStorage.getItem('token'); const res = await axios.get('/api/subjects/findElective', { headers: { Authorization: `Bearer ${token}` } }); this.subjects = res.data; },
+    async fetchSubjects() { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/subjects/findElective'); this.subjects = res.data; },
     goNext() {
       if (!this.form) { alert(this.tr('Please select a form.', '請選擇級別。')); return; }
       if (!this.selectedSubject || !this.selectedBlock) { alert(this.tr('Please select an elective subject.', '請選擇一個選修科目。')); return; }

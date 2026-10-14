@@ -35,8 +35,8 @@ export default {
 
       this.resetting = true;
       try {
-        const token = localStorage.getItem('token');
-        await axios.delete('/api/nominations/reset-all', { headers: { Authorization: `Bearer ${token}` } });
+        const storedUser = localStorage.getItem('user');
+        await axios.delete('/api/nominations/reset-all');
         alert(this.tr('All annual nominations have been reset.', '所有年度提名已重設。'));
         this.$emit('reset');
       } catch (error) {

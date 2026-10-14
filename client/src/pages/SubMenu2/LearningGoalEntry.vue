@@ -58,7 +58,6 @@
 
 <script>
 import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
 
 function trText(vm, en, zh) {
   return vm.$lang.locale === 'en' ? en : zh;
@@ -111,34 +110,30 @@ export default {
       if (this.selectedClassId) await this.fetchSelectedClassStudents();
     },
     async fetchClasses() {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
         alert(trText(this, 'Please login first.', TEXT.loginFirst));
         return;
       }
 
-      const res = await axios.get('/api/classes', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get('/api/classes');
       this.classList = res.data;
     },
     async getTeacherId() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       try {
-        const decoded = jwtDecode(token);
-        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const decoded = JSON.parse(storedUser);
+        const res = await axios.get(`/api/teachers/from-user/${decoded.id}`);
         this.teacher_id = res.data.teacher_id;
       } catch (err) {
-        console.warn('Could not load teacher id. The server will try to resolve it from the login token.', err);
+        console.warn('Could not load teacher id. The server will try to resolve it from the login session.', err);
       }
     },
     async fetchExistingGoals() {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
 
       const params = {
         semester: this.selectedSemester,
@@ -147,8 +142,7 @@ export default {
 
       try {
         const res = await axios.get('/api/learning-goals/records', {
-          params,
-          headers: { Authorization: `Bearer ${token}` }
+          params
         });
 
         res.data.forEach(record => {
@@ -159,8 +153,8 @@ export default {
       }
     },
     async fetchSelectedClassStudents() {
-      const token = localStorage.getItem('token');
-      if (!token || !this.selectedClassId) {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser || !this.selectedClassId) {
         this.students = [];
         return;
       }
@@ -169,9 +163,7 @@ export default {
       this.students = [];
 
       try {
-        const res = await axios.get(`/api/students/by-class/${this.selectedClassId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get(`/api/students/by-class/${this.selectedClassId}`);
 
         this.students = res.data;
         this.students.forEach(student => {
@@ -187,8 +179,8 @@ export default {
       }
     },
     async saveGoals() {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
         alert(trText(this, 'Please login first.', TEXT.loginFirst));
         return;
       }
@@ -209,8 +201,6 @@ export default {
           teacher_id: this.teacher_id,
           semester: this.selectedSemester,
           records
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
         });
 
         alert(trText(this, 'Learning goal data saved.', TEXT.saved));

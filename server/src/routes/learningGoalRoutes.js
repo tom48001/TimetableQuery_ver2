@@ -1,5 +1,5 @@
 import express from 'express';
-import { checkRole, ensureJWT } from '../auth/auth.js';
+import { checkRole, ensureSession } from '../auth/auth.js';
 import { requirePermission } from '../auth/permissions.js';
 import {
   getLearningGoalResults,
@@ -10,7 +10,7 @@ import {
 } from '../controllers/learningGoalController.js';
 
 const router = express.Router();
-router.use(ensureJWT);
+router.use(ensureSession);
 router.use(requirePermission('nominations'));
 
 router.post('/records', upsertLearningGoals);

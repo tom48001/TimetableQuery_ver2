@@ -74,7 +74,6 @@ export default {
             role: res.data.user.role ? res.data.user.role.trim().toLowerCase() : 'teacher',
             permissions: res.data.user.permissions || {}
           };
-          localStorage.setItem('token', res.data.token);
           localStorage.setItem('user', JSON.stringify(cleanedUser));
 
           this.$router.push('/home');

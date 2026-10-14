@@ -1,10 +1,10 @@
 import express from 'express';
 import pool from '../db.js';
-import { ensureJWT, checkRole } from '../auth/auth.js';
+import { ensureSession, checkRole } from '../auth/auth.js';
 
 const router = express.Router();
 
-router.use(ensureJWT);
+router.use(ensureSession);
 router.use(checkRole('manager'));
 
 router.delete('/reset-all', async (req, res) => {
