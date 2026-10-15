@@ -1,4 +1,4 @@
-import { cancellableConnection } from '../utils/importCancellation.js';
+import { acquireImportConnection } from '../utils/importCancellation.js';
 import { randomUUID } from 'node:crypto';
 import express from 'express';
 import multer from 'multer';
@@ -41,7 +41,7 @@ router.post('/save', withImportJob(async (req, res) => {
     await setImportTotal(req, req.body.records.length);
     await ensureTeacherRosterSchema(db);
     await ensurePermissionsColumn();
-    conn = cancellableConnection(req, await db.getConnection());
+    conn = await acquireImportConnection(req, db);
     const [[lock]] = await conn.query("SELECT GET_LOCK('school_teacher_roster_import', 5) AS acquired");
     if (Number(lock.acquired) !== 1) return res.status(409).json({ message: '另一個老師名單匯入正在進行，請稍後再試。' });
     locked = true;

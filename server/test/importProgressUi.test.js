@@ -8,6 +8,7 @@ function componentHarness(states, onDelay) {
   const script = source.split('<script>')[1].split('</script>')[0]
     .replace("import axios from 'axios';", '').replace('export default', 'globalThis.component =');
   const requested = [];
+  const requestConfigs = [];
   const percentages = [];
   let instance;
   class Cancel extends Error {}
@@ -16,8 +17,9 @@ function componentHarness(states, onDelay) {
     isCancel: error => error instanceof Cancel,
     CancelToken: { source: () => ({ token: {}, cancel() {} }) },
     post: async () => ({ data: { jobId: 'job-1', status: 'pending', processedRows: 0, totalRows: 0 } }),
-    get: async url => {
+    get: async (url, config) => {
       requested.push(url);
+      requestConfigs.push(config);
       const state = states.shift();
       if (state instanceof Error) throw state;
       if (!state) throw new Error('Unexpected extra poll');
@@ -43,7 +45,7 @@ function componentHarness(states, onDelay) {
     get: () => progress,
     set(value) { progress = value; percentages.push(instance.importPercentage); }
   });
-  return { instance, requested, percentages, Cancel };
+  return { instance, requested, requestConfigs, percentages, Cancel };
 }
 
 test('UI polls real counts, stays still for unchanged counts and stops at success', async () => {
@@ -86,4 +88,17 @@ test('leaving the page cancels the polling loop', async () => {
   }], (instance, component) => component.beforeDestroy.call(instance));
   await assert.rejects(harness.instance.runImport('/api/import/csv', {}, {}), harness.Cancel);
   assert.equal(harness.requested.length, 1);
+});
+
+test('student, elective and legacy history request distinct server categories', async () => {
+  const harness = componentHarness([[], [], []]);
+  const instance = harness.instance;
+  instance.userRole = 'manager';
+  instance.activeTab = 'students';
+  await instance.fetchStudentImportBatches();
+  instance.activeTab = 'studentRoster';
+  await instance.fetchStudentImportBatches();
+  instance.showLegacyStudentHistory = true;
+  await instance.fetchStudentImportBatches();
+  assert.deepEqual(harness.requestConfigs.map(config => config.params.kind), ['students', 'electives', 'legacy']);
 });

@@ -2,6 +2,20 @@
 // finish the current SQL statement, then roll back before executing more work.
 export const activeImports = new Map();
 
+export async function acquireImportConnection(req, pool) {
+  const connection = await pool.getConnection();
+  try {
+    // Metadata locks (ALTER/CREATE) otherwise default to a very long wait.
+    // Set before any schema check, not only after starting the transaction.
+    await connection.query('SET SESSION lock_wait_timeout = 15, innodb_lock_wait_timeout = 15');
+    checkImportCancellation(req);
+    return cancellableConnection(req, connection);
+  } catch (error) {
+    connection.release();
+    throw error;
+  }
+}
+
 export function checkImportCancellation(req) {
   if (req.importControl?.cancelled) {
     const error = new Error('匯入已取消。Import cancelled.');
@@ -14,10 +28,15 @@ export function cancellableConnection(req, connection) {
   if (!req.importControl) return connection;
   return new Proxy(connection, {
     get(target, key) {
-      if (key === 'query' || key === 'execute') return (...args) => {
+      if (key === 'query' || key === 'execute') return async (...args) => {
         // Named locks must always be released, including after cancellation.
         if (!/RELEASE_LOCK\s*\(/i.test(String(args[0]))) checkImportCancellation(req);
-        return target[key](...args);
+        try {
+          return await target[key](...args);
+        } catch (error) {
+          checkImportCancellation(req);
+          throw error;
+        }
       };
       if (key === 'beginTransaction') return (...args) => {
         checkImportCancellation(req);

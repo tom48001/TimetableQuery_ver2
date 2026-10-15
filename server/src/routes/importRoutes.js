@@ -1,5 +1,5 @@
 import { normalizeImportFilename, normalizeUploadedFilename } from '../utils/importFilename.js';
-import { cancellableConnection, cancelOwnImports } from '../utils/importCancellation.js';
+import { acquireImportConnection, cancelOwnImports } from '../utils/importCancellation.js';
 import { fillChineseSubjectNames } from '../utils/subjectDisplayNames.js';
 import express from 'express';
 import multer from 'multer';
@@ -437,6 +437,7 @@ async function ensureStudentImportHistoryTables(connOrPool = pool) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  await addColumnIfMissing(connOrPool, 'student_import_batches', "import_kind VARCHAR(20) NOT NULL DEFAULT 'legacy'");
   await addColumnIfMissing(connOrPool, 'student_import_history', 'class_code VARCHAR(20) NULL');
   await addColumnIfMissing(connOrPool, 'student_import_history', 'house VARCHAR(50) NULL');
   await addColumnIfMissing(connOrPool, 'student_import_history', 'language_group VARCHAR(100) NULL');
@@ -577,7 +578,7 @@ router.delete('/batches/:batchId', ensureSession, requirePermission('importTimet
 });
 
 router.post('/rollback/:batchId', ensureSession, requirePermission('importTimetable'), async (req, res) => {
-  const conn = cancellableConnection(req, await pool.getConnection());
+  const conn = await acquireImportConnection(req, pool);
 
   try {
     const batchId = Number(req.params.batchId);
@@ -640,7 +641,7 @@ router.post(
   upload.single('file'),
   normalizeUploadedFilename,
   withImportJob(async (req, res) => {
-    const conn = cancellableConnection(req, await pool.getConnection());
+    const conn = await acquireImportConnection(req, pool);
     let importLockAcquired = false;
 
     try {
@@ -989,7 +990,7 @@ router.post(
   upload.single('file'),
   normalizeUploadedFilename,
   withImportJob(async (req, res) => {
-    const conn = cancellableConnection(req, await pool.getConnection());
+    const conn = await acquireImportConnection(req, pool);
 
     try {
       if (!req.file) {
@@ -1126,9 +1127,10 @@ router.post(
 
       const [batchResult] = await conn.query(
         `INSERT INTO student_import_batches
-          (file_name, imported_by_user_id, imported_by_name, status)
-         VALUES (?, ?, ?, 'success')`,
-        [req.file.originalname, userIdFromRequest(req), await importUserName(conn, req.user)]
+          (file_name, imported_by_user_id, imported_by_name, status, import_kind)
+         VALUES (?, ?, ?, 'success', ?)`,
+        [req.file.originalname, userIdFromRequest(req), await importUserName(conn, req.user),
+          req.path.endsWith('/roster') ? 'electives' : 'students']
       );
       const batchId = batchResult.insertId;
 
@@ -1399,15 +1401,20 @@ router.post(
 
 router.get('/students/batches', ensureSession, requirePermission('manageStudents'), async (req, res) => {
   try {
+    const kind = req.query.kind || 'students';
+    if (!['students', 'electives', 'legacy'].includes(kind)) {
+      return res.status(400).json({ message: 'Invalid import history type.' });
+    }
     await ensureStudentImportHistoryTables(pool);
     const [rows] = await pool.query(`
       SELECT b.*, COUNT(h.history_id) AS snapshot_rows
       FROM student_import_batches b
       LEFT JOIN student_import_history h ON b.batch_id = h.batch_id
+      WHERE b.import_kind = ?
       GROUP BY b.batch_id
       ORDER BY b.created_at DESC, b.batch_id DESC
       LIMIT 20
-    `);
+    `, [kind]);
     res.json(rows.map(row => row.file_name ? { ...row, file_name: normalizeImportFilename(row.file_name) } : row));
   } catch (error) {
     console.error('Load student import batches error:', error);
@@ -1461,7 +1468,7 @@ router.delete('/students/batches/:batchId', ensureSession, requirePermission('ma
 });
 
 router.post('/students/rollback/:batchId', ensureSession, requirePermission('manageStudents'), async (req, res) => {
-  const conn = cancellableConnection(req, await pool.getConnection());
+  const conn = await acquireImportConnection(req, pool);
   try {
     const batchId = Number(req.params.batchId);
     if (!batchId) return res.status(400).json({ code: 'INVALID_BATCH', message: 'Invalid import batch.' });
@@ -1566,7 +1573,7 @@ router.post('/groups/preview', ensureSession, requirePermission('manageStudents'
 });
 
 router.post('/groups/save', ensureSession, requirePermission('manageStudents'), withImportJob(async (req, res) => {
-  const conn = cancellableConnection(req, await pool.getConnection());
+  const conn = await acquireImportConnection(req, pool);
   try {
     const records = Array.isArray(req.body.records) ? req.body.records : [];
     await setImportTotal(req, records.length);

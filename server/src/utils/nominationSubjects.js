@@ -1,4 +1,19 @@
 import { electiveSubjectKey } from './electiveSubjectKey.js';
+import { parseElectiveSubjectCode } from './subjectCanonicalKey.js';
+
+const blaElectives = new Set(['BIO', 'ECON', 'MATH(M1)']);
+const blaNames = {
+  BIO: ['生物', 'Biology'],
+  ECON: ['經濟', 'Economics'],
+  'MATH(M1)': ['數學延伸單元一', 'Mathematics Extended Module 1']
+};
+
+export function isBlaNominationSubject(subject) {
+  if (Number(subject.is_nominatable) === 0 || /^(SUPP|Career_Planning$|班主任課$)/i.test(subject.subject_name || '')) return false;
+  const elective = Boolean(subject.block) || Number(subject.is_elective) === 1 ||
+    Boolean(parseElectiveSubjectCode(subject.import_name || subject.subject_name).electiveGroup);
+  return !elective || blaElectives.has(electiveSubjectKey(subject));
+}
 
 export function nominationSubjectKey(subject) {
   const key = electiveSubjectKey(subject);
@@ -8,7 +23,10 @@ export function groupNominationSubjects(subjects) {
   const groups = new Map();
   for (const subject of [...subjects].sort((a,b) => a.subject_id - b.subject_id)) {
     const key = nominationSubjectKey(subject);
-    if (!groups.has(key)) groups.set(key, { ...subject, block: null, alias_subject_ids: [] });
+    if (!groups.has(key)) groups.set(key, {
+      ...subject, block: null, alias_subject_ids: [],
+      ...(blaNames[key] ? { subject_name: key, subject_name_zh: blaNames[key][0], subject_name_en: blaNames[key][1] } : {})
+    });
     const group = groups.get(key);
     group.alias_subject_ids.push(Number(subject.subject_id));
     if (!group.subject_name_zh && subject.subject_name_zh) group.subject_name_zh = subject.subject_name_zh;

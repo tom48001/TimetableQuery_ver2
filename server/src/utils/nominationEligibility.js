@@ -1,5 +1,6 @@
-import { groupNominationSubjects } from './nominationSubjects.js';
+import { groupNominationSubjects, isBlaNominationSubject } from './nominationSubjects.js';
 import { electiveSubjectKey } from './electiveSubjectKey.js';
+import { parseElectiveSubjectCode } from './subjectCanonicalKey.js';
 
 export function classTakesLesson(studentClass, lessonClass) {
   const name = String(studentClass.class_name || '').trim().toUpperCase();
@@ -11,13 +12,14 @@ export function nominationEligibility(subjects, lessons, students) {
   const byId = new Map(subjects.map(subject => [Number(subject.subject_id), subject]));
   const eligible = [];
   for (const subject of subjects) {
-    if (subject.is_nominatable === 0 || /^(SUPP|Career_Planning$|班主任課$)/i.test(subject.subject_name || '')) continue;
+    if (!isBlaNominationSubject(subject)) continue;
     const classes = lessons.filter(lesson => Number(lesson.subject_id) === Number(subject.subject_id));
     if (!classes.length) continue;
     for (const student of students) {
       if (student.status !== 'active' || !classes.some(lesson => classTakesLesson(student, lesson.class_name))) continue;
-      if (subject.block || subject.is_elective) {
-        const slots = subject.block ? [subject.block.toLowerCase() + '_subject_id'] : ['x1_subject_id', 'x2_subject_id', 'x3_subject_id'];
+      const block = subject.block || parseElectiveSubjectCode(subject.import_name || subject.subject_name).electiveGroup;
+      if (block || Number(subject.is_elective) === 1) {
+        const slots = block ? [block.toLowerCase().replace(/^b/, 'x') + '_subject_id'] : ['x1_subject_id', 'x2_subject_id', 'x3_subject_id'];
         if (!slots.some(slot => {
           const chosen = byId.get(Number(student[slot]));
           return chosen && electiveSubjectKey(chosen) === electiveSubjectKey(subject);

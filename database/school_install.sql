@@ -316,6 +316,7 @@ CREATE TABLE IF NOT EXISTS timetable_history (
 
 CREATE TABLE IF NOT EXISTS student_import_batches (
   batch_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  import_kind VARCHAR(20) NOT NULL DEFAULT 'legacy',
   file_name VARCHAR(255) NOT NULL,
   imported_by_user_id BIGINT NULL,
   imported_by_name VARCHAR(255) NULL,

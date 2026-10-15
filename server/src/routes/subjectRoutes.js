@@ -1,4 +1,4 @@
-import { groupNominationSubjects } from '../utils/nominationSubjects.js';
+import { groupNominationSubjects, isBlaNominationSubject } from '../utils/nominationSubjects.js';
 import express from 'express';
 import { ensureSession } from '../auth/auth.js';
 import { requireAnyPermission } from '../auth/permissions.js';
@@ -48,7 +48,8 @@ router.get('/nomination-options', ensureSession, canReadSchoolData, async (req, 
   try {
     await fillChineseSubjectNames(db);
     const [subjects] = await db.query('SELECT * FROM subject');
-    res.json(groupNominationSubjects(subjects));
+    const allowedIds = new Set(subjects.filter(isBlaNominationSubject).map(subject => Number(subject.subject_id)));
+    res.json(groupNominationSubjects(subjects).filter(group => group.alias_subject_ids.some(id => allowedIds.has(id))));
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

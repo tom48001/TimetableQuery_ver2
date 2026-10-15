@@ -464,8 +464,9 @@
     <section v-if="['students', 'studentRoster'].includes(activeTab) && canManageStudents" class="history-panel">
       <div class="history-header">
         <div>
-          <h2>{{ tr('Student Import History', '學生匯入記錄') }}</h2>
+          <h2>{{ showLegacyStudentHistory ? tr('Unclassified Previous Imports', '舊版未分類匯入記錄') : activeTab === 'studentRoster' ? tr('Elective Roster Import History', '選修名單匯入記錄') : tr('Student Import History', '學生匯入記錄') }}</h2>
           <p>{{ tr('Restore student data to before a successful import.', '可將學生資料回復到某次成功匯入前的版本。') }}</p>
+          <label><input v-model="showLegacyStudentHistory" type="checkbox" @change="fetchStudentImportBatches">{{ tr('Show unclassified older records separately', '另看舊版未分類記錄') }}</label>
         </div>
         <button type="button" class="clear-button" :disabled="studentHistoryLoading" @click="fetchStudentImportBatches">
           {{ tr('Reload', '重新載入') }}
@@ -520,7 +521,7 @@
           </tbody>
         </table>
         <p v-else class="empty-history">
-          {{ studentHistoryLoading ? tr('Loading...', '載入中...') : tr('No student import history yet.', '暫時沒有學生匯入記錄。') }}
+          {{ studentHistoryLoading ? tr('Loading...', '載入中...') : tr('No import history in this category.', '此分類暫時沒有匯入記錄。') }}
         </p>
       </div>
     </section>
@@ -565,6 +566,7 @@ export default {
       historyLoading: false,
       rollbackLoading: false,
       studentHistoryLoading: false,
+      showLegacyStudentHistory: false,
       studentRollbackLoading: false,
       savingGroup: false,
       groupPreview: null,
@@ -591,6 +593,10 @@ export default {
       return totalRows ? Math.round(processedRows / totalRows * 100) : (status === 'success' ? 100 : 0);
     },
     progressLabel() {
+      if (this.importProgress && ['pending', 'processing'].includes(this.importProgress.status) &&
+          (this.cancelRequested || this.importProgress.cancellationRequested)) {
+        return this.tr('Cancelling; waiting for database rollback...', '正在取消，等待資料庫回滾…');
+      }
       if (this.progressError) return this.tr('Progress unavailable', '無法取得導入進度');
       if (this.importProgress.status === 'success') return this.tr('Import completed', '導入完成');
       if (this.importProgress.status === 'failed') return this.tr('Import failed', '導入失敗');
@@ -784,6 +790,8 @@ export default {
       if (tab === 'timetable' && !this.canImportTimetable) return;
       if (['students', 'studentRoster'].includes(tab) && !this.canManageStudents) return;
       this.activeTab = tab;
+      this.showLegacyStudentHistory = false;
+      this.studentImportBatches = [];
       this.clearFile();
       this.message = '';
       this.messageType = '';
@@ -928,8 +936,12 @@ export default {
       if (!storedUser || !this.canManageStudents) return;
       this.studentHistoryLoading = true;
       try {
-        const res = await axios.get('/api/import/students/batches', { headers: this.authHeaders() });
-        this.studentImportBatches = res.data;
+        const tab = this.activeTab;
+        const legacy = this.showLegacyStudentHistory;
+        const kind = legacy ? 'legacy' : tab === 'studentRoster' ? 'electives' : 'students';
+        this.studentImportBatches = [];
+        const res = await axios.get('/api/import/students/batches', { params: { kind }, headers: this.authHeaders() });
+        if (this.activeTab === tab && this.showLegacyStudentHistory === legacy) this.studentImportBatches = res.data;
       } catch (err) {
         console.error('Failed to load student import history:', err);
       } finally {

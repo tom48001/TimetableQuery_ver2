@@ -44,7 +44,8 @@ export async function getImportProgress(req, res, next) {
       FROM import_jobs WHERE job_id=? AND owner_id=?`, [req.params.jobId, req.user.id]);
     res.set('Cache-Control', 'no-store');
     if (!rows.length) return res.status(404).json({ message: 'Import job not found.' });
-    return res.json(rows[0]);
+    const control = activeImports.get(req.params.jobId);
+    return res.json({ ...rows[0], cancellationRequested: Boolean(control?.cancelled) });
   } catch (error) { return next(error); }
 }
 
