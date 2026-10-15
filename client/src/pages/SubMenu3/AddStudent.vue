@@ -159,7 +159,14 @@ export default {
     },
     async loadClasses() {
       const res = await axios.get('/api/classes', { headers: this.authHeaders() });
-      this.classes = res.data;
+      // Student registration uses the 24 homerooms, not timetable groups.
+      const classOrder = ['M', 'A', 'R', 'Y'];
+      this.classes = res.data.filter(item => /^[1-6][MARY]$/.test(String(item.class_name || '').trim().toUpperCase()))
+        .sort((a, b) => {
+          const left = String(a.class_name).trim().toUpperCase();
+          const right = String(b.class_name).trim().toUpperCase();
+          return Number(left[0]) - Number(right[0]) || classOrder.indexOf(left[1]) - classOrder.indexOf(right[1]);
+        });
     },
     async loadElectives() {
       const res = await axios.get('/api/students/admin/elective-subjects', { headers: this.authHeaders() });
