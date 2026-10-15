@@ -76,6 +76,10 @@
           </button>
         </div>
 
+        <button type="button" class="clear-button" :disabled="cancellingImport" @click="cancelImport">
+          {{ cancellingImport ? tr('Requesting cancellation...', '正在要求取消…') : tr('Cancel my pending imports', '取消我未完成的匯入') }}
+        </button>
+
         <div v-if="importProgress" class="import-progress" aria-live="polite">
           <strong>{{ progressLabel }}</strong>
           <progress :value="importPercentage" max="100" :aria-label="progressLabel"></progress>
@@ -551,6 +555,8 @@ export default {
       file: null,
       dragging: false,
       uploading: false,
+      cancellingImport: false,
+      cancelRequested: false,
       importStage: '',
       uploadProgress: 0,
       importProgress: null,
@@ -697,7 +703,23 @@ export default {
         this.showMessage(this.buildErrorMessage(data), 'error');
       } finally { this.uploading = false; this.importStage = ''; }
     },
+    async cancelImport() {
+      this.cancelRequested = true;
+      this.cancellingImport = true;
+      try {
+        const response = await axios.post('/api/import/cancel', {}, { headers: this.authHeaders(), timeout: 15000 });
+        this.showMessage(response.data.message, 'success');
+        if (this.uploading && (!this.importProgress || !this.importProgress.jobId)) {
+          this.showMessage(this.tr('Cancellation queued: waiting for the upload response before cancelling the server job.', '已排定取消：正等待上傳回應，再取消伺服器匯入工作。'), 'success');
+        }
+      } catch (error) {
+        this.showMessage(this.tr('Cancellation could not be confirmed. Please retry.', '未能確認取消，請重試。'), 'error');
+      } finally {
+        this.cancellingImport = false;
+      }
+    },
     async runImport(endpoint, payload, config, phase = '') {
+      this.cancelRequested = false;
       this.importProgress = { status: 'pending', processedRows: 0, totalRows: 0 };
       this.progressError = '';
       this.progressPhase = phase;
@@ -709,6 +731,9 @@ export default {
         if (!started.data.jobId) throw new Error('The server did not return an import job ID.');
         this.importStage = 'processing';
         this.importProgress = started.data;
+        if (this.cancelRequested) {
+          await axios.post('/api/import/cancel', { jobId: started.data.jobId }, { headers: this.authHeaders(), timeout: 15000 });
+        }
         while (!this._importDisposed) {
           const response = await axios.get(`/api/import/progress/${started.data.jobId}`, {
             headers: this.authHeaders(), cancelToken: this._progressRequest.token, timeout: 15000

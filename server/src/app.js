@@ -46,6 +46,7 @@ const clientDistPath = path.resolve(__dirname, '../../client/dist');
 // Only trust explicitly configured proxy addresses, never arbitrary X-Forwarded-For.
 if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY.split(',').map(value => value.trim()));
 await initializeAuthStorage(db);
+await initializeImportJobs();
 const sessionStore = new MysqlSessionStore(db);
 app.use(session(sessionOptions(sessionStore)));
 app.use(passport.initialize());

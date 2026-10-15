@@ -31,7 +31,7 @@ docker compose -f compose.yml -f compose.local.yml up -d --build
 - Google 登入使用 session-bound state 及 PKCE S256；回調有效期十分鐘。完成後 URL 只有 `/google-redirect`，沒有登入憑證。
 - 所有非 GET／HEAD／OPTIONS API 請求（包括登入）都要帶 session 綁定的 CSRF token。前端共用 axios 已處理，不可只移除後端檢查來修復第三方客戶端。
 - 每十五分鐘，同一帳戶最多十次密碼登入嘗試，同一 IP 最多一百次；成功嘗試亦計算。更改密碼另外按帳戶 ID 計算。超限回傳 429 及 Retry-After。多人共用學校出口時，IT 應在 staging 評估此上限；勿停用限制。
-- 新建／重設／更改密碼至少十五個字元，最多 72 UTF-8 bytes（bcrypt 限制），拒絕單一重複字元及少量常見弱密碼。這不是完整外洩密碼資料庫。允許空格及中文；Google-only 帳戶可不設本地密碼。
+- 新建／重設／更改密碼不設最少長度或複雜度要求，但密碼不可為空，且最多 72 UTF-8 bytes（bcrypt 技術限制）。允許空格及中文；Google-only 帳戶可不設本地密碼。
 - 既有密碼不會被批量重設；本地登入仍可使用原密碼。舊系統如曾允許超過 72 bytes 的密碼，需由管理員重設，避免 bcrypt 截斷歧義。
 
 ## 驗證紀錄

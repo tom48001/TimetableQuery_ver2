@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import pool from '../db.js';
+import { activeImports, checkImportCancellation } from './importCancellation.js';
 
 // Progress uses the pool, never the import transaction's connection, so polling
 // can see updates before the transaction commits (or rolls back).
@@ -24,11 +25,13 @@ export async function initializeImportJobs() {
 }
 
 export async function setImportTotal(req, total) {
+  checkImportCancellation(req);
   if (!req.importJobId) return;
   await pool.query('UPDATE import_jobs SET total_rows=? WHERE job_id=?', [total, req.importJobId]);
 }
 
 export async function setImportProcessed(req, processed) {
+  checkImportCancellation(req);
   if (!req.importJobId) return;
   await pool.query('UPDATE import_jobs SET processed_rows=LEAST(total_rows, ?) WHERE job_id=?', [processed, req.importJobId]);
 }
@@ -60,6 +63,8 @@ export function withImportJob(handler) {
       return next(error);
     }
     req.importJobId = jobId;
+    req.importControl = { ownerId: req.user.id, cancelled: false, committing: false };
+    activeImports.set(jobId, req.importControl);
     res.status(202).json({ jobId, status: 'pending', totalRows: 0, processedRows: 0, errorMessage: null });
     setImmediate(async () => {
       let statusCode = 200;
@@ -69,6 +74,7 @@ export function withImportJob(handler) {
         json(payload) { result = payload; return this; }
       };
       try {
+        checkImportCancellation(req);
         await pool.query("UPDATE import_jobs SET status='processing' WHERE job_id=?", [jobId]);
         await handler(req, response);
         if (!result) throw new Error('Import ended without a result.');
@@ -82,6 +88,7 @@ export function withImportJob(handler) {
         await pool.query("UPDATE import_jobs SET status='failed', error_message=? WHERE job_id=?",
           [error.message || 'Import failed.', jobId]).catch(failure => console.error('Cannot persist job failure:', failure));
       } finally {
+        activeImports.delete(jobId);
         if (req.file) await fs.unlink(req.file.path).catch(() => {});
       }
     });
