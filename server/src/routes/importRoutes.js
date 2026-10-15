@@ -1,4 +1,5 @@
 import { normalizeImportFilename, normalizeUploadedFilename } from '../utils/importFilename.js';
+import { cancellableConnection, cancelOwnImports } from '../utils/importCancellation.js';
 import { fillChineseSubjectNames } from '../utils/subjectDisplayNames.js';
 import express from 'express';
 import multer from 'multer';
@@ -19,6 +20,7 @@ import { withImportJob, getImportProgress, setImportTotal, setImportProcessed } 
 const router = express.Router();
 router.use('/teachers', teacherImportRoutes);
 router.get('/progress/:jobId', ensureSession, getImportProgress);
+router.post('/cancel', ensureSession, cancelOwnImports);
 const upload = multer({ dest: 'uploads/' });
 const DATABASE_BATCH_SIZE = 500;
 let importHistorySchemaReady = false;
@@ -575,7 +577,7 @@ router.delete('/batches/:batchId', ensureSession, requirePermission('importTimet
 });
 
 router.post('/rollback/:batchId', ensureSession, requirePermission('importTimetable'), async (req, res) => {
-  const conn = await pool.getConnection();
+  const conn = cancellableConnection(req, await pool.getConnection());
 
   try {
     const batchId = Number(req.params.batchId);
@@ -638,7 +640,7 @@ router.post(
   upload.single('file'),
   normalizeUploadedFilename,
   withImportJob(async (req, res) => {
-    const conn = await pool.getConnection();
+    const conn = cancellableConnection(req, await pool.getConnection());
     let importLockAcquired = false;
 
     try {
@@ -965,12 +967,17 @@ router.post(
       });
     } finally {
       if (req.file) fs.unlink(req.file.path, () => {});
+      let connectionDestroyed = false;
       if (importLockAcquired) {
-        await conn.query("SELECT RELEASE_LOCK('school_management_timetable_import')").catch(error => {
+        try {
+          await conn.query("SELECT RELEASE_LOCK('school_management_timetable_import')");
+        } catch (error) {
           console.error('Failed to release timetable import lock:', error);
-        });
+          conn.destroy();
+          connectionDestroyed = true;
+        }
       }
-      conn.release();
+      if (!connectionDestroyed) conn.release();
     }
   })
 );
@@ -982,7 +989,7 @@ router.post(
   upload.single('file'),
   normalizeUploadedFilename,
   withImportJob(async (req, res) => {
-    const conn = await pool.getConnection();
+    const conn = cancellableConnection(req, await pool.getConnection());
 
     try {
       if (!req.file) {
@@ -1454,7 +1461,7 @@ router.delete('/students/batches/:batchId', ensureSession, requirePermission('ma
 });
 
 router.post('/students/rollback/:batchId', ensureSession, requirePermission('manageStudents'), async (req, res) => {
-  const conn = await pool.getConnection();
+  const conn = cancellableConnection(req, await pool.getConnection());
   try {
     const batchId = Number(req.params.batchId);
     if (!batchId) return res.status(400).json({ code: 'INVALID_BATCH', message: 'Invalid import batch.' });
@@ -1559,7 +1566,7 @@ router.post('/groups/preview', ensureSession, requirePermission('manageStudents'
 });
 
 router.post('/groups/save', ensureSession, requirePermission('manageStudents'), withImportJob(async (req, res) => {
-  const conn = await pool.getConnection();
+  const conn = cancellableConnection(req, await pool.getConnection());
   try {
     const records = Array.isArray(req.body.records) ? req.body.records : [];
     await setImportTotal(req, records.length);

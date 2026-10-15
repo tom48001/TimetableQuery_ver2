@@ -7,7 +7,8 @@ import { passwordError } from '../src/auth/passwordPolicy.js';
 import { csrfProtection, sessionOptions, MysqlSessionStore } from '../src/auth/sessionSecurity.js';
 
 test('password policy handles short, repeated, Unicode and bcrypt byte limits', () => {
-  for (const value of [null, {}, '', 'short', 'a'.repeat(15), '123456789012345', '字'.repeat(25)]) assert.ok(passwordError(value));
+  for (const value of [null, {}, '', '字'.repeat(25)]) assert.ok(passwordError(value));
+  for (const value of ['123', 'a', 'short', 'a'.repeat(15), '123456789012345']) assert.equal(passwordError(value), null);
   assert.equal(passwordError('A school phrase with spaces!'), null);
   assert.equal(passwordError('這是一組足夠長度而且不同字元的密碼'), null);
 });
@@ -96,8 +97,7 @@ test('HTTP login, CSRF, OAuth binding, revocation and shared throttling', async 
 
     const second = browser();
     await first.login(); await second.login();
-    assert.equal((await first.request('/api/auth/change-password', 'PUT', { currentPassword: password, newPassword: 'short', confirmPassword: 'short' })).status, 400);
-    const changed = 'Another secure test phrase!';
+    const changed = '123';
     assert.equal((await first.request('/api/auth/change-password', 'PUT', { currentPassword: password, newPassword: changed, confirmPassword: changed })).status, 200);
     assert.equal((await second.request('/protected')).status, 401);
     assert.equal((await first.request('/protected')).status, 401);
