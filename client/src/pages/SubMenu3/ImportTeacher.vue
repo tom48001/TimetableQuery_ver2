@@ -464,9 +464,8 @@
     <section v-if="['students', 'studentRoster'].includes(activeTab) && canManageStudents" class="history-panel">
       <div class="history-header">
         <div>
-          <h2>{{ showLegacyStudentHistory ? tr('Unclassified Previous Imports', '舊版未分類匯入記錄') : activeTab === 'studentRoster' ? tr('Elective Roster Import History', '選修名單匯入記錄') : tr('Student Import History', '學生匯入記錄') }}</h2>
+          <h2>{{ activeTab === 'studentRoster' ? tr('Elective Roster Import History', '選修名單匯入記錄') : tr('Student Import History', '學生匯入記錄') }}</h2>
           <p>{{ tr('Restore student data to before a successful import.', '可將學生資料回復到某次成功匯入前的版本。') }}</p>
-          <label><input v-model="showLegacyStudentHistory" type="checkbox" @change="fetchStudentImportBatches">{{ tr('Show unclassified older records separately', '另看舊版未分類記錄') }}</label>
         </div>
         <button type="button" class="clear-button" :disabled="studentHistoryLoading" @click="fetchStudentImportBatches">
           {{ tr('Reload', '重新載入') }}
@@ -566,7 +565,6 @@ export default {
       historyLoading: false,
       rollbackLoading: false,
       studentHistoryLoading: false,
-      showLegacyStudentHistory: false,
       studentRollbackLoading: false,
       savingGroup: false,
       groupPreview: null,
@@ -790,7 +788,6 @@ export default {
       if (tab === 'timetable' && !this.canImportTimetable) return;
       if (['students', 'studentRoster'].includes(tab) && !this.canManageStudents) return;
       this.activeTab = tab;
-      this.showLegacyStudentHistory = false;
       this.studentImportBatches = [];
       this.clearFile();
       this.message = '';
@@ -937,11 +934,10 @@ export default {
       this.studentHistoryLoading = true;
       try {
         const tab = this.activeTab;
-        const legacy = this.showLegacyStudentHistory;
-        const kind = legacy ? 'legacy' : tab === 'studentRoster' ? 'electives' : 'students';
+        const kind = tab === 'studentRoster' ? 'electives' : 'students';
         this.studentImportBatches = [];
         const res = await axios.get('/api/import/students/batches', { params: { kind }, headers: this.authHeaders() });
-        if (this.activeTab === tab && this.showLegacyStudentHistory === legacy) this.studentImportBatches = res.data;
+        if (this.activeTab === tab) this.studentImportBatches = res.data;
       } catch (err) {
         console.error('Failed to load student import history:', err);
       } finally {

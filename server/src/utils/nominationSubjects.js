@@ -9,7 +9,7 @@ const blaNames = {
 };
 
 export function isBlaNominationSubject(subject) {
-  if (Number(subject.is_nominatable) === 0 || /^(SUPP|Career_Planning$|班主任課$)/i.test(subject.subject_name || '')) return false;
+  if ((subject.is_nominatable != null && subject.is_nominatable !== '' && Number(subject.is_nominatable) === 0) || /^(SUPP|Career_Planning$|班主任課$)/i.test(subject.subject_name || '')) return false;
   const elective = Boolean(subject.block) || Number(subject.is_elective) === 1 ||
     Boolean(parseElectiveSubjectCode(subject.import_name || subject.subject_name).electiveGroup);
   return !elective || blaElectives.has(electiveSubjectKey(subject));

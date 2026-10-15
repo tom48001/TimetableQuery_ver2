@@ -57,23 +57,15 @@
           <label><span>{{ tr('House', '社別') }}</span><select v-model="student.house"><option v-for="option in houseOptions" :key="option" :value="option">{{ option }}</option></select></label>
           <label><span>SUPP CLASS</span><select v-model="student.supp_class"><option v-for="option in suppClassOptions" :key="option" :value="option">{{ option }}</option></select></label>
           <label><span>{{ tr('Maths', '數學/MATHS') }}</span><select v-model="student.maths_group"><option v-for="option in mathsOptions" :key="option" :value="option">{{ option }}</option></select></label>
-          <label><span>{{ tr('Elective Subjects', '選修科目') }}</span><input v-model.trim="student.dropped_subjects" :placeholder="tr('Enter elective subjects', '請輸入選修科目')" /></label>
-        </div>
-      </section>
-
-      <section v-if="usesDse(student)" class="form-card full-card">
-        <div class="card-title">
-          <span class="card-icon">◇</span>
-          <h2>{{ tr('Elective Subjects', '選修科目') }}</h2>
-        </div>
-        <div class="form-grid three">
           <label v-for="slot in electiveSlots" :key="slot.key">
-            <span>{{ slot.label }}</span>
-            <select v-model="student[slot.key]">
-              <option value="">-</option>
+            <span>{{ tr('Elective Subject', '選修科目') }} {{ slot.label }}</span>
+            <select v-model="student[slot.key]" :disabled="!usesDse(student)">
+              <option value="">{{ tr('Not selected', '未選擇') }}</option>
               <option v-for="subject in electiveSubjects" :key="subject.subject_id" :value="subject.subject_id">{{ subject.subject_name }}</option>
             </select>
           </label>
+          <p v-if="!usesDse(student)" class="wide-field">{{ tr('Select an F4–F6 class to choose X1/X2/X3 electives.', '選擇中四至中六班別後，可選擇 X1／X2／X3 選修科目。') }}</p>
+          <label><span>{{ tr('Dropped Subjects', '退選科目') }}</span><input v-model.trim="student.dropped_subjects" :placeholder="tr('Optional', '選填')" /></label>
         </div>
       </section>
 

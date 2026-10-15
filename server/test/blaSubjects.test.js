@@ -39,3 +39,12 @@ test('BIO X2 and X3 share one name and unique eligible students; unrelated elect
   assert.equal(eligible.some(r=>r.subject_id===4),false);
   assert.equal(eligible.filter(r=>r.subject_id===5).length,4);
 });
+
+test('legacy nullable nomination flags do not hide ordinary subjects', () => {
+  for (const flag of [null, undefined, '']) {
+    assert.equal(isBlaNominationSubject({ subject_name: 'CHIN', is_nominatable: flag }), true);
+  }
+  for (const flag of [0, false, '0']) {
+    assert.equal(isBlaNominationSubject({ subject_name: 'CHIN', is_nominatable: flag }), false);
+  }
+});

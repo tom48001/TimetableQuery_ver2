@@ -90,15 +90,13 @@ test('leaving the page cancels the polling loop', async () => {
   assert.equal(harness.requested.length, 1);
 });
 
-test('student, elective and legacy history request distinct server categories', async () => {
-  const harness = componentHarness([[], [], []]);
+test('student and elective history request distinct server categories', async () => {
+  const harness = componentHarness([[], []]);
   const instance = harness.instance;
   instance.userRole = 'manager';
   instance.activeTab = 'students';
   await instance.fetchStudentImportBatches();
   instance.activeTab = 'studentRoster';
   await instance.fetchStudentImportBatches();
-  instance.showLegacyStudentHistory = true;
-  await instance.fetchStudentImportBatches();
-  assert.deepEqual(harness.requestConfigs.map(config => config.params.kind), ['students', 'electives', 'legacy']);
+  assert.deepEqual(harness.requestConfigs.map(config => config.params.kind), ['students', 'electives']);
 });

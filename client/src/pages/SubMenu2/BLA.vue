@@ -8,7 +8,15 @@
       </header>
 
       <p>{{ tr('Only subjects taught in each class are available. Electives include enrolled students only.', '只可提名各班課表中實際修讀的科目；選修科只列出修讀該科的學生。') }}</p>
-      <div class="table-wrap">
+      <p v-if="loading" role="status">{{ tr('Loading subjects and students...', '正在載入科目及學生…') }}</p>
+      <div v-else-if="loadError" role="alert">
+        <p>{{ loadError }}</p>
+        <button type="button" @click="loadData">{{ tr('Retry', '重新載入') }}</button>
+      </div>
+      <p v-else-if="!visibleSubjects.length || !visibleClassList.length" role="status">
+        {{ tr('No eligible subjects and students found. Check that the timetable and active student records have been imported and their classes match; electives also need X1/X2/X3 enrolments.', '未找到符合資格的科目及學生。請確認已匯入課表及在讀學生、兩者班別相符；選修科亦需有 X1／X2／X3 修讀資料。') }}
+      </p>
+      <div v-else class="table-wrap">
         <table class="choice-table">
           <thead>
             <tr>
@@ -31,7 +39,7 @@
       </div>
 
       <footer class="actions">
-        <button type="button" :disabled="!selectedChoice" @click="goNext">{{ tr('Next', '\u4e0b\u4e00\u6b65') }}</button>
+        <button type="button" :disabled="loading || !!loadError || !selectedChoice" @click="goNext">{{ tr('Next', '\u4e0b\u4e00\u6b65') }}</button>
       </footer>
     </section>
   </main>
@@ -42,7 +50,7 @@ import axios from 'axios';
 import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
 
 export default {
-  data() { return { subjects: [], classList: [], counts: {}, selectedChoice: '' }; },
+  data() { return { subjects: [], classList: [], counts: {}, selectedChoice: '', loading: false, loadError: '' }; },
   computed: {
     visibleSubjects() {
       const subjectIds = new Set(Object.keys(this.counts).map(key => Number(key.split('-')[0])));
@@ -56,17 +64,41 @@ export default {
     selectedClassId() { if (!this.selectedChoice) return null; return Number(this.selectedChoice.split('-')[1]); }
   },
   methods: {
+    async loadData() {
+      if (this.loading) return;
+      this.loading = true;
+      this.loadError = '';
+      this.selectedChoice = '';
+      try {
+        // Wait for every request before allowing retries; a late response from
+        // an earlier load must not overwrite a newer result.
+        const results = await Promise.all([
+          this.fetchSubjects(), this.fetchClasses(), this.fetchCounts()
+        ].map(request => request.then(() => null, error => error)));
+        const error = results.find(result => result);
+        if (error) throw error;
+      } catch (error) {
+        const status = error.response ? error.response.status : '';
+        this.loadError = this.tr('Could not load nomination data. Please retry or check the server log.', '未能載入提名資料，請重試或查看伺服器錯誤紀錄。') + (status ? ` (HTTP ${status})` : '');
+        this.subjects = [];
+        this.classList = [];
+        this.counts = {};
+        console.error('BLA data load failed:', error);
+      } finally {
+        this.loading = false;
+      }
+    },
     tr(en, zh) { return this.$lang.locale === 'en' ? en : zh; },
     subjectLabel(subject) { return formatSubjectLabel(subject, this.$lang.locale); },
     choiceValue(subject, cls) { return `${subject.subject_id}-${cls.class_id}`; },
     countKey(subjectId, classId) { return `${subjectId}-${classId}`; },
     isAvailable(subjectId, classId) { return this.counts[this.countKey(subjectId, classId)] !== undefined; },
     countFor(subjectId, classId) { const value = this.counts[this.countKey(subjectId, classId)]; return value === undefined ? '' : value; },
-    async fetchSubjects() { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/subjects/nomination-options'); this.subjects = res.data; },
-    async fetchClasses() { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/classes'); this.classList = res.data; },
+    async fetchSubjects() { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/subjects/nomination-options', { timeout: 15000 }); this.subjects = res.data; },
+    async fetchClasses() { const storedUser = localStorage.getItem('user'); const res = await axios.get('/api/classes', { timeout: 15000 }); this.classList = res.data; },
     async fetchCounts() {
       const storedUser = localStorage.getItem('user');
-      const res = await axios.get('/api/subjects/class-counts');
+      const res = await axios.get('/api/subjects/class-counts', { timeout: 15000 });
       const nextCounts = {};
       res.data.forEach(row => { nextCounts[this.countKey(row.subject_id, row.class_id)] = Number(row.student_count) || 0; });
       this.counts = nextCounts;
@@ -76,7 +108,7 @@ export default {
       this.$router.push({ name: 'BLAvote', query: { selectedSubject: JSON.stringify(this.selectedSubject), selectedClass: JSON.stringify([this.selectedClassId]) } });
     }
   },
-  mounted() { this.fetchSubjects(); this.fetchClasses(); this.fetchCounts(); }
+  mounted() { this.loadData(); }
 };
 </script>
 <style scoped>
