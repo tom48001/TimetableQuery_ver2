@@ -151,6 +151,16 @@ export async function validateTeacherRoster(db, input, actor, lock = false) {
     row.user_id = teacher?.user_id || account?.user_id || null;
     row.action = teacher ? '更新老師' : '新增老師';
     row.accountStatus = teacher?.user_id ? '已有帳戶' : (row.email ? (account ? '連結已有帳戶' : '建立 Teacher 帳戶') : '未建立帳戶');
+    if (teacher && ['電郵自動配對', '已保存的 UserLogin 配對'].includes(row.matchMethod)) {
+      if (!nameTeachers) {
+        [nameTeachers] = await db.query(`SELECT teacher_id,teacher_code,teacher_name,english_name,chinese_name FROM teacher${lock ? ' FOR UPDATE' : ''}`);
+      }
+      const sameNameOthers = exactNameCandidates(row, nameTeachers)
+        .filter(candidate => String(candidate.teacher_id) !== String(teacher.teacher_id));
+      if (sameNameOthers.length) {
+        row.warnings.push(`另有 ${sameNameOthers.length} 位同名老師（${sameNameOthers.map(candidate => teacherNumber(candidate.teacher_id)).join('、')}）；如屬同一人，請先合併重複記錄，否則課表與帳戶會分散在不同記錄。`);
+      }
+    }
     const domain = googleDomain();
     if (row.email && !isGoogleEmailAllowed(row.email)) row.warnings.push(`目前 Google 登入只允許 @${domain} 或已指定的管理員電郵，此電郵需先調整登入設定才可登入。`);
   }

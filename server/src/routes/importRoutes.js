@@ -15,6 +15,7 @@ import { subjectCanonicalKey } from '../utils/subjectCanonicalKey.js';
 import { ensureSubjectImportSchema, subjectImportRecord } from '../utils/subjectImportSchema.js';
 import { gradeLevelForClass } from '../utils/classReference.js';
 import teacherImportRoutes from './teacherImportRoutes.js';
+import { resolveTimetableTeachers } from '../utils/timetableTeacherMatch.js';
 import { withImportJob, getImportProgress, setImportTotal, setImportProcessed } from '../utils/importJobs.js';
 
 const router = express.Router();
@@ -802,15 +803,42 @@ router.post(
         WHERE p.period_id IS NULL
       `);
 
+      let teachersToCreate = missingTeachers;
+      let adoptedTeachers = [];
       if (missingTeachers.length) {
+        const [existingTeachers] = await conn.query(
+          'SELECT teacher_id, teacher_code, teacher_name, english_name, chinese_name FROM teacher'
+        );
+        const resolution = resolveTimetableTeachers({
+          missingCodes: missingTeachers,
+          nameByCode: teacherNamesByCode,
+          existingTeachers
+        });
+        teachersToCreate = resolution.create;
+        adoptedTeachers = resolution.adopt;
+        if (resolution.conflicts.length) {
+          await conn.rollback();
+          return respondImportError(req, res, 400, {
+            code: 'TEACHER_MATCHING_CONFLICT',
+            message: 'Some timetable teachers share a name with existing teachers. Confirm whether they are the same person, align the teacher codes, then retry.',
+            teacherConflicts: resolution.conflicts.map(conflict => ({
+              abbreviation: conflict.code,
+              teacher: conflict.name,
+              reason: conflict.reason,
+              matchedTeachers: conflict.candidates
+            }))
+          });
+        }
+        for (const adoption of adoptedTeachers) {
+          await conn.query('UPDATE teacher SET teacher_code = ? WHERE teacher_id = ?', [adoption.code, adoption.teacherId]);
+        }
+      }
+
+      if (teachersToCreate.length) {
         await insertRowsInBatches(
           conn,
           'INSERT INTO teacher (teacher_code, teacher_name, status) VALUES ?',
-          missingTeachers.map(({ teacher_code: teacherCode }) => [
-            teacherCode,
-            teacherNamesByCode.get(teacherCode) || teacherCode,
-            'active'
-          ])
+          teachersToCreate.map(({ code, name }) => [code, name, 'active'])
         );
       }
 
@@ -944,11 +972,12 @@ router.post(
         skippedExternalRows,
         electiveReviewCount,
         createdReferences: {
-          teachers: missingTeachers.length,
+          teachers: teachersToCreate.length,
           subjects: missingSubjects.length,
           classes: creatableClasses.length,
           rooms: missingRooms.length
         },
+        adoptedTeachers: adoptedTeachers.length,
         snapshotRows: snapshotResult.affectedRows
       });
     } catch (err) {

@@ -1094,6 +1094,24 @@ export default {
       if (!values || values.length === 0) return '';
       return `${title}:\n${values.join(', ')}`;
     },
+    formatTeacherConflicts(conflicts) {
+      if (!conflicts || conflicts.length === 0) return '';
+      const lines = conflicts.map(conflict => {
+        const matched = (conflict.matchedTeachers || [])
+          .map(teacher => `${teacher.teacher_name}（${teacher.teacher_code || '無代號'}）`)
+          .join('、');
+        const reason = conflict.reason === 'ambiguous-name'
+          ? this.tr('Name matches multiple teachers', '姓名對應多位老師')
+          : conflict.reason === 'existing-code-mismatch'
+            ? this.tr('Matched teacher already has another code', '配對到的老師已有另一代號')
+            : this.tr('Multiple abbreviations map to the same teacher', '多個代號對應同一位老師');
+        return `${conflict.abbreviation} (${conflict.teacher}): ${reason}${matched ? ` → ${matched}` : ''}`;
+      });
+      return [
+        this.tr('Teacher matching conflicts (no data was imported):', '老師配對衝突（沒有導入任何資料）：'),
+        ...lines
+      ].join('\n');
+    },
     formatInvalidRows(rows) {
       if (!rows || rows.length === 0) return '';
       return `${TEXT.invalidRows}:\n${rows.map(row => `Row ${row.row}`).join(', ')}`;
@@ -1104,6 +1122,7 @@ export default {
       }
       const parts = [
         data.message || data.error || this.tr('Upload failed.', TEXT.failed),
+        this.formatTeacherConflicts(data.teacherConflicts),
         this.formatList('Missing teacher_code', data.missingTeachers),
         this.formatList('Missing subject', data.missingSubjects),
         this.formatList('Missing class', data.missingClasses),
