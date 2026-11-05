@@ -1,0 +1,7 @@
+# Local HTTP development only. Never use this override for a public deployment.
+services:
+  server:
+    environment:
+      NODE_ENV: development
+      CLIENT_ORIGIN: http://localhost:8080
+      GOOGLE_CALLBACK_URL: http://localhost:8080/api/auth/google/callback

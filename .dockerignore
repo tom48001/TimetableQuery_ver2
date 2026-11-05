@@ -1,0 +1,13 @@
+.git
+.DS_Store
+.env
+.env.*
+!.env.docker.example
+**/node_modules
+client/dist
+server/uploads
+outputs
+*.log
+database/archive
+database/migrations
+database/seeds

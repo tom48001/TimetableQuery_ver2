@@ -1,0 +1,203 @@
+USE school_management;
+drop DATABASE IF EXISTS school_management;
+
+select * from user;
+select * from teacher;
+select * from class;
+select * from subject;
+select * from student;
+select * from room;
+select * from timetable;
+select * from period;
+select * from student_subject;
+select * from teacher_subject;
+
+CREATE DATABASE IF NOT EXISTS school_management;
+USE school_management;
+
+-- 用户表
+CREATE TABLE user (
+    user_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    google_id VARCHAR(255) UNIQUE,
+    user_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255),
+    role ENUM('teacher', 'subject_head', 'staff', 'manager') DEFAULT 'teacher',
+    permissions TEXT NULL,
+    subject_head_subject_id BIGINT NULL
+);
+
+-- 老師表（可直接用user_id）
+CREATE TABLE teacher (
+    teacher_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNIQUE NULL,
+    teacher_name VARCHAR(100) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE SET NULL
+);
+ALTER TABLE teacher ADD COLUMN teacher_code VARCHAR(50) UNIQUE;
+ALTER TABLE teacher ADD COLUMN status ENUM('active','inactive') DEFAULT 'active';
+
+CREATE TABLE staging_teacher (
+    teacher_code VARCHAR(50) NOT NULL,
+    teacher_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255),
+    PRIMARY KEY (teacher_code)
+);
+
+CREATE TABLE staging_timetable (
+    staging_timetable_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_code VARCHAR(50) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    class VARCHAR(255) NOT NULL,
+    room VARCHAR(255) NOT NULL,
+    day_of_week ENUM('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat') NOT NULL,
+    period VARCHAR(50) NOT NULL
+);
+
+-- 班级表
+CREATE TABLE class (
+    class_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    class_name VARCHAR(255) NOT NULL,
+    grade_level ENUM('F1','F2','F3','F4', 'F5', 'F6') NOT NULL
+);
+
+-- 科目表
+CREATE TABLE subject (
+    subject_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    import_name VARCHAR(255) NOT NULL UNIQUE,
+    subject_name VARCHAR(255) NOT NULL,
+    block ENUM('X1', 'X2', 'X3') NULL,
+    is_elective BOOLEAN DEFAULT FALSE, -- 是否選修科目
+    is_nominatable BOOLEAN NOT NULL DEFAULT TRUE -- 是否可作最佳學習態度提名
+);
+
+-- 學生表（多對多選修科目）
+CREATE TABLE student (
+    student_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    regno VARCHAR(50) NULL,
+    email VARCHAR(255) NULL,
+    student_ch_name VARCHAR(255) NOT NULL,
+    student_eng_name VARCHAR(255) NOT NULL,
+    class_id BIGINT,
+    class_number VARCHAR(2) NOT NULL,
+    sex ENUM('M', 'F') NOT NULL,
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+    is_ncs BOOLEAN NOT NULL DEFAULT FALSE,
+    x1_subject_id BIGINT NULL,
+    x2_subject_id BIGINT NULL,
+    x3_subject_id BIGINT NULL,
+    INDEX idx_student_class_id (class_id),
+    FOREIGN KEY (class_id) REFERENCES class(class_id) ON DELETE SET NULL
+);
+
+-- 學生-科目關係表（解選修科目限制）
+CREATE TABLE student_subject (
+    student_id BIGINT NOT NULL,
+    subject_id BIGINT NOT NULL,
+    PRIMARY KEY (student_id, subject_id),
+    FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subject(subject_id) ON DELETE CASCADE
+);
+
+CREATE TABLE teacher_subject (
+    teacher_id BIGINT NOT NULL,
+    subject_id BIGINT NOT NULL,
+    PRIMARY KEY (teacher_id, subject_id),
+    FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id),
+    FOREIGN KEY (subject_id) REFERENCES subject(subject_id)
+);
+
+-- 房間上課時間表
+CREATE TABLE room (
+    room_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    room_name VARCHAR(255) UNIQUE NOT NULL
+);
+
+CREATE TABLE period (
+    period_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    period_name VARCHAR(50) NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL
+);
+
+-- 時間表
+CREATE TABLE timetable (
+    timetable_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT NOT NULL,
+    subject_id BIGINT NOT NULL,
+    class_id BIGINT NOT NULL,
+    room_id BIGINT NOT NULL,
+    day_of_week ENUM('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat') NOT NULL,
+    period_id BIGINT NOT NULL,
+    FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subject(subject_id) ON DELETE CASCADE,
+    FOREIGN KEY (class_id) REFERENCES class(class_id) ON DELETE CASCADE,
+    FOREIGN KEY (room_id) REFERENCES room(room_id) ON DELETE CASCADE,
+    FOREIGN KEY (period_id) REFERENCES period(period_id) ON DELETE CASCADE,
+    UNIQUE KEY (room_id, day_of_week, period_id),  -- 防止教室時間衝突
+    UNIQUE KEY (teacher_id, day_of_week, period_id)  -- 防止教師時間衝突
+);
+
+-- 提名表
+CREATE TABLE nomination (
+    nomination_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+    FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
+);
+
+CREATE TABLE prefect_nomination (
+    prefect_nomination_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+    UNIQUE KEY unique_prefect_nomination (teacher_id, student_id),
+    FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS learning_goal_record (
+    learning_goal_record_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+    completed_goals INT NOT NULL DEFAULT 0,
+    semester ENUM('first','second') NOT NULL DEFAULT 'first',
+    UNIQUE KEY unique_learning_goal_record_semester (teacher_id, student_id, semester),
+    FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS learning_goal_reward_rule (
+    rule_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    min_goals INT NOT NULL,
+    max_goals INT NOT NULL,
+    award_name VARCHAR(100) NOT NULL,
+    has_prize BOOLEAN NOT NULL DEFAULT FALSE,
+    merit_offset_count INT NOT NULL DEFAULT 0,
+    display_order INT NOT NULL DEFAULT 0
+);
+
+INSERT INTO learning_goal_reward_rule
+    (min_goals, max_goals, award_name, has_prize, merit_offset_count, display_order)
+VALUES
+    (2, 2, '紀念品', FALSE, 0, 1),
+    (3, 4, '銅獎', TRUE, 1, 2),
+    (5, 6, '銀獎', TRUE, 1, 3),
+    (7, 8, '金獎', TRUE, 2, 4);
+
+CREATE TABLE BLA (
+    BLA_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT NOT NULL,
+    student_id BIGINT NOT NULL,
+	  subject_id BIGINT NOT NULL,
+    FOREIGN KEY (teacher_id) REFERENCES teacher(teacher_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subject(subject_id) ON DELETE CASCADE
+);
+
+-- 匯入時間表
+CREATE TABLE import_schedule (
+    import_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    file_name VARCHAR(255) NOT NULL,
+    import_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);

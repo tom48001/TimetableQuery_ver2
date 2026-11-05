@@ -1,49 +1,273 @@
+import { fillChineseSubjectNames } from '../utils/subjectDisplayNames.js';
 import db from '../db.js';
+import { electiveSubjectKey } from '../utils/electiveSubjectKey.js';
+import { ensureStudentAdminSchema } from './manageStudentController.js';
+import { ensureSubjectImportSchema } from '../utils/subjectImportSchema.js';
+
+const normaliseClassListSql = `
+  REPLACE(
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(ttc.class_name, '#', ''),
+          '／',
+          '/'
+        ),
+        '/',
+        ','
+      ),
+      ' ',
+      ''
+    ),
+    '，',
+    ','
+  )
+`;
+
+function normalizeSubjectKey(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s\-_/／，,、.]/g, '');
+}
+
+function subjectCanonicalKey(subject) {
+  return normalizeSubjectKey(subject.subject_name) || String(subject.subject_id || '');
+}
+
+function sortSubjectRows(rows) {
+  return rows.sort((a, b) =>
+    String(a.subject_name_zh || a.subject_name || '').localeCompare(
+      String(b.subject_name_zh || b.subject_name || ''),
+      'zh-Hant',
+      { sensitivity: 'base' }
+    )
+  );
+}
+
+async function electiveSubjectRows() {
+  await ensureSubjectImportSchema();
+  await fillChineseSubjectNames(db);
+  const [rows] = await db.query(`
+    SELECT DISTINCT
+      sub.subject_id,
+      sub.subject_name,
+      sub.subject_name_zh,
+      sub.subject_name_en,
+      sub.import_name,
+      sub.block,
+      sub.is_elective
+    FROM subject sub
+    JOIN timetable imported_tt ON imported_tt.subject_id = sub.subject_id
+    WHERE sub.block IS NOT NULL
+    ORDER BY sub.subject_name
+  `);
+
+  const grouped = new Map();
+  rows.forEach(row => {
+    const key = subjectCanonicalKey(row) + ":" + row.block;
+    const electiveBlocks = row.block ? [row.block] : [];
+    const existing = grouped.get(key);
+    if (!existing) {
+      const subject = { ...row };
+      subject.subject_code = row.subject_name;
+      subject.imported_subject_code = row.import_name;
+      subject.elective_block = row.block;
+      grouped.set(key, { ...subject, alias_subject_ids: [row.subject_id], elective_blocks: electiveBlocks });
+      return;
+    }
+
+    existing.alias_subject_ids.push(row.subject_id);
+    electiveBlocks.forEach(block => {
+      if (!existing.elective_blocks.includes(block)) existing.elective_blocks.push(block);
+    });
+    if (!existing.subject_name_zh && row.subject_name_zh) existing.subject_name_zh = row.subject_name_zh;
+    if (!existing.subject_name_en && row.subject_name_en) existing.subject_name_en = row.subject_name_en;
+    // Keep the display code suffix-free. The imported codes remain available
+    // through imported_subject_code and alias_subject_ids.
+  });
+
+  return sortSubjectRows(Array.from(grouped.values()));
+}
+
+export async function resolveSubjectIds(subjectId, elective = false) {
+  const [selectedRows] = await db.query(
+    'SELECT subject_id, subject_name, subject_name_zh, subject_name_en FROM subject WHERE subject_id = ?',
+    [subjectId]
+  );
+
+  if (!selectedRows.length) return [];
+
+  const keyFor = elective ? electiveSubjectKey : subjectCanonicalKey;
+  const selectedKey = keyFor(selectedRows[0]);
+  const [allRows] = await db.query(
+    'SELECT subject_id, subject_name, subject_name_zh, subject_name_en FROM subject'
+  );
+
+  return allRows
+    .filter(row => keyFor(row) === selectedKey)
+    .map(row => row.subject_id);
+}
+
+export const getSubjectHeadOptions = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT DISTINCT
+        sub.subject_id,
+        sub.subject_name,
+        sub.subject_name_zh,
+        sub.subject_name_en,
+        sub.is_elective
+      FROM subject sub
+      JOIN timetable tt ON tt.subject_id = sub.subject_id
+      ORDER BY sub.subject_name
+    `);
+
+    const grouped = new Map();
+    rows.forEach(row => {
+      const key = subjectCanonicalKey(row);
+      const existing = grouped.get(key);
+      if (!existing) {
+        grouped.set(key, { ...row, alias_subject_ids: [row.subject_id] });
+        return;
+      }
+
+      existing.alias_subject_ids.push(row.subject_id);
+      if (!existing.subject_name_zh && row.subject_name_zh) existing.subject_name_zh = row.subject_name_zh;
+      if (!existing.subject_name_en && row.subject_name_en) existing.subject_name_en = row.subject_name_en;
+      if (String(existing.subject_name || '').length > String(row.subject_name || '').length) {
+        existing.subject_name = row.subject_name;
+        existing.subject_id = row.subject_id;
+      }
+    });
+
+    res.json(sortSubjectRows(Array.from(grouped.values())));
+  } catch (error) {
+    console.error('Error fetching subject-head options:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
 
 export const getElectives = async (req, res) => {
   try {
     const { subject } = req.body;
-    const [electineName] = await db.query(
-      `SELECT subject_name
-      FROM subject
-      WHERE subject_id = ?`,
-      [subject]
+    const subjectIds = await resolveSubjectIds(subject, true);
+    if (!subjectIds.length) {
+      return res.status(404).json({ error: 'Subject not found.' });
+    }
+
+    const [rows] = await db.query(
+      `SELECT subject_id, subject_name, subject_name_zh, subject_name_en
+       FROM subject
+       WHERE subject_id IN (?)
+       ORDER BY
+         CASE WHEN subject_name_zh IS NOT NULL AND subject_name_zh <> '' THEN 0 ELSE 1 END,
+         LENGTH(subject_name),
+         subject_name
+       LIMIT 1`,
+      [subjectIds]
     );
-    res.json({ subject_name: electineName[0].subject_name });
-    console.log('取得選修課程名字:', { subject_name: electineName[0].subject_name });
+
+    res.json({ ...rows[0], alias_subject_ids: subjectIds });
   } catch (error) {
-    console.error('取得選修課程名字失敗:', error);
-    res.status(500).json({ error: '伺服器錯誤' });
+    console.error('Failed to load elective subject:', error);
+    res.status(500).json({ error: 'Failed to load elective subject.' });
   }
-}
+};
+
+export const getElectiveSubjectOptions = async (req, res) => {
+  try {
+    const rows = await electiveSubjectRows();
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching elective subjects:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
 
 export const getStudentElectives = async (req, res) => {
-  const { form, subject } = req.body;
+  const { form, subject, block } = req.body;
   if (!form || !subject) {
-    return res.status(400).json({ error: '請提拱年級與選修 ID' });
+    return res.status(400).json({ error: 'Please provide form and subject.' });
   }
 
-  try{
+  try {
+    await ensureStudentAdminSchema();
+    const subjectIds = await resolveSubjectIds(subject, true);
+
+    if (!subjectIds.length) {
+      return res.status(404).json({ error: 'Subject not found.' });
+    }
+
+    const requestedBlock = String(block || '').toUpperCase();
+    if (requestedBlock && !['X1', 'X2', 'X3'].includes(requestedBlock)) {
+      return res.status(400).json({ error: 'Invalid elective block.' });
+    }
+    const blockColumn = {
+      X1: 's.x1_subject_id',
+      X2: 's.x2_subject_id',
+      X3: 's.x3_subject_id'
+    }[String(block || '').toUpperCase()];
+    const electiveFilter = blockColumn
+      ? `${blockColumn} IN (?)`
+      : '(s.x1_subject_id IN (?) OR s.x2_subject_id IN (?) OR s.x3_subject_id IN (?))';
+    const electiveFilterParams = blockColumn
+      ? [subjectIds]
+      : [subjectIds, subjectIds, subjectIds];
+
     const [rows] = await db.query(
-      `SELECT 
-         c.class_name,
-         s.student_id,
-         s.class_number,
-         s.student_ch_name,
-         s.student_eng_name,
-         s.sex
-       FROM student s
-       JOIN student_subject ss ON s.student_id = ss.student_id
-       JOIN class c ON s.class_id = c.class_id
-       WHERE ss.subject_id = ?
-         AND c.grade_level = ?`,
-      [subject, form]
-    );    
-    res.json(rows)
-    console.log('取得選修課程:', rows);
+      `
+      SELECT
+        c.class_name,
+        c.grade_level,
+        s.student_id,
+        s.class_number,
+        s.student_ch_name,
+        s.student_eng_name,
+        s.sex,
+        tt.timetable_id,
+        tt.day_of_week,
+        p.period_name,
+        p.period_id,
+        t.teacher_name,
+        r.room_name,
+        ttc.class_name AS timetable_class_name,
+        sub.subject_name
+      FROM student s
+      JOIN class c ON s.class_id = c.class_id
+      LEFT JOIN (
+        timetable tt
+        JOIN class ttc ON tt.class_id = ttc.class_id
+      )
+        ON tt.subject_id IN (?)
+       AND (? = '' OR EXISTS (SELECT 1 FROM subject lesson_subject WHERE lesson_subject.subject_id = tt.subject_id AND lesson_subject.block = ?))
+       AND (
+          tt.class_id = s.class_id
+          OR FIND_IN_SET(REPLACE(c.class_name, ' ', ''), ${normaliseClassListSql}) > 0
+          OR REPLACE(ttc.class_name, ' ', '') IN (?, ?)
+       )
+      LEFT JOIN period p ON tt.period_id = p.period_id
+      LEFT JOIN teacher t ON tt.teacher_id = t.teacher_id
+      LEFT JOIN room r ON tt.room_id = r.room_id
+      LEFT JOIN subject sub ON tt.subject_id = sub.subject_id
+      WHERE c.grade_level = ?
+        AND s.status = 'active'
+        AND ${electiveFilter}
+      ORDER BY
+        CAST(LEFT(c.class_name, 1) AS UNSIGNED),
+        FIELD(SUBSTRING(c.class_name, 2, 1), 'M', 'A', 'R', 'Y'),
+        c.class_name,
+        CAST(s.class_number AS UNSIGNED),
+        s.class_number,
+        tt.day_of_week,
+        p.period_id
+      `,
+      [subjectIds, requestedBlock, requestedBlock, form, form.replace('F', 'S'), form, ...electiveFilterParams]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error('Failed to load elective students:', err);
+    res.status(500).json({ error: 'Failed to load elective students.' });
   }
-  catch (err) {
-    console.error('取得選修課程失敗:', err);
-    res.status(500).json({ error: '伺服器錯誤' });
-  }
-}
+};

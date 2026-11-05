@@ -1,28 +1,49 @@
 <template>
   <div class="wrapper">
+    <div class="login-language-switch">
+      <button
+        type="button"
+        class="locale-button"
+            :aria-pressed="$lang.locale === 'zh'"
+            :class="{ active: $lang.locale === 'zh' }"
+        @click="$setLocale('zh')"
+      >
+        中文
+      </button>
+      <button
+        type="button"
+        class="locale-button"
+            :aria-pressed="$lang.locale === 'en'"
+            :class="{ active: $lang.locale === 'en' }"
+        @click="$setLocale('en')"
+      >
+        EN
+      </button>
+    </div>
+
     <div class="inner">
       <div class="image-holder">
         <img src="../assets/smcc1.jpg" alt="">
       </div>
+
       <div class="login">
-        <h2>行政管理系統</h2>
-        <!--  手動登入 -->
+        <h2>{{ $t('login.title') }}</h2>
+
         <form @submit.prevent="handleLogin">
           <div>
-            <label for="email">帳號</label>
-            <input v-model="email" type="text" id="email" placeholder="帳號">
+            <label for="email">{{ $t('login.email') }}</label>
+            <input v-model="email" type="text" id="email" :placeholder="$t('login.email')">
           </div>
           <div>
-            <label for="password">密碼</label>
-            <input v-model="password" type="password" id="password" placeholder="密碼">
+            <label for="password">{{ $t('login.password') }}</label>
+            <input v-model="password" type="password" id="password" :placeholder="$t('login.password')">
           </div>
-          <button type="submit">登入</button>
+          <button type="submit">{{ $t('login.submit') }}</button>
         </form>
 
-        <!--  Google 登入 -->
-        <a href="http://localhost:3000/auth/google" class="google-login-link">
+        <a href="/api/auth/google" class="google-login-link">
           <img :src="require('@/assets/google-icon.png')" alt="Google Icon" class="google-icon" />
-          <span>使用 Google 登入</span>
+          <span>{{ $t('login.google') }}</span>
         </a>
       </div>
     </div>
@@ -42,7 +63,7 @@ export default {
   methods: {
     async handleLogin() {
       try {
-        const res = await axios.post('http://localhost:3000/auth/login', {
+        const res = await axios.post('/api/auth/login', {
           email: this.email,
           password: this.password
         });
@@ -50,142 +71,131 @@ export default {
         if (res.data.user) {
           const cleanedUser = {
             ...res.data.user,
-            role: res.data.user.role ? res.data.user.role.trim().toLowerCase() : 'teacher'
+            role: res.data.user.role ? res.data.user.role.trim().toLowerCase() : 'teacher',
+            permissions: res.data.user.permissions || {}
           };
-          localStorage.setItem('token', res.data.token);
           localStorage.setItem('user', JSON.stringify(cleanedUser));
 
           this.$router.push('/home');
-          window.location.reload(); // 強制重新整理 UI
+          window.location.reload();
         } else {
-          alert('登入失敗，無法獲取使用者資訊');
+          alert(this.$t('login.noUser'));
         }
       } catch (err) {
-        console.error('登入錯誤：', err);
-        alert('登入失敗，請檢查帳號密碼');
+        console.error('Login failed:', err);
+        const data = err.response && err.response.data ? err.response.data : {};
+        const status = err.response ? err.response.status : 0;
+        const fallback = status === 400 || status === 401
+          ? this.$t('login.invalidCredentials')
+          : this.$t('login.serverUnavailable');
+        alert(data.error || fallback);
       }
     }
   }
 };
 </script>
 
-<style>
-body {
-  font-family: "Poppins-Regular";
-  color: #333;
-  font-size: 13px;
-  margin: 0;
-}
-
-input {
-  border: none;
-  outline: none;
-  font-family: "Poppins-Regular";
-  color: #333;
-  background: transparent;
-  border-bottom: 1px solid #ccc;
-  font-size: 13px;
-}
-
-textarea,
-select,
-button {
-  border: none;
-  outline: none;
-  font-family: "Poppins-Regular";
-  color: #333;
-  background: transparent;
-  border-bottom: 1px solid #ccc;
-  font-size: 13px;
-  -webkit-border-radius: 5px;
-  border-radius: 5px;
-}
-
-input:focus {
-  border-bottom: 2px solid #000;
-}
-
-p,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-ul {
-  margin: 0 auto;
-  padding: 0;
-}
-
-img {
-  max-width: 100%;
-}
-
-a:hover {
-  text-decoration: none;
-}
-
-:focus {
-  outline: none;
-}
-
+<style scoped>
 .wrapper {
   min-height: 100vh;
-  background-color: #f0f0f0;
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, var(--app-bg-soft) 0%, var(--app-bg) 100%);
+  position: relative;
+}
+
+.login-language-switch {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.login-language-switch button {
+  min-width: 56px;
+  height: 36px;
+  border: none;
+  border-radius: 0 !important;
+  background: #fff !important;
+  color: var(--text) !important;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 10px;
+}
+
+.login-language-switch button.active {
+  background: var(--primary) !important;
+  color: #fff !important;
 }
 
 .inner {
-  padding: 20px;
-  background: #fff;
-  max-width: 850px;
-  margin: auto;
+  width: min(900px, 100%);
   display: flex;
+  overflow: hidden;
 }
 
-.inner .image-holder {
+.image-holder {
   width: 50%;
-  height: 50%;
+  min-height: 430px;
+  background: var(--surface-soft);
+}
+
+.image-holder img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .login {
   width: 50%;
-  padding: 20px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
-}
-
-.login form {
-  width: 150%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
+  gap: 20px;
+  padding: 44px;
 }
 
 .login h2 {
-  margin-bottom: 20px;
+  color: var(--text);
+  font-size: 30px;
+  margin: 0;
   text-align: center;
 }
 
+.login form {
+  display: grid;
+  gap: 16px;
+}
+
+.login form div {
+  display: grid;
+  gap: 8px;
+}
+
+.login label {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.login input {
+  width: 100%;
+  height: 46px;
+  padding: 0 12px;
+}
+
 button {
-  border: none;
-  width: 164px;
-  height: 51px;
-  margin: auto;
-  margin-top: 40px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: #333;
-  font-size: 15px;
-  color: #fff;
-  vertical-align: middle;
+  width: 100%;
+  height: 48px;
+  margin-top: 8px;
 }
 
 .google-login-link {
@@ -193,23 +203,46 @@ button {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background-color: white;
-  border: 1px solid #ccc;
-  padding: 10px 20px;
-  border-radius: 4px;
-  text-decoration: none;
-  color: #333;
-  font-weight: bold;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
   cursor: pointer;
+  font-weight: 700;
+  padding: 12px 20px;
   transition: background-color 0.2s ease;
 }
 
 .google-login-link:hover {
-  background-color: #f5f5f5;
+  background: var(--surface-soft);
 }
 
 .google-icon {
   width: 20px;
   height: 20px;
+}
+
+@media (max-width: 760px) {
+  .wrapper {
+    align-items: flex-start;
+    padding-top: 78px;
+  }
+
+  .inner {
+    display: block;
+  }
+
+  .image-holder,
+  .login {
+    width: 100%;
+  }
+
+  .image-holder {
+    min-height: 180px;
+  }
+
+  .login {
+    padding: 28px;
+  }
 }
 </style>

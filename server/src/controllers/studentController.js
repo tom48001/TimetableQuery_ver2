@@ -1,21 +1,58 @@
+import { nominationSubjectGroup } from '../utils/nominationSubjects.js';
+import { loadNominationEligibility } from '../utils/nominationEligibility.js';
 import pool from '../db.js';
+import { ensureStudentAdminSchema } from './manageStudentController.js';
+import { ensureLessonGroupSchema } from './lessonGroupController.js';
+import { loadSchoolSettings } from './systemSettingsController.js';
+import { juniorStudentGroup, juniorRuleAllows } from '../utils/juniorAllocation.js';
+
+function normaliseClassListSql(alias) {
+  return `
+  REPLACE(
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(${alias}.class_name, '#', ''),
+          '／',
+          '/'
+        ),
+        '/',
+        ','
+      ),
+      ' ',
+      ''
+    ),
+    '，',
+    ','
+  )
+`;
+}
 
 // 查詢某班所有學生
 export const getStudentsByClassId = async (req, res) => {
   const { classId } = req.params;
   try {
+    await ensureStudentAdminSchema();
     const [students] = await pool.query(
       `SELECT 
         s.student_id, 
         s.student_ch_name AS student_name,
         s.student_eng_name AS english_name,
+        s.class_number,
         s.sex, 
         s.class_id,
         c.class_name
       FROM student s
       JOIN class c ON s.class_id = c.class_id
-      WHERE s.class_id = ?
-      ORDER BY s.student_ch_name`, 
+      JOIN class selected_class
+        ON selected_class.class_id = ?
+       AND (
+          s.class_id = selected_class.class_id
+          OR FIND_IN_SET(REPLACE(c.class_name, ' ', ''), ${normaliseClassListSql('selected_class')}) > 0
+          OR REPLACE(selected_class.class_name, ' ', '') IN (c.grade_level, REPLACE(c.grade_level, 'F', 'S'))
+        )
+      WHERE s.status = 'active'
+      ORDER BY CAST(s.class_number AS UNSIGNED), s.class_number, s.student_ch_name`, 
       [classId]
     );
     res.json(students);
@@ -47,26 +84,32 @@ export const getStudentsBySubject = async (req, res) => {
 
 export const getStudentsByClassNSubject = async (req, res) => {
   const { classId, subjectId } = req.params;
+
   try {
-    const [students] = await pool.query(
-      `SELECT 
-        s.student_id, 
+    await ensureStudentAdminSchema();
+    const baseSql = `
+      SELECT
+        s.student_id,
         s.student_ch_name AS student_name,
         s.student_eng_name AS english_name,
-        s.sex, 
+        s.class_number,
+        s.sex,
         s.class_id,
         c.class_name
       FROM student s
       JOIN class c ON s.class_id = c.class_id
-      JOIN student_subject ss ON s.student_id = ss.student_id
-      WHERE s.class_id = ? AND ss.subject_id = ?
-      ORDER BY s.student_ch_name`, 
-      [classId, subjectId]
-    );
-    res.json(students);
+      WHERE s.class_id = ? AND s.status = 'active'
+      ORDER BY CAST(s.class_number AS UNSIGNED), s.student_ch_name
+    `;
+
+    const group = await nominationSubjectGroup(pool, subjectId);
+    const eligible = await loadNominationEligibility(pool);
+    const studentIds = new Set(eligible.filter(row => Number(row.subject_id) === Number(group?.subject_id) && Number(row.class_id) === Number(classId)).map(row => Number(row.student_id)));
+    const [students] = await pool.query(baseSql, [classId]);
+    return res.json(students.filter(student => studentIds.has(Number(student.student_id))));
   } catch (error) {
-    console.error('查詢班級學生失敗:', error);
-    res.status(500).json({ error: '無法查詢學生' });
+    console.error('Failed to load students by class and subject:', error);
+    res.status(500).json({ error: 'Failed to load students' });
   }
 };
 
@@ -74,26 +117,102 @@ export const getStudentsByClassNSubject = async (req, res) => {
 export const getStudentTimetable = async (req, res) => {
   const { studentId } = req.params;
   try {
+    await ensureStudentAdminSchema();
+    await ensureLessonGroupSchema();
+    const [studentRows] = await pool.query(
+      `SELECT s.student_id, s.class_number, c.class_name, c.grade_level
+       FROM student s
+       JOIN class c ON c.class_id = s.class_id
+       WHERE s.student_id = ? AND s.status = 'active'`,
+      [studentId]
+    );
+    if (!studentRows.length) return res.json([]);
+    const student = studentRows[0];
     const [rows] = await pool.query(`
       SELECT 
         t.teacher_name,
+        sb.subject_id,
         sb.subject_name AS subject,
+        sb.subject_name AS subject_name,
+        sb.subject_name_zh,
+        sb.subject_name_en,
         c.class_name,
+        r.room_id,
         r.room_name,
         tt.day_of_week AS day,
         p.period_name AS period
       FROM student s
       JOIN class c ON s.class_id = c.class_id
-      JOIN timetable tt ON c.class_id = tt.class_id
+      JOIN timetable tt ON TRUE
+      JOIN class tc
+        ON tt.class_id = tc.class_id
+       AND (
+          tt.class_id = s.class_id
+          OR FIND_IN_SET(REPLACE(c.class_name, ' ', ''), ${normaliseClassListSql('tc')}) > 0
+          OR REPLACE(tc.class_name, ' ', '') IN (c.grade_level, REPLACE(c.grade_level, 'F', 'S'))
+        )
       JOIN teacher t ON tt.teacher_id = t.teacher_id
       JOIN subject sb ON tt.subject_id = sb.subject_id
       JOIN room r ON tt.room_id = r.room_id
       JOIN period p ON tt.period_id = p.period_id
-      WHERE s.student_id = ?
+      LEFT JOIN (
+        SELECT class_id, subject_id, day_of_week, period_id, COUNT(*) AS split_count
+        FROM timetable
+        GROUP BY class_id, subject_id, day_of_week, period_id
+        HAVING COUNT(*) > 1
+      ) split_group
+        ON split_group.class_id = tt.class_id
+       AND split_group.subject_id = tt.subject_id
+       AND split_group.day_of_week = tt.day_of_week
+       AND split_group.period_id = tt.period_id
+      LEFT JOIN student_lesson_group selected_group
+        ON selected_group.student_id = s.student_id
+       AND selected_group.timetable_id = tt.timetable_id
+      WHERE s.student_id = ? AND s.status = 'active'
+        AND (
+          COALESCE(sb.is_elective, FALSE) = FALSE
+          OR sb.subject_id IN (s.x1_subject_id, s.x2_subject_id, s.x3_subject_id)
+        )
+        AND (
+          split_group.split_count IS NULL
+          OR selected_group.timetable_id IS NOT NULL
+          OR NOT EXISTS (
+            SELECT 1
+            FROM student_lesson_group existing_group
+            JOIN timetable assigned_tt
+              ON existing_group.timetable_id = assigned_tt.timetable_id
+            WHERE existing_group.student_id = s.student_id
+              AND assigned_tt.class_id = tt.class_id
+              AND assigned_tt.subject_id = tt.subject_id
+              AND assigned_tt.day_of_week = tt.day_of_week
+              AND assigned_tt.period_id = tt.period_id
+          )
+        )
       ORDER BY tt.day_of_week, tt.period_id
     `, [studentId]);
 
-    res.json(rows);
+    if (!['F1', 'F2', 'F3'].includes(student.grade_level)) return res.json(rows);
+
+    const settings = await loadSchoolSettings();
+    const [allocationRules] = await pool.query(
+      `SELECT subject_id, semester, class_group
+       FROM junior_subject_allocation_rule
+       WHERE grade = ?`,
+      [student.grade_level]
+    );
+    const managedSubjectIds = new Set(allocationRules.map(rule => Number(rule.subject_id)));
+    const activeRules = new Map(
+      allocationRules
+        .filter(rule => Number(rule.semester) === settings.current_semester)
+        .map(rule => [Number(rule.subject_id), rule])
+    );
+    const classGroup = juniorStudentGroup(student.class_number);
+    const filteredRows = rows.filter(row => {
+      const subjectId = Number(row.subject_id);
+      if (!managedSubjectIds.has(subjectId)) return true;
+      return juniorRuleAllows(activeRules.get(subjectId), classGroup);
+    });
+    res.json(filteredRows);
   } catch (error) {
     console.error('查詢學生課表失敗:', error);
     res.status(500).json({ error: '無法查詢課表' });
@@ -103,6 +222,7 @@ export const getStudentTimetable = async (req, res) => {
 // 查所有學生
 export const getStudents = async (req, res) => {
   try {
+    await ensureStudentAdminSchema();
     const [rows] = await pool.query(`
       SELECT 
         s.student_id, 
@@ -113,7 +233,11 @@ export const getStudents = async (req, res) => {
         c.class_name
       FROM student s
       JOIN class c ON s.class_id = c.class_id
-      ORDER BY c.class_name, s.student_ch_name
+      WHERE s.status = 'active'
+      ORDER BY
+        CAST(LEFT(c.class_name, 1) AS UNSIGNED),
+        FIELD(SUBSTRING(c.class_name, 2, 1), 'M', 'A', 'R', 'Y'),
+        s.student_ch_name
     `);
     res.json(rows);
   } catch (error) {

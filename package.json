@@ -1,5 +1,14 @@
 {
+  "scripts": {
+    "start": "npm --prefix server start",
+    "build": "npm --prefix client run build",
+    "start:local": "concurrently --kill-others --names server,client \"npm --prefix server start\" \"npm --prefix client start\"",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "eslint": "^8.57.1",
     "prettier": "^3.5.2",
     "prettier-eslint": "^16.3.0",

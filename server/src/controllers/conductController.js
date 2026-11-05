@@ -2,8 +2,9 @@ import pool from '../db.js';
 
 export const insertConduct = async (req, res) => {
   try {
-    const { teacher_id, student_ids } = req.body;
-    if (!teacher_id || !Array.isArray(student_ids)) {
+    const { student_ids } = req.body;
+    const teacher_id = req.user.teacher_id;
+    if (!Array.isArray(student_ids)) {
       return res.status(400).json({ error: '缺少必要資料或 student_ids 不是陣列' });
     }
     // student_ids 為空就直接回成功，不插入
@@ -41,9 +42,10 @@ export const getVotedStudents = async (req, res) => {
 };
 
 export const deleteConduct = async (req, res) => {
-  const { teacherId, removed } = req.body;
+  const { removed } = req.body;
+  const teacherId = req.user.teacher_id;
 
-  if (!teacherId || !Array.isArray(removed)) {
+  if (!Array.isArray(removed)) {
     return res.status(400).json({ message: '缺少必要參數' });
   }
 
@@ -70,13 +72,16 @@ export const getConductResults = async (req, res) => {
       `
       SELECT 
         n.student_id,
+        c.class_name,
         s.student_ch_name,
-        GROUP_CONCAT(t.teacher_name ORDER BY t.teacher_name SEPARATOR ', ') AS teacher_names
+        s.student_eng_name,
+        GROUP_CONCAT(DISTINCT t.teacher_name ORDER BY t.teacher_name SEPARATOR ', ') AS teacher_names
       FROM nomination n
       JOIN student s ON n.student_id = s.student_id
+      JOIN class c ON s.class_id = c.class_id
       JOIN teacher t ON n.teacher_id = t.teacher_id
-      GROUP BY n.student_id, s.student_ch_name
-      ORDER BY s.student_id
+      GROUP BY n.student_id, c.class_name, s.student_ch_name, s.student_eng_name
+      ORDER BY c.class_name, CAST(s.class_number AS UNSIGNED), s.student_id
       `
     );
 
@@ -89,11 +94,7 @@ export const getConductResults = async (req, res) => {
 
 export const getSelectConduct = async (req, res) => {
   try {
-    const { teacher_id } = req.query;
-
-    if (!teacher_id) {
-      return res.status(400).json({ error: "缺少必要參數" });
-    }
+    const teacher_id = req.user.teacher_id;
 
     const [rows] = await pool.query(
       `

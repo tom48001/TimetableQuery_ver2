@@ -1,160 +1,123 @@
 <template>
-  <div>
-    <h1>最佳學習態度學生提名結果</h1>
-    <div class="subject-container">
-      <h3>選擇科目：</h3>
-      <div class="subject-grid">
-        <select v-model="selectedSubject">
-          <option v-for="subject in subjects" :key="subject.subject_id" :value="subject.subject_id">
-            {{ subject.subject_name }}
-          </option>
-        </select>
-      </div>
-    </div>
-    <div class="text-center">
-      <button @click="fetchBLA">查詢選修科目</button>
-    </div>
-    <!-- 顯示結果 -->
-    <div v-if="BLAResults.length">
-      <h3>提名結果：</h3>
-      <div class="electives-container">
-        <table class=electives-Result>
+  <main class="result-page">
+    <section class="page-panel">
+      <header class="page-header">
+        <div>
+          <h1>{{ tr('Best Learning Attitude Results', '最佳學習態度學生提名結果') }}</h1>
+        </div>
+        <div class="header-actions"><span class="summary-pill">{{ BLAResults.length }} {{ tr('records', '項記錄') }}</span><ResetNominationsButton @reset="fetchBLA" /></div>
+      </header>
+
+      <div class="table-wrap">
+        <table v-if="BLAResults.length" class="result-table">
           <thead>
             <tr>
-              <th>姓名</th>
-              <th>提名老師</th>
+              <th class="class-col">{{ tr('Class', '班別') }}</th>
+              <th class="code-col">{{ tr('No.', '編號') }}</th>
+              <th class="name-col">{{ tr('Name', '姓名') }}</th>
+              <th>{{ tr('Nominated Subjects', '獲提名科目') }}</th>
+              <th class="count-col">{{ tr('Subject Count', '科目數') }}</th>
+              <th class="award-col">{{ tr('Award', '獲獎') }}</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="b in BLAResults" :key="b.BLA_id">
-              <td>{{ b.student_ch_name || b.student_id }}</td>
-              <td>{{ b.teacher_names }}</td>
+            <tr v-for="row in BLAResults" :key="row.student_id">
+              <td class="center">{{ row.class_name }}</td>
+              <td>{{ row.student_id }}</td>
+              <td class="name">
+                {{ row.student_ch_name || row.student_id }}
+                <small v-if="row.student_eng_name">{{ row.student_eng_name }}</small>
+              </td>
+              <td>{{ subjectNames(row) }}</td>
+              <td class="center">
+                <span class="count-badge">{{ row.subject_count }} {{ tr('subjects', '\u79d1') }}</span>
+              </td>
+              <td class="center">
+                <span v-if="row.award" class="award-badge">{{ row.award }}</span>
+              </td>
             </tr>
           </tbody>
         </table>
+
+        <p v-if="searched && BLAResults.length === 0" class="empty-state">
+          {{ tr('No nomination records.', '沒有提名記錄。') }}
+        </p>
       </div>
-    </div>
-    <p v-else-if="searched">查無提名結果</p>
-  </div>
+    </section>
+  </main>
 </template>
 
 <script>
 import axios from 'axios';
+import { subjectLabel as formatSubjectLabel } from '../../utils/timetableLabels';
+import ResetNominationsButton from './ResetNominationsButton.vue';
 
 export default {
+  components: { ResetNominationsButton },
   data() {
     return {
-      subjects: [],
-      selectedSubject: '',
       BLAResults: [],
-      searched: false,
-      teacher_id: null
+      searched: false
     };
   },
   methods: {
-    async fetchSubjects() {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3000/api/subjects/findElective', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      this.subjects = res.data;
+    tr(en, zh) {
+      return this.$lang.locale === 'en' ? en : zh;
+    },
+    subjectLabel(subject) {
+      return formatSubjectLabel(subject, this.$lang.locale);
+    },
+    subjectNames(row) {
+      if (!row) return '';
+      if (Array.isArray(row.subjects)) return row.subjects.map(subject => this.subjectLabel(subject)).join(this.$lang.locale === 'en' ? ', ' : '、');
+
+      const ids = String(row.subject_ids || '').split(',').map(id => id.trim()).filter(Boolean);
+      const names = String(row.subject_names || '').split(/[\u3001,]/);
+      const subjects = names.map((name, index) => ({
+        subject_id: ids[index],
+        subject_name: name
+      }));
+
+      if (subjects.length === 0) return '';
+      return subjects.map(subject => this.subjectLabel(subject)).join(this.$lang.locale === 'en' ? ', ' : '\u3001');
     },
     async fetchBLA() {
-      if (!this.selectedSubject) {
-        alert('請選擇科目');
-        return;
-      }
-      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+
       try {
-        const res = await axios.get('http://localhost:3000/api/bla/results', {
-          params: {
-            subject_id: this.selectedSubject
-          },
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get('/api/bla/results');
         this.BLAResults = res.data;
         this.searched = true;
       } catch (err) {
-        console.error('查詢提名結果失敗', err);
+        console.error('Failed to load BLA results:', err);
         this.BLAResults = [];
         this.searched = true;
       }
     }
   },
-  async mounted() {
-    await this.fetchSubjects();
+  mounted() {
+    this.fetchBLA();
   }
 };
 </script>
 
 <style scoped>
-h1{
-  text-align: center;
-  margin-top: 50px;
+@import './result-theme.css';
+
+.table-wrap {
+  max-width: 1040px;
 }
 
-h3{
-  text-align: center;
+.code-col {
+  width: 90px;
 }
 
-.text-center {
-  text-align: center;
-  margin: 15px 0;
+.name-col {
+  width: 180px;
 }
 
-.subject-container {
-  padding: 20px;
-  max-width: 1200px;
-  text-align: center;
-  margin: auto;
-}
-
-select {
-  margin: 10px;
-  padding: 6px;
-}
-
-.subject-grid {
-  margin: 10px 0;
-}
-
-.electives-container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: auto;
-}
-
-.electives-Result {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.electives-Result th,
-.electives-Result td {
-  border: 1px solid #ccc;
-  padding: 8px;
-  vertical-align: top;
-  text-align: center;
-}
-
-.electives-Result th {
-  background-color: #f0f0f0;
-}
-
-button {
-  display: block;
-  margin: 30px auto;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-button:hover {
-  background-color: #0056b3;
+.count-col,
+.award-col {
+  width: 110px;
 }
 </style>

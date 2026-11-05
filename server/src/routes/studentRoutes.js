@@ -1,5 +1,6 @@
 import express from 'express';
-import { ensureJWT } from '../auth/auth.js';
+import { ensureSession } from '../auth/auth.js';
+import { requireAnyPermission, requirePermission } from '../auth/permissions.js';
 import db from '../db.js';
 import {
   getStudents,
@@ -8,50 +9,51 @@ import {
   getStudentsByClassId,
   getStudentsByClassNSubject
 } from '../controllers/studentController.js';
+import {
+  getManagedStudents,
+  getElectiveSubjects,
+  createManagedStudent,
+  updateManagedStudent,
+  deleteManagedStudent,
+  setManagedStudentStatus
+} from '../controllers/manageStudentController.js';
 
 const router = express.Router();
+const canReadStudentData = requireAnyPermission(['timetable', 'nominations', 'manageStudents']);
 
-// 所有路由需登入才能查
-router.use(ensureJWT);
+router.get('/admin/list', ensureSession, requirePermission('manageStudents'), getManagedStudents);
+router.get('/admin/elective-subjects', ensureSession, requirePermission('manageStudents'), getElectiveSubjects);
+router.post('/admin', ensureSession, requirePermission('manageStudents'), createManagedStudent);
+router.put('/admin/:studentId', ensureSession, requirePermission('manageStudents'), updateManagedStudent);
+router.delete('/admin/:studentId', ensureSession, requirePermission('manageStudents'), deleteManagedStudent);
+router.patch('/admin/:studentId/status', ensureSession, requirePermission('manageStudents'), setManagedStudentStatus);
 
-// 根據班級 ID 查學生
-router.get('/by-class/:classId', ensureJWT, getStudentsByClassId);
+router.get('/by-class/:classId/subject/:subjectId', ensureSession, canReadStudentData, getStudentsByClassNSubject);
+router.get('/by-class/:classId', ensureSession, canReadStudentData, getStudentsByClassId);
+router.post('/by-subject', ensureSession, canReadStudentData, getStudentsBySubject);
 
-// 取得所有學生資料
-router.get('/', getStudents);
-
-// 根據級別與科目查學生
-router.post('/by-subject', getStudentsBySubject);
-
-// 根據學生 ID 查學生課表
-router.get('/:studentId/timetable', getStudentTimetable);
-
-//getStudentsByClassId
-router.get('/:studentId/timetable', getStudentsByClassId);
-
-// 根據班級 ID 查學生的選修科目
-router.get('/elective-subjects', async (req, res) => {
+router.get('/elective-subjects', ensureSession, canReadStudentData, async (req, res) => {
   const [rows] = await db.query('SELECT DISTINCT subject_name FROM elective_subjects');
-  res.json(rows.map(r => r.subject_name));
+  res.json(rows.map(row => row.subject_name));
 });
 
-// 根據班級 ID 查學生的選修科目
-router.post('/elective-students', async (req, res) => {
+router.post('/elective-students', ensureSession, canReadStudentData, async (req, res) => {
   const { formLevel, subjectName } = req.body;
 
-  // 確保有傳入 formLevel 和 subjectName
   const [rows] = await db.query(
     `SELECT s.name, s.english_name, s.student_id, s.gender,
-           c.class_name, e.subject_name
-    FROM student s
-    JOIN class c ON s.class_id = c.class_id
-    JOIN elective_subjects e ON e.student_id = s.student_id
-    WHERE c.form_level = ? AND e.subject_name = ?`, [formLevel, subjectName]);
+            c.class_name, e.subject_name
+     FROM student s
+     JOIN class c ON s.class_id = c.class_id
+     JOIN elective_subjects e ON e.student_id = s.student_id
+     WHERE c.form_level = ? AND e.subject_name = ?`,
+    [formLevel, subjectName]
+  );
 
   res.json(rows);
 });
 
-// 根據班級ID與科目ID查學生
-router.get('/by-class/:classId/subject/:subjectId', getStudentsByClassNSubject);
+router.get('/:studentId/timetable', ensureSession, requirePermission('timetable'), getStudentTimetable);
+router.get('/', ensureSession, canReadStudentData, getStudents);
 
 export default router;
