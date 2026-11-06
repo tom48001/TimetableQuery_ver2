@@ -68,6 +68,24 @@ export function ensureTeacherRosterSchema(db) {
   return schemaPromise;
 }
 
+// Legacy databases mark teacher.user_id NOT NULL, which breaks creating
+// teachers during timetable import. The timetable import also matches on the
+// identity columns above, so make sure both hold before an import starts.
+let identitySchemaPromise;
+export function ensureTeacherIdentitySchema(db) {
+  if (!identitySchemaPromise) identitySchemaPromise = (async () => {
+    await ensureTeacherRosterSchema(db);
+    const [columns] = await db.query(`
+      SELECT IS_NULLABLE FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher' AND COLUMN_NAME = 'user_id'
+    `);
+    if (columns.length && columns[0].IS_NULLABLE === 'NO') {
+      await db.query('ALTER TABLE teacher MODIFY COLUMN user_id BIGINT NULL');
+    }
+  })().catch(error => { identitySchemaPromise = null; throw error; });
+  return identitySchemaPromise;
+}
+
 export async function validateTeacherRoster(db, input, actor, lock = false) {
   const records = normalizeRoster(input);
   let nameTeachers;

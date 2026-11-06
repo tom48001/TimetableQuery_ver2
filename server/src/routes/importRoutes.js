@@ -16,6 +16,8 @@ import { ensureSubjectImportSchema, subjectImportRecord } from '../utils/subject
 import { gradeLevelForClass } from '../utils/classReference.js';
 import teacherImportRoutes from './teacherImportRoutes.js';
 import { resolveTimetableTeachers } from '../utils/timetableTeacherMatch.js';
+import { insertStagedTimetableBatches, ensureTimetableImportSchema } from '../utils/stagedTimetableInsert.js';
+import { ensureTeacherIdentitySchema } from '../utils/teacherRoster.js';
 import { withImportJob, getImportProgress, setImportTotal, setImportProcessed } from '../utils/importJobs.js';
 
 const router = express.Router();
@@ -690,6 +692,8 @@ router.post(
       // Ensure review fields exist before opening the import transaction. This
       // avoids running schema DDL while the timetable replacement is in flight.
       await ensureStudentAdminSchema();
+      await ensureTeacherIdentitySchema(conn);
+      await ensureTimetableImportSchema(conn);
 
       const [[importLock]] = await conn.query(
         "SELECT GET_LOCK('school_management_timetable_import', 5) AS acquired"
@@ -928,29 +932,10 @@ router.post(
       let processedRows = invalidRows.length + skippedNonTimetableRows + skippedExternalRows;
       await setImportProcessed(req, processedRows);
       const insertResult = { affectedRows: 0 };
-      for (const batch of chunks(stagedIds)) {
-        const [batchResult] = await conn.query(`
-        INSERT INTO timetable
-          (teacher_id, subject_id, class_id, room_id, day_of_week, period_id)
-        SELECT
-          t.teacher_id,
-          s.subject_id,
-          c.class_id,
-          r.room_id,
-          st.day_of_week,
-          p.period_id
-        FROM staging_timetable st
-        JOIN teacher t ON TRIM(st.teacher_code) = TRIM(t.teacher_code)
-        JOIN subject s ON TRIM(st.subject) = TRIM(s.import_name)
-        JOIN class c ON TRIM(st.class) = TRIM(c.class_name)
-        JOIN room r ON TRIM(st.room) = TRIM(r.room_name)
-        JOIN period p ON TRIM(st.period) = TRIM(p.period_name)
-        WHERE st.staging_timetable_id IN (?)
-      `, [batch.map(row => row.staging_timetable_id)]);
-        insertResult.affectedRows += batchResult.affectedRows;
-        processedRows += batch.length;
+      insertResult.affectedRows = await insertStagedTimetableBatches(conn, stagedIds, DATABASE_BATCH_SIZE, async batchCount => {
+        processedRows += batchCount;
         await setImportProcessed(req, processedRows);
-      }
+      });
 
       const electiveReviewCount = await markInvalidElectiveSelectionsForReview(conn);
 
